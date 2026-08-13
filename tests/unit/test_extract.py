@@ -1,3 +1,4 @@
+import base64
 import io
 import zipfile
 
@@ -7,6 +8,13 @@ import pytest
 from amibake.extract import ExtractError, extract_archive
 
 from .conftest import make_adf, make_iso, make_lha_archive
+
+# `compress -c` output for b"hello world\n" — a real Unix-compress/LZW
+# stream (generated with the actual `compress` binary, not hand-rolled),
+# used to regression-test the .Z decoding real Hyperion point-release
+# update packages (AmigaOS 3.2.1, 3.2.2, ...) need; see extract.py's
+# _decompress_z.
+HELLO_WORLD_Z = base64.b64decode("H52QaMqwYfMGxJ03ctiQUQA=")
 
 
 def test_extract_lha(tmp_path):
@@ -139,6 +147,17 @@ def test_extract_plain_iso9660_strips_version_suffix(tmp_path):
     tree = extract_archive(archive)
     assert set(tree.paths()) == {"FOO.TXT"}
     assert tree.get("FOO.TXT").data == b"hello\n"
+
+
+def test_extract_decompresses_z_members(tmp_path):
+    archive = tmp_path / "test.zip"
+    with zipfile.ZipFile(archive, "w") as zf:
+        zf.writestr("C/AssignWedge.Z", HELLO_WORLD_Z)
+        zf.writestr("plain.txt", "untouched\n")
+    tree = extract_archive(archive)
+    assert set(tree.paths()) == {"C/AssignWedge", "plain.txt"}
+    assert tree.get("C/AssignWedge").data == b"hello world\n"
+    assert tree.get("plain.txt").data == b"untouched\n"
 
 
 def test_extract_iso_rejects_corrupt_archive(tmp_path):

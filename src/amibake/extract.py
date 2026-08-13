@@ -16,6 +16,11 @@ builds are packaged, and likely how real OS install CDs will be too) is
 transparently expanded: the `.iso` entry is replaced by its own
 extracted file tree, merged into the result. This is a fixed, always-
 applied rule, not size/count-based guessing.
+
+Any extracted member ending in `.Z` (Unix `compress`/LZW — how real
+Hyperion point-release update packages, e.g. AmigaOS 3.2.1/3.2.2, ship
+their actual payload) is transparently decompressed via `unlzw3`, a
+pure-Python decoder, with the `.Z` suffix stripped from its path.
 """
 
 from __future__ import annotations
@@ -28,6 +33,7 @@ from pathlib import Path
 
 import lhafile
 import pycdlib
+import unlzw3
 from amitools.fs.ADFSVolume import ADFSVolume
 from amitools.fs.blkdev.ADFBlockDevice import ADFBlockDevice
 from amitools.fs.FSError import FSError
@@ -46,13 +52,37 @@ def extract_archive(path: Path) -> Tree:
     elif suffix == ".zip":
         tree = _extract_zip(path)
     elif suffix == ".iso":
-        return _extract_iso(path)
+        tree = _extract_iso(path)
     elif suffix == ".adf":
-        return _extract_adf(path)
+        tree = _extract_adf(path)
     else:
         raise ExtractError(
             f"don't know how to extract {path.name!r} (supported: .lha, .zip, .iso, .adf)")
-    return _expand_nested_adfs(_expand_nested_isos(tree))
+    tree = _expand_nested_adfs(_expand_nested_isos(tree))
+    return _decompress_z(tree)
+
+
+def _decompress_z(tree: Tree) -> Tree:
+    """Real Hyperion point-release update packages (3.2.1, 3.2.2, ...)
+    ship their actual payload Unix-`compress`-encoded (`.Z`, LZW) —
+    decompressed on the fly by the Installer script's own `UNCOMPRESS`
+    command at install time (confirmed against the real AmigaOS-3.2.1.lha/
+    AmigaOS-3.2.2.lha archives: everything but the bundled DiskDoctor
+    rescue-floppy content is `.Z`). [install].copy has no decompression
+    step of its own, so this expands every `.Z` member in place — same
+    fixed, always-applied-rule pattern as the nested-ISO/ADF expansion
+    above, not size/count-based guessing."""
+    z_members = [p for p in tree.paths() if p.endswith(".Z")]
+    if not z_members:
+        return tree
+    out = Tree()
+    for p in tree.paths():
+        f = tree.get(p)
+        if p in z_members:
+            out.put(p[:-2], unlzw3.unlzw(f.data), f.meta)
+        else:
+            out.put(p, f.data, f.meta)
+    return out
 
 
 def _expand_nested_isos(tree: Tree) -> Tree:

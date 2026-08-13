@@ -15,7 +15,7 @@ requires-python = ">=3.11"
 # amitools 0.8.1 bug in HDFBlockDevice. pycdlib reads (and, in tests,
 # writes) ISO9660/Rock Ridge images — base-recipe install media (AROS
 # nightlies now, real OS install CDs later) ship this way.
-dependencies = ["lhafile>=0.3.1", "amitools>=0.8.1", "pycdlib>=1.14"]
+dependencies = ["lhafile>=0.3.1", "amitools>=0.8.1", "pycdlib>=1.14", "unlzw3>=0.2.1"]
 
 [project.scripts]
 amibake = "amibake.cli:main"
