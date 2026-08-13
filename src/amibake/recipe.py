@@ -10,7 +10,8 @@ from .errors import Problem
 from .manifest import EMULATORS
 from .versionspec import is_name, is_version, parse_constraint, parse_package_spec
 
-TOP_KEYS = {"package", "requires", "source", "install", "verify", "options", "hook", "base"}
+TOP_KEYS = {"package", "requires", "source", "install", "verify", "options", "hook", "base",
+            "emulator-config"}
 BASE_KEYS = {"os-version", "kickstart-version", "dos-type"}
 # Names, not amitools' own DosType constants — recipe.py has no amitools
 # dependency (schema validation only); emit/hdf.py maps these strings to
@@ -68,6 +69,9 @@ def validate_recipe(path: Path) -> list[Problem]:
     options = c.typed(doc, "options", dict, "", default={})
     for opt_name, opt in options.items():
         _check_option(c, opt_name, opt)
+
+    emulator_config = c.typed(doc, "emulator-config", dict, "", default={})
+    _check_emulator_config(c, emulator_config)
 
     hook = c.typed(doc, "hook", dict, "", default=None)
     if hook is not None:
@@ -367,6 +371,29 @@ def _check_install(c: Checker, install: dict) -> None:
         c.unknown_keys(entry, {"name", "path"}, label)
         c.typed(entry, "name", str, label, required=True)
         c.typed(entry, "path", str, label, required=True)
+
+
+def _check_emulator_config(c: Checker, emulator_config: dict) -> None:
+    """[emulator-config.<emitter>] — literal directives an emitter applies
+    on top of the machine-derived config, e.g. flipping bsdsocket_emu on
+    for a UAE-family emitter or hostsocket.net for Copperline's. Any
+    recipe (base or package) may declare one; the builder merges every
+    resolved recipe's directives per emitter at emit time — this is
+    schema validation only, not the collection/merge itself."""
+    for emitter, directives in emulator_config.items():
+        where = f"[emulator-config.{emitter}]"
+        if emitter not in EMULATORS:
+            c.error(f"[emulator-config].{emitter}", f"unknown emulator {emitter!r}",
+                    f"use one of: {', '.join(sorted(EMULATORS))}")
+        if not isinstance(directives, dict):
+            c.error(where, "must be a table",
+                    'e.g. { bsdsocket_emu = "true" }')
+            continue
+        for key, value in directives.items():
+            if not isinstance(value, str | int | bool):
+                c.error(f"{where}.{key}",
+                        "directive values must be strings, integers or booleans",
+                        "check the target emulator's config format for the expected type")
 
 
 def _check_option(c: Checker, opt_name: str, opt) -> None:

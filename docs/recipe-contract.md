@@ -240,6 +240,37 @@ variants (DOS6/DOS7) allow filenames past the classic 30-character
 limit; pick one when the base's own content needs it (AROS's bundled
 fonts are the first real example found).
 
+## `[emulator-config.*]` — contributing emulator config directives
+
+A recipe (base or package) may declare literal config directives for
+one or more emulators, applied on top of the config the `machine`
+block and chosen output already derive — the general mechanism behind
+the no-op `bsdsocket-emulation` recipe, which contributes nothing to
+the built tree at all, only these:
+
+```toml
+[emulator-config.amiberry]
+bsdsocket_emu = "true"
+
+[emulator-config.winuae]
+bsdsocket_emu = "true"
+
+[emulator-config.copperline]
+"hostsocket.net" = "host"
+```
+
+Keys are emulator names (`copperline`, `amiberry`, `winuae`, matching
+`emit`); values are flat tables of string/integer/boolean directives in
+that emulator's own config vocabulary — the recipe author's
+responsibility to get right, same as any other emulator-specific
+setting. Every resolved recipe's directives for a given emitter are
+merged (base first, then packages in resolution order; a later
+recipe's key wins on conflict — same "last layer wins" rule as
+`[install]`). For the `amiberry`/`winuae` (flat `key=value` `.uae`
+format) emitter, a key is written as-is. For `copperline` (nested
+TOML), a key may use `.` to address a nested table — `"hostsocket.net"`
+sets `net` inside `[hostsocket]`.
+
 ## `[hook]` — the fenced escape hatch
 
 A recipe *may* declare `script = "hook.py"` for the genuinely

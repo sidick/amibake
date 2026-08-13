@@ -263,3 +263,39 @@ def test_invalid_base_dos_type(write):
     )
     problems = errors_of(validate_recipe(write(text, name="recipe.toml", subdir="pkg")))
     assert any("dos-type" in p.field for p in problems)
+
+
+def test_valid_emulator_config(write):
+    text = (
+        '[package]\nname = "pkg"\nversions = ["1.0"]\nprovides = ["bsdsocket"]\n\n'
+        '[emulator-config.amiberry]\nbsdsocket_emu = "true"\n\n'
+        '[emulator-config.copperline]\n"hostsocket.net" = "host"\n'
+    )
+    assert validate_recipe(write(text, name="recipe.toml", subdir="pkg")) == []
+
+
+def test_emulator_config_unknown_emulator_is_an_error(write):
+    text = (
+        '[package]\nname = "pkg"\nversions = ["1.0"]\n\n'
+        '[emulator-config.uae4all]\nbsdsocket_emu = "true"\n'
+    )
+    problems = errors_of(validate_recipe(write(text, name="recipe.toml", subdir="pkg")))
+    assert any("uae4all" in p.problem for p in problems)
+
+
+def test_emulator_config_directive_must_be_a_table(write):
+    text = (
+        '[package]\nname = "pkg"\nversions = ["1.0"]\n\n'
+        '[emulator-config]\namiberry = "not-a-table"\n'
+    )
+    problems = errors_of(validate_recipe(write(text, name="recipe.toml", subdir="pkg")))
+    assert any("emulator-config" in p.field for p in problems)
+
+
+def test_emulator_config_directive_value_must_be_scalar(write):
+    text = (
+        '[package]\nname = "pkg"\nversions = ["1.0"]\n\n'
+        '[emulator-config.amiberry]\nfoo = ["not", "scalar"]\n'
+    )
+    problems = errors_of(validate_recipe(write(text, name="recipe.toml", subdir="pkg")))
+    assert any("emulator-config.amiberry].foo" in p.field for p in problems)
