@@ -28,7 +28,7 @@ emit     = ["copperline", "amiberry"]
 | `machine` | table | no | Machine variant; see below. Defaults are recipe-visible, so omitting it means "no machine constraints asserted". |
 | `packages` | array | no | Packages to install; see below. |
 | `output` | array of string | no | Output formats, any of `hdf`, `dir`, `tgz`, `zip`. Default: `["hdf"]`. |
-| `emit` | array of string | no | Emulator configurations to emit, any of `copperline`, `amiberry`, `winuae`. Default: none. |
+| `emit` | array of string | no | Emulator configurations to emit, any of `copperline`, `amiberry`, `winuae`. Default: none. `amibake build` writes `<manifest-stem>.copperline.toml` / `<manifest-stem>-amiberry.uae` / `<manifest-stem>-winuae.uae` alongside the build outputs, once `[verify]` passes. Needs a `dir` entry in `output` (no hardfile/RDB boot support yet) and a Kickstart ROM at `assets/roms/kickstart-{the base recipe's [base].kickstart-version}.rom`, under the same `--assets` root recipes use for their own proprietary media. |
 | `providers` | table | no | Capability → package name, resolving provider ambiguity (e.g. `bsdsocket = "roadshow"`). |
 
 Unknown top-level keys are an error, not ignored — a typo must fail, not

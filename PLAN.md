@@ -425,8 +425,85 @@ Exit: a KS 1.3 manifest builds from WB 1.3 media and boots. **Met.**
 - `bsdsocket-emulation` recipe shipped; Copperline-only manifest asking
   for it fails with the named error (unit fixture).
 
+**Settled in M6 (2026-08-13).** Cross-axis machine validation
+(cpu/fpu/mmu/emulator vs `[requires]`) already existed from earlier
+milestones — the real missing pieces were `machine.py`'s ram-spec
+parser (`machine.ram` was validated by regex but never actually parsed
+anywhere), the two config emitters, and the real `bsdsocket-emulation`
+recipe (previously only a resolver test fixture, never shipped).
+
+- `src/amibake/machine.py`: `parse_ram_spec`/`format_bytes` — a
+  manifest's `"chip:2M,fast:8M"` to structured bytes-per-kind and back.
+- New `[emulator-config.<emitter>]` recipe schema: any recipe (base or
+  package) contributes literal config directives, merged across the
+  resolved plan (base first, packages in resolution order, later wins)
+  by `emit.collect_emulator_config`. Dotted keys address nested
+  Copperline tables (`"hostsocket.net"` → `[hostsocket]` `net = ...`);
+  flat keys are literal `.uae` overrides. This is the "general power"
+  PLAN.md always meant here, now real.
+- `emit/copperline.py` / `emit/uae.py`: real formats, grounded in real
+  data, not guessed — Copperline via `copperline.example.toml` and M5's
+  own hands-on boot verification; Amiberry via real `.uae` content
+  pulled live from a local install (`amibake-aros68k.uae`,
+  `default.uae`, `amirfb_p96_free.uae` — a real in-use project's
+  actual working config) *and* the exact `chipmem_size`/`bogomem_size`
+  scaling formulas (512K/256K units, not raw MB like `fastmem_size`/
+  `z3mem_size`) read directly out of a local Amiberry source
+  checkout's `cfgfile.cpp`, confirmed by round-tripping a generated
+  config through Amiberry's own config parser. WinUAE reuses the same
+  writer (same UAE-derived flat format) but is unverified — no local
+  WinUAE to check against, same honesty bar as P96/the original wb1.3
+  recipe. `dir` output only for both emitters (Copperline `[[filesys]]`
+  HOSTFS with `bootpri = 6`; Amiberry/WinUAE `filesystem2=rw,DH0:...`)
+  — no hardfile/RDB/board-profile modeling yet, a clear named error if
+  only `hdf` output was requested.
+- New convention: a Kickstart ROM at `assets/roms/kickstart-{[base].
+  kickstart-version}.rom`, under the same `--assets` root recipes
+  already use — M4 and M5 both pointed an emulator at a ROM by hand
+  outside AmiBake; there was no path convention for it at all before
+  this. Matches the user's own request this session to keep ROMs used
+  for verification in `assets/` for reuse.
+- `recipes/bsdsocket-emulation` shipped for real: `provides =
+  ["bsdsocket"]`, no `[install]`/`[source]`. **Corrected mid-design**
+  (user, 2026-08-13: "copperline has bsdsocket.library emulation too,
+  amirfb uses it for testing already") — the first draft assumed
+  UAE-family-only; real `[requires].emulator` is `["copperline",
+  "amiberry", "winuae"]`, all three, each via its own real mechanism
+  (`bsdsocket_emu=true` for Amiberry/WinUAE; Copperline's HostSocket
+  board, `[hostsocket] net = "host"`, explicitly documented in
+  Copperline's own config as "(Amiberry-style)"). This also means it's
+  no longer the right exemplar for "package needs an emulator `emit`
+  doesn't have" (nothing excludes it) — `recipes/p96`'s existing real
+  `uaegfx` option already serves that role. The old synthetic
+  `bsdsocket-emulation-fixture` in `test_resolver.py` (whose made-up
+  `[requires]` was itself based on the same wrong assumption) is
+  renamed `uae-only-emulation-fixture` so it's not confused with the
+  real recipe's actual, broader behavior.
+- Real bug found and fixed along the way, unrelated to config emission
+  itself but found while boot-testing an emitted config (user,
+  watching a boot screenshot: "I worry about the pure bit not set...
+  looks like permissions aren't being set properly"): `extract.py`'s
+  ADF reader never read real per-file protection bits at all — every
+  extracted file silently got `protection=0`, losing real 1.3 media's
+  own PURE-bit markings on resident-safe binaries (Execute, Resident,
+  List, Shell-Seg, ...). Fixed (a straight passthrough of amitools'
+  already-correct `meta_info.protect` — extract.py just wasn't reading
+  it) and confirmed by a clean re-boot with no more spurious "Pure bit
+  not set" warnings.
+- Full real end-to-end verification, not just unit tests: built a
+  manifest with `base = "wb1.3"`, `packages = ["sana2loop = 1.1",
+  "bsdsocket-emulation"]`, `emit = ["copperline", "amiberry"]` against
+  real recipes and the real Kickstart 1.3 ROM. Both emitted configs
+  booted for real — Amiberry to the genuine Workbench 1.3 desktop
+  (correct free memory, the build's own disk icon) with live
+  mouse-pointer interactivity confirmed over IPC (the M4 bar); the
+  emitted `copperline.toml` re-verified against the same real boot
+  M5 hand-verified, this time from the emitter's own output.
+
 Exit: one manifest → ready-to-boot on Copperline and Amiberry with
-emitted configs, no hand editing.
+emitted configs, no hand editing. **Met**, modulo the `dir`-output-only
+mount limitation above (real, but not part of what was asked for or
+verified this milestone).
 
 ### M7 — Contribution machinery (Phase 3)
 
