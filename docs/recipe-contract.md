@@ -154,10 +154,22 @@ expresses exactly that.
   - `when = "<option> = <value>"` — apply only when the manifest's option
     answer matches (see `[options]`).
 - `envarc` — array of `{ name, content }`: files created under `ENVARC:`.
+- `files` — array of `{ to, content }`: literal-content files at an
+  arbitrary Amiga destination path (like `envarc`, but not limited to
+  `ENVARC:`). For a base recipe that needs to author its own
+  Startup-Sequence rather than copy one verbatim from its source media
+  (real pre-2.0 media has no `EXECUTE S:User-Startup` line at all — see
+  `[install].user-startup` below).
 - `user-startup` — array of `{ order, lines }`: fragments merged into
   `S:User-Startup` sorted by `order` (integer; house convention 0–99,
   50 = "doesn't matter"). Explicit ordering keys make layers compose
-  deterministically.
+  deterministically. Relies on the base's Startup-Sequence actually
+  running `EXECUTE S:User-Startup` — a 2.0+ convention; on a pre-2.0
+  base (Kickstart 1.3), the builder appends that line automatically to
+  whatever Startup-Sequence the base installed (via `copy` or `files`)
+  if it isn't already present, so fragments still run. A base with no
+  Startup-Sequence file at all has nothing to append to — its own
+  recipe must ship one (`files` is the tool for that).
 - `assigns` — array of `{ name, path }`: assigns added at boot, e.g.
   `{ name = "AmiSSL", path = "SYS:Devs/AmiSSL" }`.
 

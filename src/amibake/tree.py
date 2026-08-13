@@ -122,7 +122,43 @@ class Tree:
             return self.clone()
         t = self.clone()
         t.put("S:User-Startup", t.render_user_startup())
+        t._ensure_startup_sequence_sources_user_startup()
         return t
+
+    # Recipes write Startup-Sequence via [install].copy/[install].files
+    # using the physical "SYS:S/Startup-Sequence" path (same convention
+    # as every other [install] destination); this class's own
+    # materialize() writes S:User-Startup via the logical "S:"
+    # volume-alias form. paths.py's to_physical_path() already treats
+    # both as equivalent at emit time (S: -> physical S/), but at the
+    # Tree-key level (pre-emit) they're different keys — so a lookup
+    # here has to check both forms, not just one.
+    _STARTUP_SEQUENCE_KEYS = ("SYS:S/Startup-Sequence", "S:Startup-Sequence")
+
+    def _ensure_startup_sequence_sources_user_startup(self) -> None:
+        """`EXECUTE S:User-Startup` from Startup-Sequence is a 2.0+
+        convention (same generation as ENVARC:) — a base whose installed
+        Startup-Sequence predates it (e.g. real Kickstart 1.3) never runs
+        S:User-Startup at all, so every other package's user-startup
+        fragments would be silently dead code on that base. When there's
+        a Startup-Sequence to patch and it doesn't already reference
+        User-Startup, append the sourcing stanza automatically. A no-op
+        for any base whose real Startup-Sequence already sources it
+        (harmless: the check below skips them)."""
+        key = next((k for k in self._STARTUP_SEQUENCE_KEYS if self.exists(k)), None)
+        if key is None:
+            return
+        current = self.get(key)
+        if b"user-startup" in current.data.lower():
+            return
+        stanza = (
+            b"\n; --- amibake: run S:User-Startup (appended automatically "
+            b"-- this base's own Startup-Sequence doesn't source it) ---\n"
+            b"IF EXISTS S:User-Startup\n"
+            b"  EXECUTE S:User-Startup\n"
+            b"ENDIF\n"
+        )
+        self.put(key, current.data + stanza, current.meta)
 
     def clone(self) -> Tree:
         t = Tree()

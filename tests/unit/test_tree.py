@@ -78,3 +78,50 @@ def test_render_user_startup_is_deterministic_across_calls():
     tree = Tree()
     tree.add_user_startup(50, "pkg", ["Run Foo"])
     assert tree.render_user_startup() == tree.render_user_startup()
+
+
+def test_materialize_appends_user_startup_sourcing_to_pre_2_0_startup_sequence():
+    """A pre-2.0 base's own Startup-Sequence (real Kickstart 1.3, e.g.)
+    never sources S:User-Startup at all — materialize() must add that
+    line automatically, or every other package's user-startup fragment
+    is dead code on that base."""
+    tree = Tree()
+    tree.put("S:Startup-Sequence", b"C:SetPatch >NIL:\nC:BindDrivers\n")
+    tree.add_user_startup(50, "somepkg", ["Assign Foo: SYS:Foo"])
+    materialized = tree.materialize()
+    startup_sequence = materialized.get("S:Startup-Sequence").data.decode("latin-1")
+    assert "C:SetPatch >NIL:" in startup_sequence  # original content preserved
+    assert "IF EXISTS S:User-Startup" in startup_sequence
+    assert "EXECUTE S:User-Startup" in startup_sequence
+
+
+def test_materialize_does_not_double_append_when_already_sourced():
+    """A 2.0+ base's real Startup-Sequence already has its own `EXECUTE
+    S:User-Startup` (case/wording varies) — must be left alone, not
+    given a second, redundant sourcing block."""
+    tree = Tree()
+    tree.put("S:Startup-Sequence",
+             b"C:SetPatch\nIF EXISTS S:User-Startup\n  EXECUTE S:User-Startup\nENDIF\n")
+    tree.add_user_startup(50, "somepkg", ["Assign Foo: SYS:Foo"])
+    materialized = tree.materialize()
+    startup_sequence = materialized.get("S:Startup-Sequence").data.decode("latin-1")
+    assert startup_sequence.count("EXECUTE S:User-Startup") == 1
+
+
+def test_materialize_without_startup_sequence_is_a_no_op_on_that_file():
+    """No Startup-Sequence to patch (a base that ships none at all) —
+    materialize() still writes S:User-Startup, just can't wire it up."""
+    tree = Tree()
+    tree.add_user_startup(50, "somepkg", ["Assign Foo: SYS:Foo"])
+    materialized = tree.materialize()
+    assert not materialized.exists("S:Startup-Sequence")
+    assert materialized.exists("S:User-Startup")
+
+
+def test_materialize_leaves_startup_sequence_alone_with_nothing_to_source():
+    """No user-startup fragments or assigns at all — don't touch the
+    base's Startup-Sequence just because one happens to exist."""
+    tree = Tree()
+    tree.put("S:Startup-Sequence", b"C:SetPatch >NIL:\n")
+    materialized = tree.materialize()
+    assert materialized.get("S:Startup-Sequence").data == b"C:SetPatch >NIL:\n"

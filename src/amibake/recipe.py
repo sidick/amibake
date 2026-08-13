@@ -24,7 +24,7 @@ DOS_TYPES = {
 PACKAGE_KEYS = {"name", "versions", "depends", "conflicts", "provides", "strategy"}
 REQUIRES_KEYS = {"os", "kickstart", "cpu", "fpu", "mmu", "emulator", "per-version"}
 SOURCE_KINDS = {"aminet", "github", "url", "assets"}
-INSTALL_KEYS = {"copy", "envarc", "user-startup", "assigns"}
+INSTALL_KEYS = {"copy", "envarc", "user-startup", "assigns", "files"}
 COPY_KEYS = {"from", "to", "cpu-variant", "when"}
 OPTION_TYPES = {"enum", "bool", "string"}
 STRATEGIES = {"extract", "installer"}
@@ -340,6 +340,19 @@ def _check_install(c: Checker, install: dict) -> None:
         c.unknown_keys(entry, {"order", "lines"}, label)
         c.typed(entry, "order", int, label, required=True)
         c.string_list(entry, "lines", label)
+
+    for i, entry in enumerate(c.typed(install, "files", list, "[install]", default=[])):
+        label = f"[install].files[{i}]"
+        if not isinstance(entry, dict):
+            c.error(label, "files entries must be tables",
+                    'e.g. { to = "SYS:S/Startup-Sequence", content = "..." }')
+            continue
+        c.unknown_keys(entry, {"to", "content"}, label)
+        to = c.typed(entry, "to", str, label, required=True)
+        if to is not None and ":" not in to:
+            c.error(f"{label}.to", f"destination {to!r} is not an Amiga path",
+                    "destinations are absolute Amiga paths like SYS:S/Startup-Sequence")
+        c.typed(entry, "content", str, label, required=True)
 
     for i, entry in enumerate(c.typed(install, "assigns", list, "[install]", default=[])):
         label = f"[install].assigns[{i}]"

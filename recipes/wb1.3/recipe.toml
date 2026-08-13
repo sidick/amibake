@@ -27,18 +27,23 @@
 # and other optional utilities) isn't included either, same reasoning
 # as excluding AROS's Demos/Developer from bases/aros68k.
 #
-# KNOWN GAP, not yet resolved: real 1.3 has no `IF EXISTS S:User-Startup
-# / EXECUTE S:User-Startup` line in its Startup-Sequence at all (that's
-# a 2.0+ convention, same generation as ENVARC: — confirmed by the real
-# disk's own Startup-Sequence/StartupII content, and by user
-# confirmation 2026-08-13 that ENVARC: itself is 2.0+ only, which this
-# recipe correctly never uses). This means AmiBake's normal
-# `[install].user-startup` layering mechanism — any other package's
-# fragments merged into S:User-Startup — currently has no way to run on
-# a wb1.3 base: nothing sources that file at boot. Not fixed here since
-# it's a framework-level design question (synthesize a minimal
-# Startup-Sequence? extend the schema with a literal-content S: file
-# mechanism?), not a wb1.3-recipe-only concern — see PLAN.md's M5 notes.
+# S:Startup-Sequence: real 1.3's own version isn't shippable here (see
+# above — it calls SYS:System/SetMap and LoadWB, neither viable with
+# this subset) *and* never sources S:User-Startup at all (a 2.0+
+# convention, same generation as ENVARC: — confirmed by the real disk's
+# own content, and by user confirmation 2026-08-13 that ENVARC: itself
+# is 2.0+ only). So this recipe authors its own minimal one below via
+# `[install].files` — every command it uses is confirmed present in
+# this floppy's own C: (SetPatch, Addbuffers, BindDrivers, Makedir,
+# Assign, Mount). It deliberately mirrors what real 1.3's StartupII
+# does for RAM:-based T:/ENV:/CLIPS: and AUX:/PIPE: (1.3 has no on-disk
+# ENV: either — that RAM-based assign is the framework's own doing, not
+# copied from anywhere real), minus the LoadWB/System/SetMap/resident-
+# for-floppy-speed parts this base doesn't need. It doesn't reference
+# S:User-Startup itself — the builder appends that automatically
+# (`Tree._ensure_startup_sequence_sources_user_startup`), the same
+# mechanism that's a no-op on bases (like os3.x, aros68k) whose real
+# Startup-Sequence already sources it.
 #
 # Sub-revisions: "1.3" here is rev 34.20 (GB dump — unmodified, and a
 # superset of the US disk's keymaps); "1.3.3" is rev 34.34 (US dump,
@@ -71,6 +76,22 @@ copy = [
   { from = "Libs/#?",  to = "SYS:Libs/" },
   { from = "Fonts/#?", to = "SYS:Fonts/" },
 ]
+
+[[install.files]]
+to = "SYS:S/Startup-Sequence"
+content = """
+C:SetPatch >NIL:
+C:Addbuffers DF0: 10
+C:BindDrivers
+C:Makedir RAM:T
+C:Assign T: RAM:T
+C:Makedir RAM:ENV
+C:Assign ENV: RAM:ENV
+C:Makedir RAM:CLIPS
+C:Assign CLIPS: RAM:CLIPS
+C:Mount AUX:
+C:Mount PIPE:
+"""
 
 [verify]
 exists = ["SYS:Libs/diskfont.library", "SYS:Fonts/topaz.font"]

@@ -78,6 +78,12 @@ def test_envarc_written():
     assert tree.get("ENVARC:AmiSSL/config").data == b"key=value\n"
 
 
+def test_files_written_at_arbitrary_destination():
+    install = {"files": [{"to": "SYS:S/Startup-Sequence", "content": "C:SetPatch\n"}]}
+    tree = apply_layer(Tree(), "wb1.3", install, Tree())
+    assert tree.get("SYS:S/Startup-Sequence").data == b"C:SetPatch\n"
+
+
 def test_user_startup_and_assigns_accumulate():
     install = {
         "user-startup": [{"order": 50, "lines": ["Run Foo"]}],
