@@ -9,9 +9,14 @@ from pathlib import Path
 from . import __version__
 from ._validate import load_toml
 from .builder import build_tree
+from .emit import collect_emulator_config
 from .emit.archive import write_tgz, write_zip
+from .emit.copperline import EmitError as CopperlineEmitError
+from .emit.copperline import write_copperline_config
 from .emit.dirtree import write_dirtree
 from .emit.hdf import DEFAULT_DOS_TYPE, write_hdf
+from .emit.uae import EmitError as UaeEmitError
+from .emit.uae import write_uae_config
 from .errors import AmiBakeError, Problem
 from .manifest import validate_manifest
 from .plan import BuildPlan, format_lockfile, write_lockfile
@@ -182,6 +187,7 @@ def _cmd_build(manifest_path: Path, recipes_root: Path, out_dir: Path | None,
     out_dir.mkdir(parents=True, exist_ok=True)
     stem = manifest_path.stem
     written = []
+    dir_output_path = None
     for fmt in plan.output:
         suffix, emit = _EMITTERS[fmt]
         target = out_dir / f"{stem}{suffix}"
@@ -189,13 +195,53 @@ def _cmd_build(manifest_path: Path, recipes_root: Path, out_dir: Path | None,
             emit(tree, target, dos_type=plan.base.dos_type or DEFAULT_DOS_TYPE)
         else:
             emit(tree, target)
+        if fmt == "dir":
+            dir_output_path = target.resolve()
         written.append(str(target))
+
+    if plan.emit:
+        rom_path, rom_error = _resolve_rom_path(assets_root, plan.base.kickstart_version)
+        if rom_error:
+            print(rom_error, file=sys.stderr)
+            return 1
+        for emitter in plan.emit:
+            emulator_config = collect_emulator_config(plan, library, emitter)
+            try:
+                if emitter == "copperline":
+                    target = out_dir / f"{stem}.copperline.toml"
+                    write_copperline_config(plan, target, rom_path, dir_output_path,
+                                            emulator_config)
+                else:
+                    target = out_dir / f"{stem}-{emitter}.uae"
+                    write_uae_config(plan, target, rom_path, dir_output_path,
+                                     emulator_config, flavor=emitter)
+            except (CopperlineEmitError, UaeEmitError) as e:
+                print(f"{emitter}: {e}", file=sys.stderr)
+                return 1
+            written.append(str(target))
 
     print(f"built {manifest_path}: base={plan.base.name}, "
          f"packages=[{', '.join(p.name for p in plan.packages) or '(none)'}]")
     for w in written:
         print(f"wrote {w}")
     return 0
+
+
+def _resolve_rom_path(assets_root: Path | None, kickstart_version: str | None):
+    """`assets/roms/kickstart-{version}.rom`, under the same --assets root
+    recipes already use. Returns (path, None) or (None, error message)."""
+    if kickstart_version is None:
+        return None, ("no ROM to emit a config with: the base recipe declares no "
+                      "[base].kickstart-version")
+    if assets_root is None:
+        return None, (f"no ROM to emit a config with: need "
+                      f"assets/roms/kickstart-{kickstart_version}.rom, but no assets "
+                      f"directory was given (pass --assets)")
+    rom_path = assets_root / "roms" / f"kickstart-{kickstart_version}.rom"
+    if not rom_path.is_file():
+        return None, (f"no ROM to emit a config with: {rom_path} not found — supply "
+                      f"it there, or drop 'emit' from the manifest")
+    return rom_path.resolve(), None
 
 
 def _collect(paths: list[Path], problems: list[Problem]) -> list[Path]:

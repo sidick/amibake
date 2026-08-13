@@ -68,6 +68,74 @@ def test_build_end_to_end(tmp_path, capsys):
     assert (tmp_path / "m").is_dir()
 
 
+def test_build_emits_configs_for_every_emit_target(tmp_path, capsys):
+    recipes = tmp_path / "recipes"
+    base_dir = recipes / "os32-fixture"
+    base_dir.mkdir(parents=True)
+    (base_dir / "recipe.toml").write_text(
+        '[package]\nname = "os32-fixture"\nversions = ["3.2.2"]\n'
+        'strategy = "extract"\n\n[base]\nos-version = "3.2.2"\n'
+        'kickstart-version = "34.5"\n'
+    )
+    assets = tmp_path / "assets"
+    (assets / "roms").mkdir(parents=True)
+    (assets / "roms" / "kickstart-34.5.rom").write_bytes(b"rom")
+    manifest = tmp_path / "m.toml"
+    manifest.write_text(
+        'base = "os32-fixture"\nmachine = { cpu = "68030" }\n'
+        'output = ["dir"]\nemit = ["copperline", "amiberry"]\n'
+    )
+
+    rc = main(["build", str(manifest), "--recipes", str(recipes),
+              "--cache", str(tmp_path / "cache"), "--assets", str(assets)])
+    captured = capsys.readouterr()
+    assert rc == 0, captured.err
+    assert (tmp_path / "m.copperline.toml").is_file()
+    assert (tmp_path / "m-amiberry.uae").is_file()
+    assert "cpu_model=68030" in (tmp_path / "m-amiberry.uae").read_text()
+
+
+def test_build_emit_without_rom_fails_named_error(tmp_path, capsys):
+    recipes = tmp_path / "recipes"
+    base_dir = recipes / "os32-fixture"
+    base_dir.mkdir(parents=True)
+    (base_dir / "recipe.toml").write_text(
+        '[package]\nname = "os32-fixture"\nversions = ["3.2.2"]\n'
+        'strategy = "extract"\n\n[base]\nos-version = "3.2.2"\n'
+        'kickstart-version = "34.5"\n'
+    )
+    manifest = tmp_path / "m.toml"
+    manifest.write_text('base = "os32-fixture"\noutput = ["dir"]\nemit = ["amiberry"]\n')
+
+    rc = main(["build", str(manifest), "--recipes", str(recipes),
+              "--cache", str(tmp_path / "cache")])
+    captured = capsys.readouterr()
+    assert rc == 1
+    assert "kickstart-34.5.rom" in captured.err
+
+
+def test_build_emit_without_dir_output_fails_named_error(tmp_path, capsys):
+    recipes = tmp_path / "recipes"
+    base_dir = recipes / "os32-fixture"
+    base_dir.mkdir(parents=True)
+    (base_dir / "recipe.toml").write_text(
+        '[package]\nname = "os32-fixture"\nversions = ["3.2.2"]\n'
+        'strategy = "extract"\n\n[base]\nos-version = "3.2.2"\n'
+        'kickstart-version = "34.5"\ndos-type = "ffs-intl"\n'
+    )
+    assets = tmp_path / "assets"
+    (assets / "roms").mkdir(parents=True)
+    (assets / "roms" / "kickstart-34.5.rom").write_bytes(b"rom")
+    manifest = tmp_path / "m.toml"
+    manifest.write_text('base = "os32-fixture"\noutput = ["hdf"]\nemit = ["amiberry"]\n')
+
+    rc = main(["build", str(manifest), "--recipes", str(recipes),
+              "--cache", str(tmp_path / "cache"), "--assets", str(assets)])
+    captured = capsys.readouterr()
+    assert rc == 1
+    assert "'dir' build output" in captured.err
+
+
 def test_resolve_end_to_end(tmp_path, capsys):
     recipes = tmp_path / "recipes"
     base_dir = recipes / "os32-fixture"
