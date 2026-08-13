@@ -521,6 +521,66 @@ verified this milestone).
   Installer-driven OS, not just the plain-copy cases; 3.1+ClassAct
   manifest as fixture.
 
+**M7 complete (2026-08-13).**
+
+- `tools/ci_recipe_smoke.py`: auto-discovers network-buildable package
+  recipes (no `[base]` table, a `[source]` naming aminet/github/url —
+  proprietary-`[source.assets]`-only recipes like `p96`/`wb1.3`/
+  `os3.1.4` skipped, CI has no legitimate media for them) and builds
+  each against `aros68k`, checking `[verify]`. New recipe PRs covered
+  automatically, no CI config change needed. Wired into
+  `.github/workflows/ci.yml` after the existing lint step.
+- `[hook]` execution implemented and fenced: `hook.py` defines
+  `apply(tree, archive, options) -> Tree`, run after the recipe's own
+  `[install]`. Fenced behind `amibake build --allow-hooks` — a build
+  fails naming the hook and refusing to run it otherwise. Two real
+  bugs found building this: `importlib`'s file-based loader
+  intermittently served a stale `__pycache__` compile of an edited
+  hook.py despite a changed mtime (switched to `exec()`ing the source
+  directly, which never touches that cache); and `_lint_then_resolve`
+  treated *any* lint problem, including warnings (a declared hook is
+  exactly one), as fatal — `amibake build`/`resolve` now only block on
+  errors, matching `amibake lint`'s own already-correct behavior.
+- `docs/limits.md` shipped: real Installer-language scripting (and
+  when `[hook]` is/isn't the right call), cpu/fpu archive variants,
+  single-partition hdf, dir-output-only config emitters (plus the
+  real ROM-hardware-variant-naming gap found building `os3.1.4`),
+  the AmigaDOS pattern subset, and proprietary media's effect on CI
+  coverage — each with the real recipe that hit it.
+- `docs/recipe-contract.md` validated the real way: a fresh-context
+  agent, given only `recipe-contract.md`/`limits.md` (no builder
+  source, no existing recipes), researched and wrote a real recipe for
+  ReqTools (`reqtools.library`) — downloading the real archive,
+  reading its real Installer script. Found two real gaps, both fixed:
+  `[package].versions` rejected letter-suffixed versions (`"2.9a"`,
+  common on Aminet) outright — `AmigaVersion` now supports one trailing
+  letter as a sort tiebreak (`2.9` < `2.9a` < `2.9b`); and
+  into-directory `copy`'s subdirectory-preservation behavior (already
+  correctly implemented, never documented) now has a worked example.
+  Shipped the exercise's own real, checksum-verified recipe
+  (`recipes/reqtools`) rather than discarding it.
+- `recipes/os3.1.4` — the third extract base, and the first genuinely
+  Installer-driven one: the real 152KB `Install/Install` script read
+  directly, its default non-interactive path translated declaratively
+  (whole Workbench + whole Extras — real default-installed content,
+  confirmed by listing it, not the optional-bonus case wb1.3's/
+  aros68k's excluded extras were — + Fonts + Storage's driver dirs +
+  a few Install-disk-sourced files). Real gap found and fixed to build
+  it at all: `extract.py`'s nested-archive expansion (built for AROS's
+  single-nested-ISO case) would have flattened this media's 7 nested
+  `.adf` disks into colliding, silently-dropped files — nested `.adf`
+  members now expand under their own `<member-filename>/` prefix.
+  Real end-to-end verified: built against the real Hyperion media,
+  `[verify]` passed, and both emitted configs (Copperline, Amiberry)
+  booted to a genuine interactive AmigaOS 3.1.4 desktop on the first
+  attempt (real Hyperion copyright banner, live mouse movement
+  confirmed on both).
+
+Exit: contribution machinery real and exercised (CI smoke build, a
+real fresh-eyes docs validation that found and fixed real bugs), the
+declarative format proven against a genuinely Installer-driven OS.
+**Met.**
+
 ### M8 — OS 3.2 extract base (Phase 1's centrepiece, deferred from M5)
 
 - Study Emu68-Imager's per-version handling before writing (proposal's
