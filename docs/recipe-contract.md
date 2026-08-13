@@ -159,7 +159,8 @@ expresses exactly that.
   `ENVARC:`). For a base recipe that needs to author its own
   Startup-Sequence rather than copy one verbatim from its source media
   (real pre-2.0 media has no `EXECUTE S:User-Startup` line at all — see
-  `[install].user-startup` below).
+  `[install].user-startup` below). Accepts an optional `when` condition,
+  same rule as `copy`'s.
 - `user-startup` — array of `{ order, lines }`: fragments merged into
   `S:User-Startup` sorted by `order` (integer; house convention 0–99,
   50 = "doesn't matter"). Explicit ordering keys make layers compose

@@ -137,6 +137,9 @@ def apply_layer(base: Tree, package_name: str, install: dict, archive: Tree,
         tree.put(f"ENVARC:{entry['name']}", entry["content"].encode("latin-1"))
 
     for entry in install.get("files") or []:
+        when = entry.get("when")
+        if when is not None and not _when_matches(when, options):
+            continue
         tree.put(entry["to"], entry["content"].encode("latin-1"))
 
     for entry in install.get("user-startup") or []:

@@ -26,10 +26,7 @@ def validate_manifest(path: Path) -> list[Problem]:
     c = Checker(str(path))
 
     c.unknown_keys(doc, TOP_KEYS, "")
-    base = c.typed(doc, "base", str, "", required=True)
-    if base is not None and not is_name(base):
-        c.error("base", f"bad base name {base!r}",
-                "base names are lower-case slugs like 'os3.2.2', 'wb1.3', 'aros68k'")
+    _check_base(c, doc)
 
     machine = c.typed(doc, "machine", dict, "", default=None)
     if machine is not None:
@@ -56,6 +53,38 @@ def validate_manifest(path: Path) -> list[Problem]:
                     "capability names are lower-case slugs")
 
     return c.problems
+
+
+def _check_base(c: Checker, doc: dict) -> None:
+    """`base` is either a bare name string (`base = "wb1.3"`) or a table
+    naming the base plus answers to its own [options] (`base = { name =
+    "wb1.3", boot = "cli" }`) — same shape as a `packages[]` table entry,
+    minus `version` (a base always resolves to its newest declared
+    version; there's no manifest-level way to pin an older one)."""
+    if "base" not in doc:
+        c.error("base", "required key is missing", "add 'base'")
+        return
+    base = doc["base"]
+    if isinstance(base, str):
+        if not is_name(base):
+            c.error("base", f"bad base name {base!r}",
+                    "base names are lower-case slugs like 'os3.2.2', 'wb1.3', 'aros68k'")
+    elif isinstance(base, dict):
+        name = c.typed(base, "name", str, "base", required=True)
+        if name is not None and not is_name(name):
+            c.error("base.name", f"bad base name {name!r}",
+                    "base names are lower-case slugs like 'os3.2.2', 'wb1.3', 'aros68k'")
+        for key, value in base.items():
+            if key == "name":
+                continue
+            if not isinstance(value, str | int | bool):
+                c.error(f"base.{key}",
+                        "option answers must be strings, integers or booleans",
+                        "check the base recipe's [options] declaration for the "
+                        "expected type")
+    else:
+        c.error("base", "base must be a name string or a table",
+                'e.g. base = "wb1.3" or base = { name = "wb1.3", boot = "cli" }')
 
 
 def _check_machine(c: Checker, machine: dict) -> None:

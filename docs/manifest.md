@@ -24,7 +24,7 @@ emit     = ["copperline", "amiberry"]
 
 | Key | Type | Required | Meaning |
 |---|---|---|---|
-| `base` | string | yes | Name of a base recipe (e.g. `os3.2.2`, `wb1.3`, `aros68k`). |
+| `base` | string or table | yes | Name of a base recipe (e.g. `os3.2.2`, `wb1.3`, `aros68k`). A base recipe with its own `[options]` (e.g. `wb1.3`'s `boot`) takes a table instead: `base = { name = "wb1.3", boot = "cli" }` — same shape as a `packages[]` table entry, minus `version` (a base always resolves to its newest declared version). |
 | `machine` | table | no | Machine variant; see below. Defaults are recipe-visible, so omitting it means "no machine constraints asserted". |
 | `packages` | array | no | Packages to install; see below. |
 | `output` | array of string | no | Output formats, any of `hdf`, `dir`, `tgz`, `zip`. Default: `["hdf"]`. |

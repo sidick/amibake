@@ -267,7 +267,7 @@ fixture (matched case by construction) could have caught:
   Utilities/Shell (the actual Workbench desktop GUI) were only on the
   "Extras1.3" disk excluded by design — false, real disk 1 ships them
   too. Recipe now explicitly scopes to a CLI/AmigaDOS-level boot
-  environment (C:/Devs:/L:/Libs:/Fonts: only) as a real, documented
+  environment (C:, Devs:, L:, Libs:, Fonts: only) as a real, documented
   choice rather than a mistaken assumption, and flags the known
   consequence: the *real* on-disk Startup-Sequence calls
   `SYS:System/SetMap` and `LoadWB`, neither viable with this subset, so
@@ -370,6 +370,45 @@ a frozen frame.
    given in this build, contrary to the docs' "the flag repeats"
    claim — worked around by running one `copperline` invocation per
    timestamp instead of trying to batch several into one run.
+
+**Full-desktop scope, post-close (user, 2026-08-13, same day):**
+`recipes/wb1.3` originally shipped a deliberate CLI-only subset
+(C:/Devs:/L:/Libs:/Fonts:, an authored minimal Startup-Sequence). User
+asked whether Workbench-GUI-based tools would ever be supported, and
+on discussing it chose to always ship the *whole* real Workbench disk
+by default instead — "always ship the full desktop, that way testing
+is against a more representative install with accurate environment...
+if we go minimalist, that gets a lot harder as we get to 3.2 and
+higher." Recipe now also copies Prefs:/System:/Utilities: and the
+root-level disk/trashcan/shell icons (an exact-name alternation
+pattern, since AmigaDOS patterns can't express "root files only"), and
+a new `[options.boot]` enum (`workbench` default / `cli`) picks between
+the real, verbatim on-disk Startup-Sequence/StartupII (LoadWB and all —
+every file it references is now actually present) and the original
+hand-authored minimal one, kept for fast/predictable automated use.
+Real gap found doing this: **the manifest schema had no way to answer
+a *base* recipe's own `[options]` at all** — `base` could only ever be
+a bare name string. Fixed: `base` now accepts a table too (`base = {
+name = "wb1.3", boot = "cli" }`), same shape as a `packages[]` table
+entry minus `version`; `manifest.py`/`resolver.py` updated,
+`docs/manifest.md` documents it. `[install].files` also gained a
+`when` condition (previously `copy`-only) so the two Startup-Sequence
+choices could be gated by the same option. Both boot modes
+real-boot-verified under Copperline against the real KS1.3 ROM: `cli`
+as before (real AmigaDOS CLI banner + live `1>` prompt); `workbench`
+now shows the genuine Workbench 1.3 desktop (RAM DISK + the build's own
+disk icon, correct free-memory readout), with live mouse-pointer
+movement confirming real Intuition interactivity, not a painted frame.
+`tests/unit/test_wb13_recipe.py` covers both modes; full suite
+(233 tests), ruff, and lint all green.
+
+User follow-up, not yet actioned: "we should provide a way to easily
+run a shell script or toggle to prompt if certain files exist" — read
+as wanting the boot-mode choice to be easy to control, which
+`[options.boot]` now provides at the manifest level; a *runtime*
+boot-time prompt/toggle (e.g. holding a key, or branching on a marker
+file's presence, the way real boot-menu conventions work) is a
+different, further idea not built here.
 
 Exit: a KS 1.3 manifest builds from WB 1.3 media and boots. **Met.**
 

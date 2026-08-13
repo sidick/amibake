@@ -59,7 +59,7 @@ def resolve(manifest_path: Path, manifest: dict, library: dict[str, LoadedRecipe
     problems: list[Problem] = []
     manifest_file = str(manifest_path)
 
-    base_name = manifest["base"]
+    base_name, base_answers = _parse_manifest_base(manifest["base"])
     base = library.get(base_name)
     if base is None:
         problems.append(Problem(
@@ -86,7 +86,7 @@ def resolve(manifest_path: Path, manifest: dict, library: dict[str, LoadedRecipe
     _validate_requires(problems, manifest_file, "base", base_requires,
                        base_info, machine, emit)
     base_options = _validate_options(problems, manifest_file, "base", base,
-                                     {}, base_info, machine, emit)
+                                     base_answers, base_info, machine, emit)
     base_package = ResolvedPackage(
         name=base.name,
         version=base_version,
@@ -186,6 +186,12 @@ def resolve(manifest_path: Path, manifest: dict, library: dict[str, LoadedRecipe
         emit=tuple(emit),
     )
     return ResolveResult(plan, [])
+
+
+def _parse_manifest_base(base) -> tuple[str, dict]:
+    if isinstance(base, str):
+        return base, {}
+    return base["name"], {k: v for k, v in base.items() if k != "name"}
 
 
 def _parse_manifest_entry(entry) -> tuple[str, list[Constraint], dict]:

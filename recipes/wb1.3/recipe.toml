@@ -7,43 +7,51 @@
 # VERIFIED against real media 2026-08-13: user supplied a TOSEC WB
 # dump set; this recipe was built/checked against real
 # "Workbench v1.3 rev 34.20 (GB)" and "Workbench v1.3.3 rev 34.34"
-# floppy-disk-1 ADFs (both unmodified TOSEC dumps). Confirms: OFS,
-# lower-case top-level dirs (c/devs/l/libs/s/fonts — AmigaDOS matching
-# is case-insensitive so the patterns below work regardless), and that
-# dos.library/exec.library/mathffp.library are *not* on disk at all —
-# they're resident in Kickstart ROM on 1.x, unlike 2.0+ where more of
-# the OS lives on-disk. [verify] below checks real on-disk libraries
-# instead.
+# floppy-disk-1 ADFs (both unmodified TOSEC dumps), and boot-verified
+# for real under Copperline against a real Kickstart 1.3 ROM. Confirms:
+# OFS, lower-case top-level dirs (c/devs/l/libs/s/fonts/prefs/system/
+# utilities — AmigaDOS matching is case-insensitive so the patterns
+# below work regardless), and that dos.library/exec.library/
+# mathffp.library are *not* on disk at all — they're resident in
+# Kickstart ROM on 1.x, unlike 2.0+ where more of the OS lives on-disk.
+# [verify] below checks real on-disk libraries instead.
 #
-# Scoped to this floppy's C:/Devs:/L:/Libs:/S:/Fonts: content only —
-# real disk 1 *also* ships Prefs/System/Utilities drawers and a Shell
-# icon (the actual Workbench desktop GUI), which this recipe does not
-# copy: this targets a CLI/AmigaDOS-level boot environment, not a
-# pixel-faithful Workbench desktop. Known consequence: the disk's own
-# real S:Startup-Sequence (also not copied, see below) calls
-# `SYS:System/SetMap` and `LoadWB`, neither of which would work with
-# only this subset — so packages should not assume a real 1.3
-# Startup-Sequence is present. The second "Extras1.3" disk (BasicDemos
-# and other optional utilities) isn't included either, same reasoning
-# as excluding AROS's Demos/Developer from bases/aros68k.
+# Ships the *whole* real Workbench disk (C:, Devs:, L:, Libs:, Fonts:,
+# Prefs:, System:, Utilities:, plus the root-level disk/trashcan/shell
+# icons) — a deliberate choice (user, 2026-08-13: "always ship the full
+# desktop, that way testing is against a more representative install
+# with accurate environment... if we go minimalist, that gets a lot
+# harder as we get to 3.2 and higher"), not the earlier CLI-only scope
+# this recipe originally shipped with. The second "Extras1.3" disk
+# (BasicDemos and other optional utilities) still isn't included, same
+# reasoning as excluding AROS's Demos/Developer from bases/aros68k —
+# it's a genuinely separate disk, not part of "the Workbench disk".
 #
-# S:Startup-Sequence: real 1.3's own version isn't shippable here (see
-# above — it calls SYS:System/SetMap and LoadWB, neither viable with
-# this subset) *and* never sources S:User-Startup at all (a 2.0+
-# convention, same generation as ENVARC: — confirmed by the real disk's
-# own content, and by user confirmation 2026-08-13 that ENVARC: itself
-# is 2.0+ only). So this recipe authors its own minimal one below via
-# `[install].files` — every command it uses is confirmed present in
-# this floppy's own C: (SetPatch, Addbuffers, BindDrivers, Makedir,
-# Assign, Mount). It deliberately mirrors what real 1.3's StartupII
-# does for RAM:-based T:/ENV:/CLIPS: and AUX:/PIPE: (1.3 has no on-disk
-# ENV: either — that RAM-based assign is the framework's own doing, not
-# copied from anywhere real), minus the LoadWB/System/SetMap/resident-
-# for-floppy-speed parts this base doesn't need. It doesn't reference
-# S:User-Startup itself — the builder appends that automatically
-# (`Tree._ensure_startup_sequence_sources_user_startup`), the same
-# mechanism that's a no-op on bases (like os3.x, aros68k) whose real
-# Startup-Sequence already sources it.
+# `[options.boot]` picks what actually runs at startup:
+#   - "workbench" (default): the real, unmodified on-disk
+#     Startup-Sequence/StartupII/CLI-Startup (S/#?, copied verbatim) —
+#     SetPatch, AddBuffers, BindDrivers, SetClock, the real SetMap/path/
+#     LoadWB sequence. Every file it references (SYS:System/
+#     FastMemFirst, SYS:System/SetMap, sys:utilities, sys:prefs, ...)
+#     is now actually present, unlike when this recipe only shipped the
+#     CLI subset. Boots to the real Workbench desktop, for
+#     Workbench-based tools (icon-driven installers, Prefs editors,
+#     anything that isn't a Shell program).
+#   - "cli": skips LoadWB/the real Startup-Sequence entirely and uses a
+#     hand-authored minimal one instead (`[install].files`, below) —
+#     SetPatch/AddBuffers/BindDrivers plus the RAM-based T:/ENV:/CLIPS:
+#     and AUX:/PIPE: setup real 1.3's own StartupII does, minus the
+#     desktop. Boots straight to a Shell prompt, faster and more
+#     predictable for scripted/automated use (no icon layout, no
+#     LoadWB timing to wait out) — the mode this recipe originally
+#     shipped as its only behaviour, and the one M5's own Copperline
+#     boot verification used.
+# Either way, [install].user-startup fragments from other packages
+# still run: the builder auto-appends `EXECUTE S:User-Startup` to
+# whichever Startup-Sequence is installed if it isn't already there
+# (`Tree._ensure_startup_sequence_sources_user_startup`) — real 1.3
+# Startup-Sequences never source it themselves (a 2.0+ convention, same
+# generation as ENVARC:, which this recipe correctly never uses).
 #
 # Sub-revisions: "1.3" here is rev 34.20 (GB dump — unmodified, and a
 # superset of the US disk's keymaps); "1.3.3" is rev 34.34 (US dump,
@@ -60,6 +68,11 @@ os-version        = "1.3"
 kickstart-version = "34.5"   # the real KS 1.3 ROM revision
 dos-type          = "ofs"    # 1.3 predates the international FFS extension
 
+[options.boot]
+type     = "enum"
+values   = ["workbench", "cli"]
+default  = "workbench"
+
 [source.assets]
 path   = "Workbench-{version}.adf"
 sha256 = { "1.3" = "961193c379678f79ef604b76e0bc5ab1828af812583389473b45499764f0b962", "1.3.3" = "4cfd278ab763f90df165e971a31f4b86a5e02b7f78c7b9d376eb301121b8e233" }
@@ -70,15 +83,26 @@ sha256 = { "1.3" = "961193c379678f79ef604b76e0bc5ab1828af812583389473b45499764f0
 
 [install]
 copy = [
-  { from = "C/#?",     to = "SYS:C/" },
-  { from = "Devs/#?",  to = "SYS:Devs/" },
-  { from = "L/#?",     to = "SYS:L/" },
-  { from = "Libs/#?",  to = "SYS:Libs/" },
-  { from = "Fonts/#?", to = "SYS:Fonts/" },
+  { from = "C/#?",         to = "SYS:C/" },
+  { from = "Devs/#?",      to = "SYS:Devs/" },
+  { from = "L/#?",         to = "SYS:L/" },
+  { from = "Libs/#?",      to = "SYS:Libs/" },
+  { from = "Fonts/#?",     to = "SYS:Fonts/" },
+  { from = "Prefs/#?",     to = "SYS:Prefs/" },
+  { from = "System/#?",    to = "SYS:System/" },
+  { from = "Utilities/#?", to = "SYS:Utilities/" },
+  # The root-level disk/trashcan/shell icons — an exact list (real
+  # AmigaDOS patterns can't express "root files only", so alternation
+  # names them), confirmed from the real disk's own directory listing.
+  { from = "(.info|Disk.info|Empty.info|Expansion.info|Prefs.info|Shell|Shell.info|System.info|Trashcan.info|Utilities.info)", to = "SYS:" },
+  # The real on-disk Startup-Sequence/StartupII/CLI-Startup — see the
+  # [options.boot] comment above.
+  { from = "S/#?", to = "SYS:S/", when = "boot = workbench" },
 ]
 
 [[install.files]]
 to = "SYS:S/Startup-Sequence"
+when = "boot = cli"
 content = """
 C:SetPatch >NIL:
 C:Addbuffers DF0: 10

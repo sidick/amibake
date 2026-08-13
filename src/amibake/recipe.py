@@ -347,12 +347,16 @@ def _check_install(c: Checker, install: dict) -> None:
             c.error(label, "files entries must be tables",
                     'e.g. { to = "SYS:S/Startup-Sequence", content = "..." }')
             continue
-        c.unknown_keys(entry, {"to", "content"}, label)
+        c.unknown_keys(entry, {"to", "content", "when"}, label)
         to = c.typed(entry, "to", str, label, required=True)
         if to is not None and ":" not in to:
             c.error(f"{label}.to", f"destination {to!r} is not an Amiga path",
                     "destinations are absolute Amiga paths like SYS:S/Startup-Sequence")
         c.typed(entry, "content", str, label, required=True)
+        when = c.typed(entry, "when", str, label)
+        if when is not None and not _WHEN_RE.match(when):
+            c.error(f"{label}.when", f"bad condition {when!r}",
+                    'conditions are "<option> = <value>", e.g. "boot = cli"')
 
     for i, entry in enumerate(c.typed(install, "assigns", list, "[install]", default=[])):
         label = f"[install].assigns[{i}]"
