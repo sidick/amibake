@@ -77,15 +77,21 @@
 #     script copies this unconditionally, no ask-gate at all — unlike
 #     GlowIcons below)
 #
-# 3.2.1 update (Update3.2.1.adf/Install/Install's own COPYDISKCONTENT
-# procedure): whole disk -> SYS: (its own top-level content *is* the
-# procedure's real directory list — C, Classes/*, Devs, L, Libs, Prefs,
-# System, Tools/*, Utilities — so a plain whole-disk copy reproduces it
-# exactly, same reasoning as Workbench3.2.adf above).
-#
-# 3.2.2 update (Update3.2.2.adf, same COPYDISKCONTENT shape, its own
-# real directory list additionally includes Locale/Countries and
-# WBStartup): whole disk -> SYS:.
+# 3.2.1/3.2.2 updates (Update3.2.1.adf and Update3.2.2.adf, each own
+# Install/Install script's real COPYDISKCONTENT procedure): copied
+# per-directory rather than whole-disk, one entry per real directory
+# the procedure's own list names (C, Classes/*, Devs, L, Libs, Prefs,
+# System, Tools/*, Utilities, plus 3.2.2's own Locale/Countries and
+# WBStartup). Not a simplification for its own sake: both disks' own
+# top-level "DEVS"/"LIBS" are genuinely uppercase on disk (confirmed
+# directly), which collides with the base's already-established
+# "Devs"/"Libs" mixed-case destinations on a real case-insensitive
+# AmigaDOS volume — hdf output caught this outright ("Name already
+# exists"). COPYDISKCONTENT itself passes "Devs"/"Libs" as a literal
+# destination string regardless of the source disk's own casing (real
+# AmigaDOS directory lookups are case-insensitive), so per-directory
+# copies normalizing the destination casing reproduce its actual
+# behaviour, not just work around the collision.
 #
 # Deliberately excluded from this base:
 #   - ModulesA500_3.2.adf (and the other per-hardware-class Modules
@@ -160,7 +166,7 @@ copy = [
   { from = "AmigaOS-3.2-full.lha/Classes3.2.adf/#?",                to = "SYS:" },
   { from = "AmigaOS-3.2-full.lha/Fonts.adf/#?",                     to = "SYS:Fonts/" },
   { from = "AmigaOS-3.2-full.lha/Storage3.2.adf/C/#?",              to = "SYS:C/" },
-  { from = "AmigaOS-3.2-full.lha/Storage3.2.adf/LIBS/#?",           to = "SYS:LIBS/" },
+  { from = "AmigaOS-3.2-full.lha/Storage3.2.adf/LIBS/#?",           to = "SYS:Libs/" },
   { from = "AmigaOS-3.2-full.lha/Storage3.2.adf/Classes/DataTypes/#?", to = "SYS:Classes/DataTypes/" },
   { from = "AmigaOS-3.2-full.lha/Storage3.2.adf/WBStartup/#?",      to = "SYS:WBStartup/" },
   { from = "AmigaOS-3.2-full.lha/Storage3.2.adf/Monitors/#?",       to = "SYS:Storage/Monitors/" },
@@ -169,11 +175,36 @@ copy = [
   { from = "AmigaOS-3.2-full.lha/Storage3.2.adf/Keymaps/#?",        to = "SYS:Devs/Keymaps/" },
   { from = "AmigaOS-3.2-full.lha/Backdrops3.2.adf/#?",              to = "SYS:Prefs/Presets/Backdrops/" },
 
-  # --- 3.2.1 update (AmigaOS-3.2.1.lha) ---
-  { from = "AmigaOS-3.2.1.lha/Update3.2.1.adf/#?", to = "SYS:" },
+  # --- 3.2.1 update (AmigaOS-3.2.1.lha) --- per-directory rather than
+  # a whole-disk copy: the real disk's own top-level "DEVS"/"LIBS" are
+  # uppercase (confirmed directly), which collides with base's
+  # already-established "Devs"/"Libs" casing on a real case-insensitive
+  # AmigaDOS volume (hdf output caught this: "Name already exists").
+  # The update's own COPYDISKCONTENT procedure passes "Devs"/"Libs" as
+  # its literal destination string regardless of the source disk's
+  # casing (AmigaDOS lookups are case-insensitive), so normalizing here
+  # matches its real behaviour, not just working around the collision.
+  { from = "AmigaOS-3.2.1.lha/Update3.2.1.adf/C/#?",      to = "SYS:C/" },
+  { from = "AmigaOS-3.2.1.lha/Update3.2.1.adf/DEVS/#?",   to = "SYS:Devs/" },
+  { from = "AmigaOS-3.2.1.lha/Update3.2.1.adf/L/#?",      to = "SYS:L/" },
+  { from = "AmigaOS-3.2.1.lha/Update3.2.1.adf/LIBS/#?",   to = "SYS:Libs/" },
+  { from = "AmigaOS-3.2.1.lha/Update3.2.1.adf/Prefs/#?",  to = "SYS:Prefs/" },
+  { from = "AmigaOS-3.2.1.lha/Update3.2.1.adf/System/#?", to = "SYS:System/" },
+  { from = "AmigaOS-3.2.1.lha/Update3.2.1.adf/Tools/#?",  to = "SYS:Tools/" },
+  { from = "AmigaOS-3.2.1.lha/Update3.2.1.adf/Utilities/#?", to = "SYS:Utilities/" },
 
-  # --- 3.2.2 update (AmigaOS-3.2.2.lha) ---
-  { from = "AmigaOS-3.2.2.lha/Update3.2.2.adf/#?", to = "SYS:" },
+  # --- 3.2.2 update (AmigaOS-3.2.2.lha) --- same per-directory,
+  # normalized-casing convention as 3.2.1 above.
+  { from = "AmigaOS-3.2.2.lha/Update3.2.2.adf/C/#?",      to = "SYS:C/" },
+  { from = "AmigaOS-3.2.2.lha/Update3.2.2.adf/DEVS/#?",   to = "SYS:Devs/" },
+  { from = "AmigaOS-3.2.2.lha/Update3.2.2.adf/L/#?",      to = "SYS:L/" },
+  { from = "AmigaOS-3.2.2.lha/Update3.2.2.adf/LIBS/#?",   to = "SYS:Libs/" },
+  { from = "AmigaOS-3.2.2.lha/Update3.2.2.adf/Prefs/#?",  to = "SYS:Prefs/" },
+  { from = "AmigaOS-3.2.2.lha/Update3.2.2.adf/System/#?", to = "SYS:System/" },
+  { from = "AmigaOS-3.2.2.lha/Update3.2.2.adf/Tools/#?",  to = "SYS:Tools/" },
+  { from = "AmigaOS-3.2.2.lha/Update3.2.2.adf/Utilities/#?", to = "SYS:Utilities/" },
+  { from = "AmigaOS-3.2.2.lha/Update3.2.2.adf/WBStartup/#?", to = "SYS:WBStartup/" },
+  { from = "AmigaOS-3.2.2.lha/Update3.2.2.adf/Locale/Countries/#?", to = "SYS:Locale/Countries/" },
 ]
 
 [verify]
