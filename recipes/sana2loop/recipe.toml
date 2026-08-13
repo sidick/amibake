@@ -10,8 +10,11 @@
 # SanaSend/SanaConform), an AmigaGuide manual, a BSD-2-Clause LICENSE,
 # and a readme.
 #
-# Only loopback.device is installed here. Per the archive's own readme:
-# the device itself targets "plain 68000 and Kickstart 1.3" (2 MB RAM,
+# Only the device is installed here. Per the package author (2026-08-13,
+# correcting the Aminet-hosted readme's currently-stale install section):
+# the real install target is DEVS:Networks/sana2loop.device — renamed
+# from the archive's own "loopback.device" — not a plain DEVS: copy.
+# The device itself targets "plain 68000 and Kickstart 1.3" (2 MB RAM,
 # no utility.library/dos.library calls from its I/O path), but the four
 # companion Shell tools need AmigaOS 2.04 (V37)+ (CreateMsgPort()/
 # CreateIORequest() are V36+ Exec calls). [requires] here is a single
@@ -20,10 +23,6 @@
 # the diagnostic tools are a natural future addition (a `>= 2.04`
 # variant, or an option) once a recipe actually needs them, not
 # something to guess at now.
-#
-# Not copied to DEVS:Networks/ — the readme calls that a *separate*,
-# optional step only relevant once a real TCP/IP stack recipe (AmiTCP,
-# Roadshow, ...) exists to consume it; nothing in this repo does yet.
 
 [package]
 name     = "sana2loop"
@@ -38,8 +37,8 @@ sha256 = { "1.1" = "2cd6bafbc7698989148020de61cd5f31f6d55141897f5a80f63a01594a08
 
 [install]
 copy = [
-  { from = "sana2loop/loopback.device", to = "SYS:Devs/loopback.device" },
+  { from = "sana2loop/loopback.device", to = "SYS:Devs/Networks/sana2loop.device" },
 ]
 
 [verify]
-exists = ["SYS:Devs/loopback.device"]
+exists = ["SYS:Devs/Networks/sana2loop.device"]
