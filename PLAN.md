@@ -214,6 +214,30 @@ unbuildable until *some* OS 3.x base landed.
   (`test_ks13_base_rejects_os3_package_with_named_error`), so this
   milestone's own new work is the *positive* build+boot fixture.
 
+**Settled in M5**: `recipes/wb1.3/recipe.toml` and
+`manifests/wb13.toml` are written and lint clean. `[source.assets]`'s
+`path` names a raw `.adf` floppy image — `extract.py` had no ADF
+reader (it only handled `.lha`/`.zip`/`.iso`), so ADF support was added
+via `amitools.fs.ADFSVolume`/`ADFBlockDevice` (the same dependency the
+`hdf` emitter already uses, now used for reading rather than writing).
+Real KS 1.3 media is proprietary and unavailable to any session that's
+worked on this recipe, so the recipe's structure is grounded in real
+technical documentation (a genuine `Workbench1.3` ADF's
+Startup-Sequence and disk-format analysis — see the recipe's own
+comments) rather than independently re-derived from a full disk
+listing; `tests/unit/test_wb13_recipe.py` builds the *real* recipe and
+manifest end-to-end against a synthetic ADF fixture (`make_adf` in
+`conftest.py`, which round-trips through the same amitools ADF-reading
+code path a real dump would) — a permanent regression test independent
+of whether real media is ever available, confirmed valuable in its own
+right (user, 2026-08-13: "the synthetic one makes for a good test").
+User may supply real media at `assets/Workbench-1.3.adf` (gitignored)
+for a follow-up real-media build/boot pass. `sana2loop` (the proposal's
+own 1.3-capable exemplar) is not yet a shipped recipe, so the manifest
+lists no packages — the *positive* build+boot fixture landed here is
+the base build itself, not yet a boot-verified full manifest; boot
+verification (Copperline preferred per house policy) is still pending.
+
 Exit: a KS 1.3 manifest builds from WB 1.3 media and boots.
 
 ### M6 — Machine block + emulator config emission (Phase 2)

@@ -127,7 +127,10 @@ all, since it has nothing to download.
   fine. A mismatch at build time is a *warning*, never a build failure:
   older media especially has no single canonical dump, and a different
   (but equally valid) backup or re-dump of the same official disk
-  shouldn't be rejected as if it were wrong.
+  shouldn't be rejected as if it were wrong. `path`'s extension picks
+  the extraction format — `.adf` (a raw Amiga floppy disk image, OFS or
+  FFS) is supported alongside `.lha`/`.zip`/`.iso`, the format real
+  pre-CD-ROM install media (e.g. Workbench 1.3) ships as.
 
 A recipe may declare more than one non-assets source (e.g. `aminet` and
 `github` both freely redistributable) as alternates for the fetcher to

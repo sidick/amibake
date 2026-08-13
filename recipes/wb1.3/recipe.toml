@@ -1,0 +1,66 @@
+# Workbench/Kickstart 1.3 (1988) — the proposal's own "most extract-
+# friendly install of all": a single 880K floppy, OFS, plain file
+# copies, no Installer at all. Real 1.3-era consumers already exist in
+# this ecosystem (sana2loop's KS 1.3/68000 target, TheWire13-style
+# stacks) per the proposal's own text.
+#
+# Scoped to the "Workbench1.3" boot disk only — the second "Extras1.3"
+# disk (BasicDemos and other optional utilities) isn't included, same
+# reasoning as excluding AROS's Demos/Developer from bases/aros68k: not
+# needed for a working boot environment.
+#
+# UNVERIFIED against real media (proprietary; no session here has a
+# legitimate copy to test-build against) — structure is grounded in
+# real technical documentation (see PLAN.md's M5 notes): a real
+# Startup-Sequence.HD from a genuine "Workbench1.3"-labelled ADF
+# confirms the SYS:/C:/L:/FONTS:/S:/DEVS:/LIBS: assign set, and
+# disk-format analysis of that same ADF confirms OFS and the presence
+# of dos.library/mathffp.library/topaz.font/garnet.font at the expected
+# locations. The full per-directory content below is the well-
+# established, undisputed general shape of a 1.3 boot disk, not
+# independently re-derived from that one ADF's complete listing.
+#
+# Only "1.3" is listed here — there were minor Workbench/Kickstart 1.3
+# sub-revisions (e.g. 1.3.4, later ROM revisions) whose disk contents
+# may differ slightly; add them as separate `versions` entries (with
+# their own `[source.assets].path` and, if ever known, `sha256`) once
+# someone with real media can confirm the differences, rather than
+# guessing now.
+
+[package]
+name     = "wb1.3"
+versions = ["1.3"]
+strategy = "extract"
+
+[base]
+os-version        = "1.3"
+kickstart-version = "34.5"   # the real KS 1.3 ROM revision
+dos-type          = "ofs"    # 1.3 predates the international FFS extension
+
+[source.assets]
+path = "Workbench-{version}.adf"
+# No sha256: no verified checksum available to any session that's
+# worked on this recipe. [source.assets]'s checksum is optional and
+# partial coverage is fine — add one here if it ever becomes known
+# (e.g. cross-referenced from a public disk-image database), but a
+# recipe with none is completely normal, not a gap to apologize for.
+
+[install]
+copy = [
+  { from = "C/#?",     to = "SYS:C/" },
+  { from = "Devs/#?",  to = "SYS:Devs/" },
+  { from = "L/#?",     to = "SYS:L/" },
+  { from = "Libs/#?",  to = "SYS:Libs/" },
+  { from = "S/#?",     to = "SYS:S/" },
+  { from = "Fonts/#?", to = "SYS:Fonts/" },
+]
+# Real 1.3 has no ENV:/ENVARC: concept at all (a 2.0+ addition) — later-
+# ported tools often assume ENV: exists regardless, so the base adds a
+# RAM-based one for compatibility, per the proposal's own text ("the
+# RAM-based ENV: assign").
+user-startup = [
+  { order = 0, lines = ["MakeDir RAM:ENV", "Assign ENV: RAM:ENV"] },
+]
+
+[verify]
+exists = ["SYS:Libs/dos.library", "SYS:Fonts/topaz.font"]

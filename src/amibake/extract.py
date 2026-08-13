@@ -5,8 +5,11 @@
 headers in testing); `.zip` via the stdlib; `.iso` (ISO9660, with Rock
 Ridge extensions when present — real install/nightly media almost
 always carries them) via `pycdlib`, another pure-Python dependency, no
-external binary. Extracted paths keep their archive-relative form (no
-Amiga volume prefix) — layer.py's `copy` patterns match against these.
+external binary; `.adf` (a raw Amiga floppy disk image — OFS or FFS, the
+`[source.assets]` format for pre-2.0 boot media like Workbench 1.3) via
+`amitools`, the same dependency already used by the `hdf` emitter.
+Extracted paths keep their archive-relative form (no Amiga volume
+prefix) — layer.py's `copy` patterns match against these.
 
 A `.zip`/`.lha` containing a nested `.iso` member (how AROS's nightly
 builds are packaged, and likely how real OS install CDs will be too) is
@@ -24,6 +27,9 @@ from pathlib import Path
 
 import lhafile
 import pycdlib
+from amitools.fs.ADFSVolume import ADFSVolume
+from amitools.fs.blkdev.ADFBlockDevice import ADFBlockDevice
+from amitools.fs.FSError import FSError
 
 from .tree import Tree
 
@@ -40,9 +46,11 @@ def extract_archive(path: Path) -> Tree:
         tree = _extract_zip(path)
     elif suffix == ".iso":
         return _extract_iso(path)
+    elif suffix == ".adf":
+        return _extract_adf(path)
     else:
         raise ExtractError(
-            f"don't know how to extract {path.name!r} (supported: .lha, .zip, .iso)")
+            f"don't know how to extract {path.name!r} (supported: .lha, .zip, .iso, .adf)")
     return _expand_nested_isos(tree)
 
 
@@ -106,6 +114,36 @@ def _extract_iso(path: Path) -> Tree:
     finally:
         iso.close()
     return tree
+
+
+def _extract_adf(path: Path) -> Tree:
+    tree = Tree()
+    blkdev = ADFBlockDevice(str(path), read_only=True)
+    try:
+        blkdev.open()
+    except OSError as e:
+        raise ExtractError(f"{path.name} is not a valid ADF image: {e}") from e
+    volume = ADFSVolume(blkdev)
+    try:
+        volume.open()
+    except FSError as e:
+        raise ExtractError(f"{path.name} is not a valid Amiga filesystem: {e}") from e
+    try:
+        volume.root_dir.read(recursive=True)
+        _walk_adf_dir(volume.root_dir, "", tree)
+    finally:
+        blkdev.close()
+    return tree
+
+
+def _walk_adf_dir(node, prefix: str, tree: Tree) -> None:
+    for entry in node.get_entries():
+        name = entry.get_file_name().get_unicode_name()
+        rel = f"{prefix}{name}"
+        if entry.is_dir():
+            _walk_adf_dir(entry, f"{rel}/", tree)
+        else:
+            tree.put(rel, bytes(entry.get_file_data()))
 
 
 def _extract_zip(path: Path) -> Tree:

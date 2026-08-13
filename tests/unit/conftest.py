@@ -90,6 +90,44 @@ def make_iso(files: dict[str, bytes]) -> bytes:
     return buf.getvalue()
 
 
+def make_adf(files: dict[str, bytes], volume_name: str = "Workbench") -> bytes:
+    """Build a minimal OFS Amiga floppy disk image (.adf) in-process via
+    amitools, for hermetic extract.py tests of the wb1.3 recipe's real
+    source format — no network, no external tool, no committed 880K
+    fixture. Keys are archive-relative paths ('C/Dir', 'S/Startup-
+    Sequence'); intermediate directories are created automatically."""
+    import io
+
+    from amitools.fs.ADFSVolume import ADFSVolume
+    from amitools.fs.blkdev.ADFBlockDevice import ADFBlockDevice
+    from amitools.fs.FSString import FSString
+
+    buf = io.BytesIO()
+    blkdev = ADFBlockDevice(adf_file=None, fobj=buf)
+    blkdev.create()
+    volume = ADFSVolume(blkdev)
+    volume.create(FSString(volume_name))
+
+    made_dirs: set[str] = set()
+
+    def ensure_dir(dir_path: str) -> None:
+        if not dir_path or dir_path in made_dirs:
+            return
+        parent = dir_path.rsplit("/", 1)[0] if "/" in dir_path else ""
+        ensure_dir(parent)
+        volume.create_dir(FSString(dir_path))
+        made_dirs.add(dir_path)
+
+    for name, data in files.items():
+        dir_path = name.rsplit("/", 1)[0] if "/" in name else ""
+        ensure_dir(dir_path)
+        volume.write_file(data, FSString(name))
+
+    volume.close()
+    blkdev.flush()
+    return buf.getvalue()
+
+
 def fields_of(problems):
     return [p.field for p in problems]
 
