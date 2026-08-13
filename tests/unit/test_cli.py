@@ -49,12 +49,23 @@ def test_lint_warnings_do_not_fail(tmp_path, capsys):
     assert "1 warning(s)" in captured.out
 
 
-def test_build_is_unimplemented(tmp_path, capsys):
+def test_build_end_to_end(tmp_path, capsys):
+    recipes = tmp_path / "recipes"
+    base_dir = recipes / "os32-fixture"
+    base_dir.mkdir(parents=True)
+    (base_dir / "recipe.toml").write_text(
+        '[package]\nname = "os32-fixture"\nversions = ["3.2.2"]\n'
+        'strategy = "extract"\n\n[base]\nos-version = "3.2.2"\n'
+    )
     manifest = tmp_path / "m.toml"
-    manifest.write_text('base = "aros68k"\n')
-    rc = main(["build", str(manifest)])
-    assert rc == 2
-    assert "not implemented" in capsys.readouterr().err
+    manifest.write_text('base = "os32-fixture"\noutput = ["dir"]\n')
+
+    rc = main(["build", str(manifest), "--recipes", str(recipes),
+              "--cache", str(tmp_path / "cache")])
+    captured = capsys.readouterr()
+    assert rc == 0, captured.err
+    assert "built" in captured.out
+    assert (tmp_path / "m").is_dir()
 
 
 def test_resolve_end_to_end(tmp_path, capsys):

@@ -283,6 +283,44 @@ proves hard.
    binary to install in CI or for contributors, and it makes `.lha`
    extraction testable with tiny committed fixture archives instead of
    requiring network access or a system binary in every test run.
+8. **Found in M3, real amitools bug worth knowing if anyone else builds
+   on `amitools.fs`**: `ADFSDir._create_node` (used by both
+   `create_dir` and `create_file`) defaults `update_ts=True`, which
+   stamps the *parent* directory's own `mod_ts` — and cascades to
+   `ADFSVolume.update_disk_time()` — to real wall-clock time on every
+   child added, via `MetaInfo.set_current_as_mod_time()`
+   (`time.mktime(time.localtime())`), completely independent of
+   whatever `meta_info` was explicitly passed for the child itself.
+   This is invisible with a small hand-built test tree (built in
+   microseconds, both writes usually land in the same 1/50s "tick" by
+   luck) but broke `amibake build`'s HDF output nondeterministically
+   against the real ~290-file AmiSSL archive — found via bisection
+   (deterministic below a 160-file threshold in one test tree, not
+   above — the threshold itself wasn't the real story, it was luck
+   running out) and confirmed by tracing every `MetaInfo.get_mod_ts()`
+   call back to `update_dir_mod_time()`. Fixed in `emit/hdf.py` by
+   passing `update_ts=False` on every `create_dir`/`create_file` call;
+   `dir`/`tgz`/`zip` outputs were never affected (they don't go through
+   amitools' ADFS block layer at all). `tests/unit/test_emit_hdf.py`'s
+   `test_write_hdf_is_deterministic_across_a_wall_clock_boundary` adds
+   a deliberate delay between two builds specifically so a regression
+   here fails reliably rather than flakily.
+
+9. **Open, flagged in M3, not yet settled**: `emit/hdf.py`'s `dos_type`
+   (OFS vs FFS, plain vs international, DOS7 long filenames) is
+   currently a Python-level default parameter
+   (`DosType.DOS_FFS_INTL`), not exposed through the manifest or
+   recipe schema anywhere. The natural home is the `[base]` table
+   (alongside `os-version`/`kickstart-version`) since filesystem
+   choice is a base-OS property: an OS 3.1/3.2 base wants at least
+   FFS-international, OS 3.2 could opt into DOS7 long names, and a
+   WB 1.3 base needs plain FFS *without* international mode — 1.3
+   predates the international-mode FFS extension, so `DOS_FFS` (DOS1),
+   not `DOS_FFS_INTL`, is the correct target there (OFS may also be
+   preferable for authenticity, per the base recipe's own choice).
+   Deliberately not designed further until a real base recipe (M4/M5)
+   exists to validate the schema against, matching how `cpu-variants`
+   is being held.
 
 ## Prior art discovered during implementation
 

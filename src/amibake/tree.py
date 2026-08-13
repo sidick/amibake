@@ -114,6 +114,16 @@ class Tree:
             h.update(repr(a).encode())
         return h.hexdigest()
 
+    def materialize(self) -> Tree:
+        """A clone with S:User-Startup written as a real file, if there are
+        any startup fragments or assigns to render. Emitters call this once
+        before writing files, so hdf/dir/archive outputs agree."""
+        if not self.user_startup and not self.assigns:
+            return self.clone()
+        t = self.clone()
+        t.put("S:User-Startup", t.render_user_startup())
+        return t
+
     def clone(self) -> Tree:
         t = Tree()
         t._files = dict(self._files)

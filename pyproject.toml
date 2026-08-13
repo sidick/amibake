@@ -8,10 +8,12 @@ version = "0.1.0.dev0"
 description = "Manifest-driven Amiga test setup builder"
 readme = "README.md"
 requires-python = ">=3.11"
-# amitools arrives with M3 (HDF/ADF emission). .lha extraction uses
-# lhafile (pure Python) rather than shelling out to the lhasa/lha CLI —
-# see extract.py's module docstring for why.
-dependencies = ["lhafile>=0.3.1"]
+# .lha extraction uses lhafile (pure Python) rather than shelling out to
+# the lhasa/lha CLI — see extract.py's module docstring for why. amitools
+# is used as a library for HDF/RDB/.uaem emission (emit/hdf.py,
+# emit/dirtree.py) — see emit/hdf.py for a documented workaround for an
+# amitools 0.8.1 bug in HDFBlockDevice.
+dependencies = ["lhafile>=0.3.1", "amitools>=0.8.1"]
 
 [project.scripts]
 amibake = "amibake.cli:main"
