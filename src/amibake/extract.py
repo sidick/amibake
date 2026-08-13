@@ -76,6 +76,29 @@ def _expand_nested_isos(tree: Tree) -> Tree:
     return merged
 
 
+def extract_multiple(paths: list[Path]) -> Tree:
+    """Extract and merge more than one archive into one tree — a real
+    multi-file [source.assets] (a base install plus cumulative point-
+    release update archives; see docs/recipe-contract.md). A single path
+    extracts exactly as `extract_archive` alone would (no prefix, so
+    every existing single-source recipe's [install].copy patterns are
+    unaffected); more than one merges each archive's content under its
+    own `<filename>/` prefix, the same convention `_expand_nested_adfs`
+    uses for nested disks within one archive."""
+    if len(paths) == 1:
+        return extract_archive(paths[0])
+    merged = Tree()
+    for path in paths:
+        _merge_with_prefix(merged, path.name, extract_archive(path))
+    return merged
+
+
+def _merge_with_prefix(dest: Tree, prefix: str, src: Tree) -> None:
+    for p in src.paths():
+        f = src.get(p)
+        dest.put(f"{prefix}/{p}", f.data, f.meta)
+
+
 def _expand_nested_adfs(tree: Tree) -> Tree:
     """Unlike `_expand_nested_isos` (built for AROS's single-nested-ISO
     nightly zip, safe to merge flat since there's only ever one), a real
@@ -83,9 +106,10 @@ def _expand_nested_adfs(tree: Tree) -> Tree:
     *several* nested `.adf` disks that often share root-level filenames
     (every disk has its own `Disk.info`, etc.) — merging those flat would
     silently collide and drop files. Each expanded disk's paths are kept
-    under a `<member-filename>/` prefix instead, so `[install].copy`
-    patterns can address one disk unambiguously, e.g. `Workbench3_1_4.adf/
-    C/Dir`."""
+    under a `<member-filename>/` prefix instead (see `_merge_with_prefix`,
+    shared with `extract_multiple`'s own multi-archive-source case), so
+    `[install].copy` patterns can address one disk unambiguously, e.g.
+    `Workbench3_1_4.adf/C/Dir`."""
     adf_members = [p for p in tree.paths() if p.lower().endswith(".adf")]
     if not adf_members:
         return tree
@@ -100,10 +124,7 @@ def _expand_nested_adfs(tree: Tree) -> Tree:
             tmp.write(tree.get(adf_path).data)
             tmp.flush()
             inner = _extract_adf(Path(tmp.name))
-        prefix = adf_path.rsplit("/", 1)[-1]
-        for p in inner.paths():
-            f = inner.get(p)
-            merged.put(f"{prefix}/{p}", f.data, f.meta)
+        _merge_with_prefix(merged, adf_path.rsplit("/", 1)[-1], inner)
     return merged
 
 

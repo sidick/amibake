@@ -19,7 +19,7 @@ def test_fetch_github_source(tmp_path):
     calls = []
     sources = {"github": {"repo": "owner/name", "asset": "pkg-1.0.lha",
                           "tag": "1.0", "sha256": SHA}}
-    path = fetch_sources(sources, tmp_path, http_get=_fake_http_get(calls))
+    [path] = fetch_sources(sources, tmp_path, http_get=_fake_http_get(calls))
     assert path.read_bytes() == DATA
     assert calls == ["https://github.com/owner/name/releases/download/1.0/pkg-1.0.lha"]
 
@@ -27,7 +27,7 @@ def test_fetch_github_source(tmp_path):
 def test_fetch_aminet_source(tmp_path):
     calls = []
     sources = {"aminet": {"url": "util/libs/pkg-1.0.lha", "sha256": SHA}}
-    path = fetch_sources(sources, tmp_path, http_get=_fake_http_get(calls))
+    [path] = fetch_sources(sources, tmp_path, http_get=_fake_http_get(calls))
     assert path.read_bytes() == DATA
     assert calls == ["https://aminet.net/util/libs/pkg-1.0.lha"]
 
@@ -36,7 +36,7 @@ def test_fetch_url_source(tmp_path):
     calls = []
     sources = {"url": {"url": "https://example.org/dl/pkg.zip/download",
                        "filename": "pkg.zip", "sha256": SHA}}
-    path = fetch_sources(sources, tmp_path, http_get=_fake_http_get(calls))
+    [path] = fetch_sources(sources, tmp_path, http_get=_fake_http_get(calls))
     assert path.read_bytes() == DATA
     assert calls == ["https://example.org/dl/pkg.zip/download"]
     assert path.suffix == ".zip"  # from filename, not the /download-suffixed url
@@ -51,7 +51,7 @@ def test_assets_source_wins_over_network_sources(tmp_path):
         "assets": {"path": "pkg-1.0.lha"},
         "github": {"repo": "owner/name", "asset": "pkg-1.0.lha", "tag": "1.0", "sha256": SHA},
     }
-    path = fetch_sources(sources, tmp_path, assets_root, http_get=_fake_http_get(calls))
+    [path] = fetch_sources(sources, tmp_path, assets_root, http_get=_fake_http_get(calls))
     assert path.read_bytes() == b"the real asset\n"
     assert calls == []  # network source never touched
 
@@ -76,7 +76,7 @@ def test_asset_checksum_match_is_silent(tmp_path):
     (assets_root / "pkg.lha").write_bytes(DATA)
     warnings = []
     sources = {"assets": {"path": "pkg.lha", "sha256": SHA}}
-    path = fetch_sources(sources, tmp_path, assets_root, warn=warnings.append)
+    [path] = fetch_sources(sources, tmp_path, assets_root, warn=warnings.append)
     assert path.read_bytes() == DATA
     assert warnings == []
 
@@ -90,7 +90,7 @@ def test_asset_checksum_mismatch_warns_but_does_not_fail(tmp_path):
     (assets_root / "pkg.lha").write_bytes(b"a different but valid dump\n")
     warnings = []
     sources = {"assets": {"path": "pkg.lha", "sha256": "0" * 64}}
-    path = fetch_sources(sources, tmp_path, assets_root, warn=warnings.append)
+    [path] = fetch_sources(sources, tmp_path, assets_root, warn=warnings.append)
     assert path.read_bytes() == b"a different but valid dump\n"
     assert len(warnings) == 1
     assert "pkg.lha" in warnings[0]
@@ -141,6 +141,6 @@ def test_content_addressed_cache_path_keyed_by_checksum(tmp_path):
     calls = []
     sources = {"github": {"repo": "owner/name", "asset": "pkg-1.0.lha",
                           "tag": "1.0", "sha256": SHA}}
-    path = fetch_sources(sources, tmp_path, http_get=_fake_http_get(calls))
+    [path] = fetch_sources(sources, tmp_path, http_get=_fake_http_get(calls))
     assert path.name == f"{SHA}.lha"
     assert path.parent.name == SHA[:2]

@@ -46,8 +46,8 @@ def _apply_one(tree: Tree, parent_key: str | None, pkg: ResolvedPackage,
     recipe_doc = load_toml(recipe_path)
     install = recipe_doc.get("install") or {}
     if install.get("copy"):
-        archive_path = fetch.fetch_sources(pkg.sources, cache_root, assets_root, http_get)
-        archive_tree = extract.extract_archive(archive_path)
+        archive_paths = fetch.fetch_sources(pkg.sources, cache_root, assets_root, http_get)
+        archive_tree = extract.extract_multiple(archive_paths)
     else:
         archive_tree = Tree()
     tree = layer.apply_layer(tree, pkg.name, install, archive_tree, pkg.options)
@@ -115,6 +115,10 @@ def _archive_sha256(pkg: ResolvedPackage) -> str:
     that matters."""
     for kind in ("assets", "github", "aminet", "url"):
         src = pkg.sources.get(kind)
-        if src and src.get("sha256"):
-            return src["sha256"]
+        digest = src.get("sha256") if src else None
+        if digest:
+            # A multi-file [source.assets] digest is a list (one per
+            # path) rather than one string — join for a single cache-key
+            # string, same list either way changing the key.
+            return ",".join(digest) if isinstance(digest, list) else digest
     return ""
