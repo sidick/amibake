@@ -1,0 +1,75 @@
+# ReqTools 2.9a (util/libs/ReqToolsUsr.lha) — reqtools.library, the
+# classic shared requester-toolkit library used by countless Aminet
+# programs. Not covered by an existing recipe.
+#
+# Derived by:
+#   - downloading the real archive from Aminet and listing it with `lha l`
+#     (real internal paths below are taken directly from that listing, not
+#     guessed)
+#   - reading the real `ReqTools/Install ReqTools` Installer script
+#     (Installer-language, $VER 2.8) inside the archive and translating its
+#     default, non-interactive path per docs/limits.md's guidance:
+#       * requires Kickstart >= 37 (script aborts below that — see its
+#         `(if (< (/ (getversion) 65536) 37) (abort #bad-kick))`)
+#       * default-selected parts: library + prefs + guide (RTPatch's
+#         default-on condition, `(exists "Sys:WBStartup")`, is true on any
+#         real Workbench, so it's included too; the ClassAct-prefs variant
+#         defaults off since ClassAct isn't assumed installed)
+#       * the script's default *language* choice is English (built-in,
+#         needs no catalog file) unless Env:Language says otherwise, and
+#         the catalog-copy loop explicitly skips English — so translating
+#         the true default path installs **no** locale catalogs at all.
+#         (A recipe wanting non-English catalogs by default would need an
+#         [options] axis; not attempted here — see report.)
+#       * the script also branches on the installed amigaguide.library
+#         version to run a `C/FixAG` conversion pass on the guide before
+#         copying it (post-40.x libraries only) — real control flow
+#         [install] can't express (confirms docs/limits.md's "Real
+#         Installer-language scripting" section); this recipe copies the
+#         plain, unconverted ReqTools.guide, which is valid input on every
+#         amigaguide.library version, just not "enhanced" on newer ones.
+#       * the script's guide destination is `Help:` if it exists, else
+#         `Work:`, then asks the user — no notion of "does this assign
+#         exist" is expressible in [install], so this recipe picks a
+#         static `SYS:Help/`, flagged as a guess (see report point 3).
+
+[package]
+name        = "reqtools"
+versions    = ["2.9a"]
+depends     = []
+conflicts   = []
+provides    = []
+
+[requires]
+# The real Installer checks Kickstart directly (not OS version) and
+# aborts below 37 (2.04). No cpu/fpu/mmu requirement in the script.
+kickstart   = ">= 37"
+
+[source.aminet]
+# Single version only, so {version} substitution isn't needed in the URL
+# (see docs/recipe-contract.md's [source.aminet] caveat about Aminet's
+# rolling unversioned filenames — ReqToolsUsr.lha is exactly that case).
+url         = "util/libs/ReqToolsUsr.lha"
+sha256      = { "2.9a" = "0a70c72f709a6d6487f45d8a937b69ac7030b560dc34f76a9a365683058f86e3" }
+
+[install]
+copy = [
+  # reqtools.library itself — archive ships it under lower-case "libs/".
+  { from = "ReqTools/libs/reqtools.library", to = "SYS:Libs/" },
+
+  # Preferences editor + its Workbench icon (default-installed part).
+  { from = "ReqTools/Prefs/ReqTools",        to = "SYS:Prefs/" },
+  { from = "ReqTools/Prefs/ReqTools.info",   to = "SYS:Prefs/" },
+
+  # Manual, unconverted (see header comment on FixAG).
+  { from = "ReqTools/ReqTools.guide",        to = "SYS:Help/" },
+
+  # RTPatch, defaulted on by the real script since Sys:WBStartup exists
+  # on any real Workbench; installing it there is itself what makes it
+  # auto-run at boot (no user-startup line needed).
+  { from = "ReqTools/RTPatch",               to = "SYS:WBStartup/" },
+  { from = "ReqTools/RTPatch.info",          to = "SYS:WBStartup/" },
+]
+
+[verify]
+exists = ["SYS:Libs/reqtools.library"]

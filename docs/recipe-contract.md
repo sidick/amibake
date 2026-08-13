@@ -48,7 +48,7 @@ exists      = ["SYS:Libs/amisslmaster.library"]
 | Key | Type | Required | Notes |
 |---|---|---|---|
 | `name` | slug string | yes | Must equal the recipe's directory name. Lower-case, `[a-z0-9]` with interior `-` or `.`. |
-| `versions` | array of version strings | yes, non-empty | Dotted decimal strings, newest first. Always quoted — `5.20` unquoted would be a float. |
+| `versions` | array of version strings | yes, non-empty | Dotted decimal strings, newest first, optionally with one trailing lower-case letter (`"2.9a"`, common on Aminet — sorts after the letterless form and in letter order: `2.9` < `2.9a` < `2.9b`). Always quoted — `5.20` unquoted would be a float. |
 | `depends` | array of package specs | no | `"name"` or `"name >= 3.8"`. Capabilities may be depended on by name (`"bsdsocket"`). |
 | `conflicts` | array of package specs | no | Resolver refuses manifests containing both. |
 | `provides` | array of slugs | no | Capabilities this recipe satisfies. One provider per capability per manifest; ambiguity is a resolve-time error and the manifest picks via its `providers` table. |
@@ -57,9 +57,14 @@ exists      = ["SYS:Libs/amisslmaster.library"]
 ## `[requires]` — what the package needs from base, machine, emulator
 
 Every recipe declares its own requirements, because they all differ.
-Validated at resolve time against the manifest's base and machine —
-pairing a `>= 3.0` package with a 1.3 base is a hard, early error naming
-the package, the requirement, and the remedy.
+`[requires]` itself is optional (omit it entirely for a package with no
+floor at all), and every key within it is independently optional too —
+set only the axes that actually apply; a key you don't set imposes no
+constraint (a package with only `[requires] kickstart = ">= 37"` is not
+implicitly also requiring any particular OS version). Validated at
+resolve time against the manifest's base and machine — pairing a `>=
+3.0` package with a 1.3 base is a hard, early error naming the package,
+the requirement, and the remedy.
 
 | Key | Type | Example |
 |---|---|---|
@@ -148,7 +153,28 @@ expresses exactly that.
   into-directory copy either ends in `/` (`SYS:Libs/`) or is a bare
   volume with no sub-path (`SYS:`, its own root directory); anything
   else names an exact single destination file, valid only when `from`
-  matches exactly one archive path. Optional keys:
+  matches exactly one archive path. A pattern matching zero archive
+  paths is always a build error — an into-directory copy that happens
+  to match nothing is not a silent no-op.
+
+  An into-directory copy **preserves subdirectory structure below the
+  pattern's own literal (non-wildcard) prefix**, it does not flatten
+  every match to its basename. `{ from = "AmiSSL/Libs/#?", to =
+  "SYS:Libs/" }` matching `AmiSSL/Libs/amissl.library` copies it to
+  `SYS:Libs/amissl.library` (prefix `AmiSSL/Libs/` stripped, flat
+  remainder); matching `AmiSSL/Libs/AmiSSL/68020-40/amissl_v3.library`
+  (a nested CPU-variant subdirectory under that same prefix) copies it
+  to `SYS:Libs/AmiSSL/68020-40/amissl_v3.library` — the nested
+  structure is kept, not collapsed. This matters whenever a wildcard
+  spans a directory level whose name itself varies and isn't safe to
+  drop (per-language catalogs are the common real case: `{ from =
+  "Package/Catalogs/#?/thing.catalog", to = "LOCALE:Catalogs/" }`
+  copies `Package/Catalogs/francais/thing.catalog` to
+  `LOCALE:Catalogs/francais/thing.catalog`, not a single flattened
+  `LOCALE:Catalogs/thing.catalog` that every language's file would
+  collide into).
+
+  Optional keys:
   - `cpu-variant = true` — select the 000/020/040/060 binary variant
     matching the machine block from archives that ship them.
   - `when = "<option> = <value>"` — apply only when the manifest's option

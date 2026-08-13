@@ -34,6 +34,14 @@ its own comments, naming what was read to derive it:
   archive's confirmed layout, explicitly flagged unverified in the
   recipe's own comments.
 
+This also covers **decisions the real Installer makes from filesystem
+state rather than a user prompt** — e.g. a script that puts a manual
+under `Help:` if that assign already exists, `Work:` otherwise. There's
+no way for `[install]` to branch on "does this assign exist on the
+target" (only on `[options]`, a manifest-author-facing choice); a
+recipe hitting this picks one static, reasonable destination and says
+so in a comment, the same as any other default-path translation.
+
 When the default path alone can't produce a working install (a real
 decision tree with no reasonable single answer), that package either
 gets an `[options]` axis for the manifest to answer explicitly (see

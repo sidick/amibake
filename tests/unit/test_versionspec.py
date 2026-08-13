@@ -8,12 +8,12 @@ from amibake.versionspec import (
 )
 
 
-@pytest.mark.parametrize("text", ["3.2.2.1", "5.20", "45.1", "0", "68020"])
+@pytest.mark.parametrize("text", ["3.2.2.1", "5.20", "45.1", "0", "68020", "2.9a"])
 def test_valid_versions(text):
     assert is_version(text)
 
 
-@pytest.mark.parametrize("text", ["5.20a", "v5.20", "5..20", ".5", "5.", ""])
+@pytest.mark.parametrize("text", ["5.20ab", "v5.20", "5..20", ".5", "5.", "", "a5.20"])
 def test_invalid_versions(text):
     assert not is_version(text)
 

@@ -3,6 +3,10 @@
 Versions are always strings: `5.20` is a version, never the float 5.2.
 `AmigaVersion` compares dotted-decimal strings component-wise as
 integers, so `5.20` > `5.3` (unlike a naive string or float compare).
+An optional single trailing lowercase letter (`2.9a`, real and common
+on Aminet — found by a fresh-docs-only validation exercise trying to
+recipe a real package with exactly this version shape) sorts after its
+letterless form and in letter order: `2.9` < `2.9a` < `2.9b` < `2.10`.
 """
 
 from __future__ import annotations
@@ -11,7 +15,7 @@ import operator
 import re
 from dataclasses import dataclass
 
-VERSION_RE = re.compile(r"^\d+(\.\d+)*$")
+VERSION_RE = re.compile(r"^\d+(\.\d+)*[a-z]?$")
 NAME_RE = re.compile(r"^[a-z0-9]+([.-][a-z0-9]+)*$")
 _CONSTRAINT_RE = re.compile(r"^(>=|<=|=|>|<)\s*(\S+)$")
 
@@ -42,7 +46,8 @@ def parse_constraint(text: str) -> list[Constraint]:
         if not is_version(version):
             raise ValueError(
                 f"bad version {version!r} in constraint {part!r}: versions are "
-                f"dotted decimal strings like '3.2.2.1' or '5.20'"
+                f"dotted decimal strings like '3.2.2.1' or '5.20', optionally "
+                f"with one trailing letter like '2.9a'"
             )
         constraints.append((op, version))
     return constraints
@@ -67,22 +72,29 @@ def parse_package_spec(text: str) -> tuple[str, list[Constraint]]:
 
 @dataclass(frozen=True, order=True)
 class AmigaVersion:
-    """A dotted-decimal version, compared component-wise as integers.
+    """A dotted-decimal version, compared component-wise as integers,
+    with an optional trailing-letter suffix as a final tiebreak.
 
     Tuple ordering already gives the semantics we want: `(5, 20) >
     (5, 3)` because 20 > 3 at the second component, and `(3, 2) <
     (3, 2, 1)` because a shared prefix with fewer components sorts
-    first. No padding or special-casing needed.
+    first. `suffix` orders after `parts` (dataclass field order), so it
+    only breaks ties between otherwise-equal numeric parts — `""` sorts
+    before any letter, giving `2.9` < `2.9a` < `2.9b`. No padding or
+    special-casing needed.
     """
 
     parts: tuple[int, ...]
+    suffix: str = ""
 
     @classmethod
     def parse(cls, text: str) -> AmigaVersion:
+        if text and text[-1].isalpha():
+            return cls(tuple(int(p) for p in text[:-1].split(".")), text[-1])
         return cls(tuple(int(p) for p in text.split(".")))
 
     def __str__(self) -> str:
-        return ".".join(str(p) for p in self.parts)
+        return ".".join(str(p) for p in self.parts) + self.suffix
 
 
 _CMP_OPS = {

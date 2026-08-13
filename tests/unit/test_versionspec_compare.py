@@ -20,6 +20,26 @@ def test_amiga_version_str_roundtrip():
     assert str(AmigaVersion.parse("3.2.2.1")) == "3.2.2.1"
 
 
+def test_amiga_version_letter_suffix_str_roundtrip():
+    assert str(AmigaVersion.parse("2.9a")) == "2.9a"
+
+
+@pytest.mark.parametrize(
+    ("a", "b"),
+    [
+        ("2.9a", "2.9"),   # letter suffix sorts after the letterless form
+        ("2.9b", "2.9a"),  # and in letter order
+        ("2.10", "2.9a"),  # a numeric component still wins over any suffix
+    ],
+)
+def test_amiga_version_letter_suffix_greater(a, b):
+    assert AmigaVersion.parse(a) > AmigaVersion.parse(b)
+
+
+def test_max_satisfying_with_letter_suffixed_versions():
+    assert max_satisfying(["2.9", "2.9a", "2.9b"], []) == "2.9b"
+
+
 @pytest.mark.parametrize(
     ("version", "constraints", "expected"),
     [
