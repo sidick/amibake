@@ -272,21 +272,6 @@ fixture (matched case by construction) could have caught:
   consequence: the *real* on-disk Startup-Sequence calls
   `SYS:System/SetMap` and `LoadWB`, neither viable with this subset, so
   it isn't copied.
-- **Open framework-level design gap, not yet resolved** (also aligns
-  with user's own observation, 2026-08-13, that `ENVARC:` is 2.0+ only):
-  real 1.3's Startup-Sequence never sources `S:User-Startup` at all —
-  that's a 2.0+ convention alongside `ENVARC:`. This means AmiBake's
-  normal `[install].user-startup` fragment-layering mechanism currently
-  has no way to actually run on a wb1.3 base — nothing sources that
-  file at boot. The base recipe's old "add a RAM-based ENV: via
-  user-startup" workaround was removed since it was pointless (nothing
-  executes it) — real 1.3's own `S:StartupII` already does
-  `makedir ram:env` / `assign ENV: ram:env` itself when its real
-  Startup-Sequence chain runs, so RAM ENV: isn't even wb1.3's problem to
-  solve. Still open: how (or whether) a 1.3 base should support
-  `user-startup`-style package extension at all — needs a decision
-  before any package recipe both targets a 1.3 base and ships
-  `user-startup` fragments expecting them to run.
 - Added `tests/unit/test_wb13_real_media.py`, skipped when
   `assets/Workbench-1.3.3.adf` is absent (CI/fresh clones never have
   it) — the genuine real-media build+verify check; passes now.
@@ -294,9 +279,30 @@ fixture (matched case by construction) could have caught:
   checksums (34.34 US unmodified, 34.20 GB unmodified — no unmodified
   non-regional 34.20 dump was in the supplied set).
 
-Still open before this milestone's exit bar is fully met: the
-user-startup-on-1.3 design gap above; `sana2loop` isn't shipped so
-there's no real *package* to layer and boot; Copperline boot
+**Framework-level design gap resolved same day (user's suggestion,
+2026-08-13, commit 92ac4cd):** the "real 1.3 never sources
+S:User-Startup" gap above is fixed generally, not just for wb1.3 —
+`Tree.materialize()` now appends an `IF EXISTS S:User-Startup /
+EXECUTE S:User-Startup / ENDIF` stanza to whatever Startup-Sequence a
+base installed, if it doesn't already source one (no-op on bases like
+aros68k whose real Startup-Sequence already does). Since real 1.3's own
+Startup-Sequence isn't shippable here at all (calls `SYS:System/SetMap`
+and `LoadWB`, neither viable with this base's file subset), wb1.3 now
+authors its own minimal one via a new `[install].files` mechanism
+(literal-content file at an arbitrary destination, generalizing the
+existing `envarc` pattern) — every command it uses (SetPatch,
+Addbuffers, BindDrivers, Makedir, Assign, Mount) confirmed present on
+the real disk. Found and fixed a second real bug while wiring this up:
+`S:User-Startup` (written by `materialize()`) and
+`SYS:S/Startup-Sequence` (what every recipe's `[install]` destinations
+actually use) are different Tree keys pre-emit — they only unify at
+emit time via `paths.py`'s `to_physical_path` — so the new lookup has
+to check both forms; verified end-to-end with a synthetic downstream
+package's `user-startup` fragment actually landing in, and being
+sourced from, the real wb1.3 base's authored Startup-Sequence.
+
+Still open before this milestone's exit bar is fully met: `sana2loop`
+isn't shipped so there's no real *package* to layer and boot; Copperline boot
 verification hasn't been run yet.
 
 Exit: a KS 1.3 manifest builds from WB 1.3 media and boots.
