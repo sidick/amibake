@@ -284,6 +284,46 @@ proves hard.
    extraction testable with tiny committed fixture archives instead of
    requiring network access or a system binary in every test run.
 
+## Prior art discovered during implementation
+
+The proposal's own house rule ("where its techniques are open, credit and
+reference beat reinvention") applies to prior art found mid-implementation,
+not just what was surveyed before Phase 1.
+
+- **amipkg / amiga-pkg** (github.com/thomas-luebker/amipkg,
+  github.com/thomas-luebker/amiga-pkg), found 2026-08-13. An on-Amiga
+  package manager (C99, cross-compiled with bebbo's amiga-gcc) plus a
+  signed community catalog, installing pre-built software onto an
+  *already-booted* AmigaOS 3.x system over the network — apt/Homebrew for
+  a running Amiga, not a host-side environment builder. Its entry schema
+  independently converges on nearly the same primitives this project
+  built: `deps` (id + min version), `conflicts`, `provides`,
+  `requirements.minCPU`/`minKS`/`network`/`amiSSL`, and a `recipe.ops`
+  capability list (`copy-glob-v1`, `make-assign-v1`, `tooltype-edit-v1`,
+  `installer-script-v1`, `host-builtin-v1`, …) that maps closely onto our
+  `[install].copy`/`.assigns` and the `[hook]` escape hatch — useful
+  confirmation these are the right primitives, and grounds for revising
+  the original proposal's "nothing like it exists" claim: something
+  adjacent exists, it just solves a different problem (installing onto a
+  live system, not composing a bootable one from nothing, and no
+  emulator-config emission, base-media extraction, or build-reproducibility
+  story).
+- **Its CPU-variant handling is notably simpler than ours, and that's a
+  useful data point in itself.** amipkg does *not* support multiple
+  binaries within one package entry — `minCPU` is a pure floor gate, and
+  an author wanting both a 68000 and a 68020-optimized build must publish
+  them as two entirely separate catalog entries with different IDs. This
+  works for amipkg because its catalog is free to invent as many entries
+  as it likes per upstream project. AmiBake's recipes model one upstream
+  archive each, and real archives like PNG_dt genuinely ship CPU-variant
+  siblings inside a single Aminet download — splitting that into two
+  recipes for one upstream release would mean fetching and caching the
+  same archive twice for no reason. This confirms (rather than undermines)
+  the in-archive `variants` list design in
+  memory `project-amibake-cpu-variants` — it solves a problem amipkg
+  deliberately doesn't attempt, for a structural reason specific to how
+  each project maps packages to upstream artifacts.
+
 ## Risk register (deltas from the proposal)
 
 The proposal's risks stand. Implementation-specific additions:
