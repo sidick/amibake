@@ -155,10 +155,12 @@ lockfile; contents cross-verified.
 
 ### M4 — Real recipes + the AROS base (Phases 1–2, CI substrate first)
 
-Deliberate reordering vs the proposal: AROS 68k base comes **before** the
-OS 3.2 extract base, because it is the only base CI can build from
-nothing and every subsequent milestone needs a CI-buildable base to test
-against. OS 3.2 (the proposal's Phase 1 exemplar) follows immediately in M5.
+Deliberate reordering vs the proposal: AROS 68k base comes **before**
+any real AmigaOS extract base, because it is the only base CI can build
+from nothing and every subsequent milestone needs a CI-buildable base
+to test against. Among the real AmigaOS bases that follow, WB 1.3 comes
+next (M5) and OS 3.2 — the proposal's own Phase 1 exemplar — comes last
+(M8); see M5's own entry for why.
 
 - Base-recipe mechanics: `strategy = extract` support in recipe schema
   (multi-disk/ISO sources, selection options, startup-sequence steps).
@@ -183,21 +185,36 @@ into `build_tree` (previously a no-op). Not done: automated CI boot
 assertion (M9); P96 build-tested against real data (no licensed archive
 available to any session).
 
-### M5 — OS 3.2 extract base (Phase 1's centrepiece)
+### M5 — WB 1.3 base (Phase 3 scope, proposal success criterion 3, moved earlier)
 
-- Study Emu68-Imager's per-version handling before writing (proposal's
-  prior-art rule); record findings in `docs/bases.md`.
-- `bases/os3.2`: install media ADFs/ISO from `assets/` keyed by checksum;
-  declarative multi-disk copy trees; locale/CPU selections as options.
-- Fidelity check: one-time diff of extracted base vs a genuine reference
-  install (local task, scripted as `amibake verify-base`), divergences
-  encoded back into the recipe; the diff script stays in-repo.
-- Asset-gated CI job (self-hosted or skip-with-notice) building
-  `manifests/os32-p96-amissl.toml` (the proposal's example) and booting
-  under Copperline.
+**Reordered vs both the proposal and this plan's own original M5/M8
+split** (user, 2026-08-13): WB 1.3 first, OS 3.2 last among the
+extract-base work — the proposal's own text calls 1.3 "the most
+extract-friendly install of all" (plain file copies, no Installer),
+and M4's `[base].dos-type` work already proved out exactly the
+filesystem mode 1.3 needs (plain FFS/OFS, no international mode). OS
+3.2 by contrast has real versioning surface area (3.2, 3.2.1, 3.2.2,
+3.2.2.1, and whatever's shipped by the time this milestone starts)
+worth deferring until the extract-base mechanism is proven on the
+simplest real case first. Cost: the already-shipped exemplar manifest
+(`manifests/os32-p96-amissl.toml`, `base = "os3.2.2"`) stays
+unbuildable until M8 — acceptable, it was always going to be
+unbuildable until *some* OS 3.x base landed.
 
-Exit: proposal success criterion 1 — pristine media → bootable setup
-passing an existing portfolio suite, no manual step.
+- `bases/wb1.3`: install media (ADF set) from `assets/` keyed by
+  checksum; plain-copy extract (no Installer); OFS or plain FFS output
+  (`[base].dos-type`, never an `-intl` variant — 1.3 predates that FFS
+  extension); 1.3 startup-sequence conventions; RAM-based `ENV:` assign;
+  machine block pairing with a KS 1.3 ROM asset.
+- CI fixtures (proposal's success criterion 3): a 1.3 manifest with a
+  1.3-capable package (sana2loop is the proposal's own suggested
+  exemplar) builds and boots; a 1.3 base + `>= 3.0` package fails with
+  the resolver's named error — this half of the criterion already has
+  fixture coverage in `tests/unit/test_resolver.py` from M1
+  (`test_ks13_base_rejects_os3_package_with_named_error`), so this
+  milestone's own new work is the *positive* build+boot fixture.
+
+Exit: a KS 1.3 manifest builds from WB 1.3 media and boots.
 
 ### M6 — Machine block + emulator config emission (Phase 2)
 
@@ -226,16 +243,30 @@ emitted configs, no hand editing.
   builder source.
 - `docs/limits.md` honest-limits table started; Python-hook escape hatch
   implemented and fenced.
-- Second extract base: OS 3.1 — proves the base-recipe format
-  generalises; 3.1+ClassAct manifest as fixture.
+- OS 3.1 base — the third extract base overall (after AROS, WB 1.3),
+  proving the base-recipe format generalises across a genuinely
+  Installer-driven OS, not just the plain-copy cases; 3.1+ClassAct
+  manifest as fixture.
 
-### M8 — KS 1.3 base (Phase 3 scope, proposal success criterion 3)
+### M8 — OS 3.2 extract base (Phase 1's centrepiece, deferred from M5)
 
-- `bases/wb1.3`: plain-copy extract (no Installer), OFS output, 1.3
-  startup-sequence conventions, RAM-based ENV:, machine block pairing
-  with KS 1.3 ROM asset.
-- CI fixtures: 1.3 manifest with a 1.3-capable package builds and boots;
-  1.3 base + `>= 3.0` package fails with the resolver's named error.
+- Study Emu68-Imager's per-version handling before writing (proposal's
+  prior-art rule); record findings in `docs/bases.md`.
+- `bases/os3.2`: install media ADFs/ISO from `assets/` keyed by checksum;
+  declarative multi-disk copy trees; locale/CPU selections as options.
+  Pin one specific point release (3.2.2.1 or whatever's current) the
+  same way `recipes/aros68k` pins one specific nightly — the proposal's
+  own "manifest + lockfile rebuilds byte-identically" discipline applies
+  to which point release a base recipe names, not just to packages.
+- Fidelity check: one-time diff of extracted base vs a genuine reference
+  install (local task, scripted as `amibake verify-base`), divergences
+  encoded back into the recipe; the diff script stays in-repo.
+- Asset-gated CI job (self-hosted or skip-with-notice) building
+  `manifests/os32-p96-amissl.toml` (the proposal's example, shipped
+  since M0 and finally buildable) and booting under Copperline.
+
+Exit: proposal success criterion 1 — pristine media → bootable setup
+passing an existing portfolio suite, no manual step.
 
 ### M9 — CI action + adoption + release (Phase 4)
 
@@ -487,8 +518,8 @@ The proposal's risks stand. Implementation-specific additions:
 
 | Proposal criterion | Milestone |
 |---|---|
-| Pristine media → bootable, suite passes, no manual step | M5 |
+| Pristine media → bootable, suite passes, no manual step | M8 |
 | Three-manifest matrix in CI from one workflow entry | M9 |
-| KS 1.3 build+boot and named-error fixtures | M8 |
+| KS 1.3 build+boot and named-error fixtures | M5 (negative fixture already done in M1) |
 | Recipe contributed from docs alone | M7 |
 | Manifest+lockfile rebuilds byte-identically later | M2 (test) / M9 (armed) |
