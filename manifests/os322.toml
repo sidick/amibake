@@ -1,0 +1,9 @@
+# The M8 exemplar: AmigaOS 3.2.2, the first base spanning a real
+# cumulative point-release chain (base + 3.2.1-update + 3.2.2-update,
+# see recipes/os3.2.2's own comments). No packages yet — the shipped
+# manifests/os32-p96-amissl.toml layers p96/amissl/classact on this
+# same base once someone has real P96 media to verify against.
+base    = "os3.2.2"
+machine = { cpu = "68020", fpu = true }
+output  = ["hdf", "dir"]
+emit    = ["copperline", "amiberry"]

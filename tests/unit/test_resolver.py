@@ -449,10 +449,13 @@ class TestConflictsAndCycles:
         assert any("already resolved" in p.problem for p in result.problems)
 
 
-def test_exemplar_manifest_reports_missing_base_cleanly():
-    """The shipped os32-p96-amissl.toml references a real base (os3.2.2)
-    that doesn't exist yet (its base recipe arrives in a later milestone) —
-    resolve must fail with a clean, well-worded error, not a crash."""
+def test_exemplar_manifest_resolves_cleanly():
+    """The shipped os32-p96-amissl.toml (base = "os3.2.2") now has every
+    package it references — os3.2.2 (M8), p96/amissl/classact (M4) — so
+    resolve should succeed end-to-end. p96 itself still has no publicly
+    fetchable source (real, unverified, proprietary media nobody here has
+    a licensed copy of — see docs/limits.md), so its own build (not
+    resolve) can't be verified in this test suite."""
     from pathlib import Path
 
     from amibake.resolver import load_recipe_library
@@ -462,5 +465,6 @@ def test_exemplar_manifest_reports_missing_base_cleanly():
     manifest = load_toml(manifest_path)
     library = load_recipe_library(root / "recipes")
     result = resolve(manifest_path, manifest, library)
-    assert not result.ok
-    assert any("os3.2.2" in p.problem for p in result.problems)
+    assert result.ok, [p.problem for p in result.problems]
+    assert result.plan.base_package.name == "os3.2.2"
+    assert {pkg.name for pkg in result.plan.packages} == {"p96", "amissl", "classact"}

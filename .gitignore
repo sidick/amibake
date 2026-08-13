@@ -13,3 +13,6 @@ assets/
 # Image-sized build outputs never enter the repo.
 *.hdf
 *.adf
+
+# amibake build's default layer/archive cache root.
+.amibake-cache/

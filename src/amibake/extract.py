@@ -106,20 +106,28 @@ def _expand_nested_isos(tree: Tree) -> Tree:
     return merged
 
 
-def extract_multiple(paths: list[Path]) -> Tree:
+def extract_multiple(paths: list[Path], names: list[str]) -> Tree:
     """Extract and merge more than one archive into one tree — a real
     multi-file [source.assets] (a base install plus cumulative point-
     release update archives; see docs/recipe-contract.md). A single path
     extracts exactly as `extract_archive` alone would (no prefix, so
     every existing single-source recipe's [install].copy patterns are
     unaffected); more than one merges each archive's content under its
-    own `<filename>/` prefix, the same convention `_expand_nested_adfs`
-    uses for nested disks within one archive."""
+    own `<name>/` prefix, the same convention `_expand_nested_adfs` uses
+    for nested disks within one archive.
+
+    `names` (one per `paths` entry, caller-supplied) drives the prefix —
+    *not* `path.name` — because `paths` are content-addressed cache
+    files (sha256-named, see fetch.py), while [install].copy patterns
+    are written against the recipe's own declared source filenames
+    (e.g. "AmigaOS-3.2-full.lha/Workbench3.2.adf/#?")."""
     if len(paths) == 1:
         return extract_archive(paths[0])
+    if len(names) != len(paths):
+        raise ExtractError(f"extract_multiple: {len(paths)} paths but {len(names)} names")
     merged = Tree()
-    for path in paths:
-        _merge_with_prefix(merged, path.name, extract_archive(path))
+    for path, name in zip(paths, names, strict=True):
+        _merge_with_prefix(merged, name, extract_archive(path))
     return merged
 
 

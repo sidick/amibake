@@ -462,8 +462,13 @@ def _extract_sources(doc: dict, version: str) -> dict:
 
     assets = source.get("assets")
     if assets:
+        raw_path = assets["path"]
+        if isinstance(raw_path, list):
+            path = [p.replace("{version}", version) for p in raw_path]
+        else:
+            path = raw_path.replace("{version}", version)
         out["assets"] = {
-            "path": assets["path"].replace("{version}", version),
+            "path": path,
             "sha256": (assets.get("sha256") or {}).get(version, ""),
         }
 

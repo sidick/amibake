@@ -48,6 +48,17 @@ its own comments, naming what was read to derive it:
   `LoadModule` would be a real, different use case — hardware-board
   detection (which module variant to pick) would be the genuine
   `[install]`-can't-express limit there. See the recipe's own comments.
+- `recipes/os3.2.2` — the first base needing more than one archive: real
+  Hyperion point releases (3.2.1, 3.2.2, ...) are cumulative *update*
+  packages applied over a base install, not standalone reinstalls.
+  `[source.assets].path` accepts an array for this (each archive
+  extracted independently and merged under its own `<filename>/`
+  prefix — see `docs/recipe-contract.md`); the real 177KB base
+  `Install/Install` script and the ~46-49KB `Install/Install` scripts
+  each update package ships were all read directly. Their real payload
+  is Unix-compress/LZW-encoded (`.Z`), decompressed by the Installer's
+  own `UNCOMPRESS` command — `extract.py` now does this transparently
+  for any `.Z` member (see its own module docstring).
 
 This also covers **decisions the real Installer makes from filesystem
 state rather than a user prompt** — e.g. a script that puts a manual
@@ -89,6 +100,19 @@ encodes a variant-selection convention worth confirming first
 (AmiSSL), by copying only the generic binary until that convention is
 verified against a real example. See `src/amibake/layer.py`'s own
 module docstring; tracked in `PLAN.md`.
+
+## Per-version `[install]`
+
+`[install].copy` is one flat list for a whole recipe — there's no way
+to vary it by which version was resolved (`[requires]` already has
+`per-version`; `[install]` doesn't). `recipes/os3.2.2` works around
+this by hard-coding `versions = ["3.2.2"]` and listing base+3.2.1+3.2.2
+content in one fixed order (later entries naturally overwrite earlier
+same-path files, matching the real cumulative-update semantics). Real,
+already-owned point-release media exists past this
+(`AmigaOS-3.2.2.1-Hotfix.lha`, `AmigaOS-3.2.3.lha`) that can't be added
+cleanly without per-version `[install]` — a genuine capability gap,
+not attempted here.
 
 ## Multi-partition `hdf` output
 

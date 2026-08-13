@@ -47,7 +47,8 @@ def _apply_one(tree: Tree, parent_key: str | None, pkg: ResolvedPackage,
     install = recipe_doc.get("install") or {}
     if install.get("copy"):
         archive_paths = fetch.fetch_sources(pkg.sources, cache_root, assets_root, http_get)
-        archive_tree = extract.extract_multiple(archive_paths)
+        archive_names = _source_archive_names(pkg.sources)
+        archive_tree = extract.extract_multiple(archive_paths, archive_names)
     else:
         archive_tree = Tree()
     tree = layer.apply_layer(tree, pkg.name, install, archive_tree, pkg.options)
@@ -102,6 +103,23 @@ def _run_hook(tree: Tree, archive_tree: Tree, pkg: ResolvedPackage,
             f"{pkg.name}: {script_path}'s apply() must return a Tree, got "
             f"{type(result).__name__}")
     return result
+
+
+def _source_archive_names(sources: dict) -> list[str]:
+    """The names `extract.extract_multiple` prefixes merged content
+    with — the recipe's own declared source filename(s), not
+    fetch.fetch_sources' content-addressed cache paths (which
+    [install].copy patterns never reference)."""
+    assets = sources.get("assets")
+    if assets:
+        raw_path = assets["path"]
+        paths = raw_path if isinstance(raw_path, list) else [raw_path]
+        return [Path(p).name for p in paths]
+    for kind, field in (("github", "asset"), ("aminet", "url"), ("url", "filename")):
+        src = sources.get(kind)
+        if src:
+            return [Path(src[field]).name]
+    return []
 
 
 def _archive_sha256(pkg: ResolvedPackage) -> str:
