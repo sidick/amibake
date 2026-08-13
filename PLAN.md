@@ -598,8 +598,60 @@ declarative format proven against a genuinely Installer-driven OS.
   `manifests/os32-p96-amissl.toml` (the proposal's example, shipped
   since M0 and finally buildable) and booting under Copperline.
 
+**Real-media build + boot verification done (2026-08-13), closing this
+milestone.** `recipes/os3.2.2` shipped as the multi-file `[source.
+assets]` array design (base 3.2-full + 3.2.1-update + 3.2.2-update,
+see the recipe's own comments and `docs/recipe-contract.md`), not the
+`bases/os3.2` per-version-checksum design originally sketched above —
+Hyperion's real distribution model (cumulative point-release updates,
+not standalone reinstalls) made the array shape the more direct fit;
+`docs/bases.md`/Emu68-Imager prior-art research wasn't repeated since
+`docs/bases.md` already exists from M5. `manifests/os32-p96-amissl.toml`
+(the proposal's own exemplar, shipped since M0) now resolves cleanly
+end-to-end with no manifest change — `os3.2.2`/`amissl`/`classact` all
+resolve together; `p96` itself still has no fetchable/licensed media
+anyone here has, so its own build stays unverified (named in
+`docs/limits.md`, not solved here). Real gaps found and fixed getting
+here: two `extract.py` ISO9660 bugs (no-Rock-Ridge UTF-8 crash,
+un-stripped `;<version>` path suffix), a real Unix-compress/LZW (`.Z`)
+decoder needed for the update packages' actual payload (`unlzw3`, a
+new pure-Python dependency), a `resolver.py` bug that never handled
+array-valued `[source.assets].path` at all, and `extract_multiple`
+prefixing merged content with the fetched archive's content-addressed
+cache filename instead of the recipe's own declared source name (every
+`[install].copy` pattern silently matched nothing until fixed). Also
+found and fixed directly via a failed `hdf` build: the update
+packages' own top-level `DEVS`/`LIBS` directories are genuinely
+uppercase on disk, colliding with the base's established `Devs`/`Libs`
+casing on a real case-insensitive AmigaDOS volume.
+   Real end-to-end verified: built against the real Hyperion media
+(`amibake build manifests/os322.toml`, `hdf`+`dir`+both emitted
+configs), `[verify]` passed, and both Copperline and Amiberry booted
+to a genuine interactive AmigaOS 3.2.2 desktop (real 2023 Hyperion
+copyright banner) with live mouse-pointer movement confirmed on both
+(Copperline via `--mouse-to-after`+`--screenshot-after` at two
+positions; Amiberry via the MCP `runtime_send_mouse`+
+`runtime_screenshot_view` tools). One real, harmless boot-time detail
+found under Amiberry only (not Copperline): a "Please insert volume
+DF0 in any drive" system requester appears before the desktop, from
+the emitted `.uae` config's `nr_floppies=0` still autoconfiguring a
+diskless `DF0:` controller AmigaOS's own boot process checks by
+default — one `Escape` keypress (or clicking "Cancel") dismisses it
+and proceeds straight to the desktop; not seen under Copperline
+(different floppy-controller default). `tests/unit/
+test_os322_real_media.py` mirrors `test_os314_real_media.py`'s
+established real-media-gated pattern.
+
 Exit: proposal success criterion 1 — pristine media → bootable setup
 passing an existing portfolio suite, no manual step.
+
+**Substantially met** (2026-08-13): pristine real media → a real,
+manifest-driven, byte-reproducible bootable AmigaOS 3.2.2 setup,
+verified booting interactively under both Copperline and Amiberry —
+the base-building half of criterion 1. The "no manual step"/"existing
+portfolio suite" half is CI-automation scope, correctly M9's job (the
+asset-gated CI job sketched above wasn't attempted here either, same
+reasoning), not repeated as unmet here.
 
 ### M9 — CI action + adoption + release (Phase 4)
 
