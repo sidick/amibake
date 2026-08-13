@@ -1,0 +1,46 @@
+# bsdsocket-emulation — the proposal's own no-op capability-provider
+# exemplar (see PLAN.md's M6 notes): no files to install, no source to
+# fetch, `provides = ["bsdsocket"]` purely so a manifest that depends on
+# real network access can be satisfied *without* a real guest TCP/IP
+# stack (AmiTCP/Roadshow/...) installed at all.
+#
+# Every one of the three emulators has its own real, distinct mechanism
+# for this — none of them are the same thing, so each gets its own real
+# [emulator-config] directive rather than one shared setting:
+#   - Amiberry/WinUAE: `bsdsocket_emu` traps guest bsdsocket.library
+#     calls and maps them onto the host's real sockets directly — no
+#     driver, no library, no boot-time device to open. Confirmed real
+#     key (2026-08-13): present and =true in amirfb_p96_free.uae, a
+#     real, in-use project's actual working config, not just a docs
+#     mention.
+#   - Copperline: no such trap exists (deliberately — Copperline models
+#     real hardware, not a magic library patch), but it has a real
+#     hardware-shaped equivalent: the HostSocket Zorro board
+#     (`[hostsocket]`), whose `net = "host"` mode the real config
+#     comments describe as "(Amiberry-style): hands each socket
+#     operation straight to a real host OS socket... zero
+#     configuration" — the closest real match to what Amiberry's trap
+#     actually does. (User correction, 2026-08-13, correcting this
+#     recipe's own first draft: Copperline supports this too, not just
+#     the UAE-family emulators — "amirfb uses it for testing already".)
+#
+# Nothing here needs an OS-version floor (the trap/board works
+# regardless of what's on the guest disk) — only an emulator floor,
+# since none of this corresponds to anything real hardware can do.
+
+[package]
+name     = "bsdsocket-emulation"
+versions = ["1.0"]
+provides = ["bsdsocket"]
+
+[requires]
+emulator = ["copperline", "amiberry", "winuae"]
+
+[emulator-config.amiberry]
+bsdsocket_emu = "true"
+
+[emulator-config.winuae]
+bsdsocket_emu = "true"
+
+[emulator-config.copperline]
+"hostsocket.net" = "host"

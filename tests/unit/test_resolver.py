@@ -187,9 +187,9 @@ mmu = true
 
 
 class TestCapabilities:
-    NOOP_BSDSOCKET = '''
+    UAE_ONLY_EMULATION = '''
 [package]
-name     = "bsdsocket-emulation-fixture"
+name     = "uae-only-emulation-fixture"
 versions = ["1.0"]
 provides = ["bsdsocket"]
 
@@ -236,7 +236,7 @@ depends  = ["bsdsocket"]
             "os32-fixture": OS32_BASE,
             "app-fixture": depender,
             "roadshow-fixture": self.ROADSHOW,
-            "bsdsocket-emulation-fixture": self.NOOP_BSDSOCKET,
+            "uae-only-emulation-fixture": self.UAE_ONLY_EMULATION,
         })
         path, manifest = _manifest(tmp_path, (
             'base = "os32-fixture"\n'
@@ -248,7 +248,7 @@ depends  = ["bsdsocket"]
         assert not result.ok
         problem = next(p for p in result.problems if "ambiguous" in p.problem)
         assert "roadshow-fixture" in problem.problem
-        assert "bsdsocket-emulation-fixture" in problem.problem
+        assert "uae-only-emulation-fixture" in problem.problem
 
     def test_manifest_providers_resolves_ambiguity(self, tmp_path):
         depender = '[package]\nname = "app-fixture"\nversions = ["1.0"]\ndepends = ["bsdsocket"]\n'
@@ -256,7 +256,7 @@ depends  = ["bsdsocket"]
             "os32-fixture": OS32_BASE,
             "app-fixture": depender,
             "roadshow-fixture": self.ROADSHOW,
-            "bsdsocket-emulation-fixture": self.NOOP_BSDSOCKET,
+            "uae-only-emulation-fixture": self.UAE_ONLY_EMULATION,
         })
         path, manifest = _manifest(tmp_path, (
             'base = "os32-fixture"\n'
@@ -269,20 +269,27 @@ depends  = ["bsdsocket"]
         assert {p.name for p in result.plan.packages} == {"app-fixture", "roadshow-fixture"}
 
     def test_noop_provider_requires_matching_emulator(self, tmp_path):
-        """The no-op bsdsocket-emulation case: a Copperline-only manifest
-        asking for emulated bsdsocket fails with a named, remediable error."""
+        """Generic resolver mechanics: a no-op capability provider whose
+        [requires].emulator the manifest's emit list doesn't cover fails
+        with a named, remediable error. This fixture is *not* a stand-in
+        for the real bsdsocket-emulation recipe — that one genuinely
+        supports Copperline too (see recipes/bsdsocket-emulation); this
+        one is deliberately UAE-only so there's still a real "package
+        needs an emulator emit doesn't have" fixture to exercise (the
+        real bsdsocket-emulation itself no longer has an unsupported-
+        emulator case at all)."""
         depender = '[package]\nname = "app-fixture"\nversions = ["1.0"]\ndepends = ["bsdsocket"]\n'
         library = _lib(tmp_path, {
             "os32-fixture": OS32_BASE,
             "app-fixture": depender,
-            "bsdsocket-emulation-fixture": self.NOOP_BSDSOCKET,
+            "uae-only-emulation-fixture": self.UAE_ONLY_EMULATION,
         })
         path, manifest = _manifest(tmp_path, (
             'base = "os32-fixture"\n'
             'emit = ["copperline"]\n'
             'packages = ["app-fixture"]\n'
             '[providers]\n'
-            'bsdsocket = "bsdsocket-emulation-fixture"\n'
+            'bsdsocket = "uae-only-emulation-fixture"\n'
         ))
         result = resolve(path, manifest, library)
         assert not result.ok
