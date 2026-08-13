@@ -169,6 +169,42 @@ def test_multi_version_asset_needs_placeholder(write):
     assert any("{version}" in p.problem for p in problems)
 
 
+def test_valid_assets_source_without_checksum(write):
+    text = (
+        '[package]\nname = "pkg"\nversions = ["1.0"]\n\n'
+        '[source.assets]\npath = "pkg.lha"\n'
+    )
+    assert validate_recipe(write(text, name="recipe.toml", subdir="pkg")) == []
+
+
+def test_valid_assets_source_with_checksum(write):
+    text = (
+        '[package]\nname = "pkg"\nversions = ["1.0"]\n\n'
+        f'[source.assets]\npath = "pkg.lha"\nsha256 = {{ "1.0" = "{SHA}" }}\n'
+    )
+    assert validate_recipe(write(text, name="recipe.toml", subdir="pkg")) == []
+
+
+def test_assets_source_checksum_partial_coverage_is_fine(write):
+    """Unlike every other source: older media has no single canonical
+    dump, so a recipe may know a checksum for some versions and not
+    others without that being an error."""
+    text = (
+        '[package]\nname = "pkg"\nversions = ["1.0", "2.0"]\n\n'
+        f'[source.assets]\npath = "pkg-{{version}}.lha"\nsha256 = {{ "1.0" = "{SHA}" }}\n'
+    )
+    assert validate_recipe(write(text, name="recipe.toml", subdir="pkg")) == []
+
+
+def test_assets_source_checksum_bad_format_is_an_error(write):
+    text = (
+        '[package]\nname = "pkg"\nversions = ["1.0"]\n\n'
+        '[source.assets]\npath = "pkg.lha"\nsha256 = { "1.0" = "not-hex" }\n'
+    )
+    problems = errors_of(validate_recipe(write(text, name="recipe.toml", subdir="pkg")))
+    assert any('sha256."1.0"' in p.field for p in problems)
+
+
 def test_valid_url_source(write):
     text = (
         '[package]\nname = "pkg"\nversions = ["1.0", "2.0"]\n\n'

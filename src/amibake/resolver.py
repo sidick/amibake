@@ -444,7 +444,10 @@ def _extract_sources(doc: dict, version: str) -> dict:
 
     assets = source.get("assets")
     if assets:
-        out["assets"] = {"path": assets["path"].replace("{version}", version)}
+        out["assets"] = {
+            "path": assets["path"].replace("{version}", version),
+            "sha256": (assets.get("sha256") or {}).get(version, ""),
+        }
 
     return out
 

@@ -53,13 +53,15 @@ def _apply_one(tree: Tree, parent_key: str | None, pkg: ResolvedPackage,
 
 
 def _archive_sha256(pkg: ResolvedPackage) -> str:
-    """Feeds the layer cache key. Network sources (aminet/github) declare
-    a checksum the resolver already captured, so a changed upstream
-    archive busts the cache correctly. Assets have no declared checksum
-    (they're user-supplied, verified only by presence) — an asset file
-    edited in place without a version bump won't invalidate the cache;
-    use --no-cache or bump the recipe version when that matters."""
-    for kind in ("assets", "github", "aminet"):
+    """Feeds the layer cache key. Network sources (aminet/github/url)
+    declare a checksum the resolver already captured, so a changed
+    upstream archive busts the cache correctly. Assets have an *optional*
+    declared checksum (nothing to hash ahead of time for proprietary
+    media unless the recipe author independently knows it) — when
+    absent, an asset file edited in place without a version bump won't
+    invalidate the cache; use --no-cache or bump the recipe version when
+    that matters."""
+    for kind in ("assets", "github", "aminet", "url"):
         src = pkg.sources.get(kind)
         if src and src.get("sha256"):
             return src["sha256"]

@@ -235,13 +235,29 @@ def _check_sources(c: Checker, doc: dict, versions: list[str],
 
     assets = source.get("assets")
     if isinstance(assets, dict):
-        c.unknown_keys(assets, {"path"}, "[source.assets]")
+        c.unknown_keys(assets, {"path", "sha256"}, "[source.assets]")
         path = c.typed(assets, "path", str, "[source.assets]", required=True)
         if path is not None and len(versions) > 1 and "{version}" not in path:
             c.error("[source.assets].path",
                     "recipe lists multiple versions but the path has no {version} "
                     "placeholder",
                     "add {version} where the version appears in the file name")
+        # Unlike every other source: optional, partial coverage is fine,
+        # and a mismatch at build time is a warning, not an error (see
+        # fetch.py). Older media especially has no single canonical dump
+        # — different legitimate backups/re-dumps of the same official
+        # disk can be byte-different, so a recipe author who happens to
+        # know a checksum (e.g. from a published database like HstWB
+        # Installer's data/amiga-os-entries.csv — see PLAN.md's prior-art
+        # log) shouldn't cause the build to hard-reject every other
+        # user's equally valid copy. Only format-check whatever versions
+        # are actually declared, not every listed [package] version.
+        asset_sha256 = c.typed(assets, "sha256", dict, "[source.assets]", default={})
+        for ver, digest in asset_sha256.items():
+            if not isinstance(digest, str) or not _SHA256_RE.match(digest):
+                c.error(f'[source.assets].sha256."{ver}"',
+                        "checksum must be a 64-character lower-case hex string",
+                        "use `shasum -a 256 <file>` on the file")
     elif assets is not None:
         c.error("[source.assets]", "must be a table", "write it as [source.assets]")
 
@@ -265,7 +281,10 @@ def _check_base(c: Checker, base: dict, package: dict | None) -> None:
                   'base recipes should set strategy = "extract" or "installer"')
 
 
-def _check_sha256_map(c: Checker, table: dict, where: str, versions: list[str]) -> None:
+def _check_sha256_map(c: Checker, table: dict, where: str, versions: list[str],
+                      required: bool = True) -> None:
+    if not required and "sha256" not in table:
+        return
     sha256 = c.typed(table, "sha256", dict, where, required=True, default={})
     for ver in versions:
         if ver not in sha256:

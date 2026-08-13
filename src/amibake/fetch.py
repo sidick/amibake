@@ -9,11 +9,13 @@ never touch the network; the default implementation uses urllib
 from __future__ import annotations
 
 import hashlib
+import sys
 import urllib.request
 from collections.abc import Callable
 from pathlib import Path
 
 HttpGet = Callable[[str], bytes]
+Warn = Callable[[str], None]
 
 AMINET_MIRROR = "https://aminet.net/"
 
@@ -27,15 +29,24 @@ def default_http_get(url: str) -> bytes:
         return resp.read()
 
 
+def _default_warn(message: str) -> None:
+    print(message, file=sys.stderr)
+
+
 def fetch_sources(sources: dict, cache_root: Path, assets_root: Path | None = None,
-                  http_get: HttpGet = default_http_get) -> Path:
+                  http_get: HttpGet = default_http_get, warn: Warn = _default_warn) -> Path:
     """Resolve one package's declared `sources` (the shape of
     plan.ResolvedPackage.sources / the lockfile's [package.sources.*]) to a
     local archive file, verifying checksums on every network fetch.
 
     Assets win when present, matching the recipe contract's "assets always
-    wins" rule — a user-supplied file is authoritative and needs no
-    checksum (there's nothing to compare it against; it *is* the source).
+    wins" rule — a user-supplied file is authoritative. If the recipe
+    happens to declare a checksum for it, a mismatch only *warns* (via
+    `warn`, injectable for tests) rather than failing the build: unlike a
+    network source, there's no single canonical upload to compare
+    against — older media especially has multiple legitimate dumps of
+    the same official disk that are byte-different, so treating a
+    mismatch as fatal would reject a real user's valid copy.
     """
     assets = sources.get("assets")
     if assets:
@@ -49,8 +60,15 @@ def fetch_sources(sources: dict, cache_root: Path, assets_root: Path | None = No
                 f"asset {assets['path']!r} not found under {assets_root} — "
                 f"supply it there, or remove the package that needs it")
         data = candidate.read_bytes()
+        actual = hashlib.sha256(data).hexdigest()
+        expected = assets.get("sha256") or None
+        if expected and actual != expected:
+            warn(f"warning: asset {assets['path']!r} doesn't match the "
+                f"recipe's known sha256 (expected {expected}, got "
+                f"{actual}) — proceeding anyway; this may just be a "
+                f"different (but valid) dump of the same media")
         suffix = Path(assets["path"]).suffix
-        return _store(cache_root, hashlib.sha256(data).hexdigest(), data, suffix)
+        return _store(cache_root, actual, data, suffix)
 
     for kind, build_url, filename_field in (
         ("github", _github_url, "asset"),

@@ -522,16 +522,16 @@ not just what was surveyed before Phase 1.
     KS 1.3 ROM asset) — not to fetch (still proprietary, still
     `[source.assets]`-only) but to *verify* a user-supplied asset is
     genuinely the right file before building against it.
-  - This exposed a real gap worth fixing when M5/M8 land: `[source.
-    assets]` has no checksum verification at all today (noted as a
-    known limitation in `builder.py`'s `_archive_sha256` docstring
-    since M2) — an edited-in-place or wrong-version asset silently
-    poisons the build. An optional checksum field on `[source.assets]`
-    (recipe declares it however sourced — hand-computed, or cross-
-    referenced from a database like HstWB's) would let `fetch.py` give
-    the same clear, named "this isn't the file I expected" error
-    proprietary assets currently can't get. Not implemented — deferred
-    to M5/M8, same as `cpu-variants`, until a real recipe needs it.
+  - **Settled and implemented (M5)**: `[source.assets]` now accepts an
+    optional `sha256` (partial coverage is fine — a recipe author only
+    declares it for versions they happen to know a checksum for,
+    possibly cross-referenced from a database like HstWB's). Deliberately
+    **not** a hard gate like every other source, though: a mismatch only
+    *warns*, never fails the build (user, 2026-08-13, correcting an
+    initial hard-fail design written earlier the same day) — older media
+    especially has no single canonical dump, and treating a different
+    (but equally valid) backup or re-dump of the same official disk as
+    an error would actively punish real users rather than catch mistakes.
   - Amiberry's own MCP tooling (`identify_rom`) does the same kind of
     hash-based identification interactively (CRC32 against its bundled
     ROM database, confirmed working against a real `amiga-os-310-

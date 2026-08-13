@@ -70,6 +70,42 @@ def test_asset_source_without_assets_root_is_named(tmp_path):
         fetch_sources(sources, tmp_path, assets_root=None)
 
 
+def test_asset_checksum_match_is_silent(tmp_path):
+    assets_root = tmp_path / "assets"
+    assets_root.mkdir()
+    (assets_root / "pkg.lha").write_bytes(DATA)
+    warnings = []
+    sources = {"assets": {"path": "pkg.lha", "sha256": SHA}}
+    path = fetch_sources(sources, tmp_path, assets_root, warn=warnings.append)
+    assert path.read_bytes() == DATA
+    assert warnings == []
+
+
+def test_asset_checksum_mismatch_warns_but_does_not_fail(tmp_path):
+    """Unlike a network source, an asset checksum mismatch never blocks
+    the build — older media has no single canonical dump, and a
+    different (but valid) backup shouldn't be treated as an error."""
+    assets_root = tmp_path / "assets"
+    assets_root.mkdir()
+    (assets_root / "pkg.lha").write_bytes(b"a different but valid dump\n")
+    warnings = []
+    sources = {"assets": {"path": "pkg.lha", "sha256": "0" * 64}}
+    path = fetch_sources(sources, tmp_path, assets_root, warn=warnings.append)
+    assert path.read_bytes() == b"a different but valid dump\n"
+    assert len(warnings) == 1
+    assert "pkg.lha" in warnings[0]
+
+
+def test_asset_without_checksum_is_silent(tmp_path):
+    assets_root = tmp_path / "assets"
+    assets_root.mkdir()
+    (assets_root / "pkg.lha").write_bytes(DATA)
+    warnings = []
+    sources = {"assets": {"path": "pkg.lha"}}
+    fetch_sources(sources, tmp_path, assets_root, warn=warnings.append)
+    assert warnings == []
+
+
 def test_checksum_mismatch_is_named(tmp_path):
     calls = []
     sources = {"github": {"repo": "owner/name", "asset": "pkg-1.0.lha",

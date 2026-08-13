@@ -121,7 +121,13 @@ all, since it has nothing to download.
 - **`[source.assets]`** — proprietary path. `path` names a file the user
   supplies in their `assets/` directory (with `{version}`, same rule).
   Absent asset = clear error naming the missing file. Nothing proprietary
-  is ever fetched or cached publicly.
+  is ever fetched or cached publicly. `sha256` is optional here (unlike
+  every other source) and, when given, only needs to cover the versions
+  the recipe author actually knows a checksum for — partial coverage is
+  fine. A mismatch at build time is a *warning*, never a build failure:
+  older media especially has no single canonical dump, and a different
+  (but equally valid) backup or re-dump of the same official disk
+  shouldn't be rejected as if it were wrong.
 
 A recipe may declare more than one non-assets source (e.g. `aminet` and
 `github` both freely redistributable) as alternates for the fetcher to
