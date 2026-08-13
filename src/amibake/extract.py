@@ -21,6 +21,7 @@ applied rule, not size/count-based guessing.
 from __future__ import annotations
 
 import io
+import re
 import tempfile
 import zipfile
 from pathlib import Path
@@ -165,7 +166,23 @@ def _extract_iso(path: Path) -> Tree:
                     # unrelated file a recipe was never going to copy
                     # anyway.
                     continue
-                tree.put(full.lstrip("/"), buf.getvalue())
+                # Plain ISO9660 (no Rock Ridge) names carry a ";<version>"
+                # suffix (";1" on every real single-version disc seen) —
+                # real, and previously never stripped: every extracted
+                # path silently ended in ";1" (AROS's own real nightly ISO
+                # has Rock Ridge, whose names never carry this, so this
+                # went unnoticed until a real non-Rock-Ridge disc — the
+                # AmigaOS 3.2 CD — surfaced it). [install].copy's `#?`
+                # wildcard still matched these paths (it matches ";1" too),
+                # masking the bug in patterns, but any actual destination
+                # would have silently landed as e.g. "SYS:C/Dir;1" instead
+                # of "SYS:C/Dir" — a real, wrong, un-runnable filename. The
+                # version suffix is used for the lookup above (`full`,
+                # unstripped) but never belongs in the tree path itself.
+                clean = full.lstrip("/")
+                if not has_rr:
+                    clean = re.sub(r";\d+$", "", clean)
+                tree.put(clean, buf.getvalue())
     finally:
         iso.close()
     return tree

@@ -1,5 +1,7 @@
+import io
 import zipfile
 
+import pycdlib
 import pytest
 
 from amibake.extract import ExtractError, extract_archive
@@ -104,6 +106,39 @@ def test_extract_iso(tmp_path):
     assert set(tree.paths()) == {"foo.txt", "sub/bar.txt", "sub/deep/baz.txt"}
     assert tree.get("foo.txt").data == b"hello world\n"
     assert tree.get("sub/deep/baz.txt").data == b"deeper\n"
+
+
+def _make_plain_iso9660(files: dict[str, bytes]) -> bytes:
+    """A real, no-Rock-Ridge ISO9660 image — the format a real 1990s/
+    2000s-mastered Amiga CD (e.g. AmigaOS 3.2's own install CD) actually
+    uses. Unlike `make_iso` (always Rock Ridge, whose names come back
+    clean of ISO9660's own ";<version>" path-table decoration), this
+    exercises the plain-ISO9660 code path where that decoration is real
+    and, until fixed, leaked straight into extracted tree paths."""
+    iso = pycdlib.PyCdlib()
+    iso.new()
+    for name, data in files.items():
+        iso_name = f"/{name.upper()};1"
+        iso.add_fp(io.BytesIO(data), len(data), iso_name)
+    buf = io.BytesIO()
+    iso.write_fp(buf)
+    iso.close()
+    return buf.getvalue()
+
+
+def test_extract_plain_iso9660_strips_version_suffix(tmp_path):
+    """Real bug: plain ISO9660 (no Rock Ridge) names carry a
+    ";<version>" suffix in their path-table entry — previously never
+    stripped, so every extracted path from a disc like this silently
+    ended in ";1". [install].copy's `#?` wildcard still matched (it
+    matches ";1" too), masking the bug in patterns, but the actual
+    destination would land as e.g. "SYS:C/Dir;1" — wrong, and
+    unrunnable. Found exploring the real AmigaOS 3.2 install CD."""
+    archive = tmp_path / "plain.iso"
+    archive.write_bytes(_make_plain_iso9660({"foo.txt": b"hello\n"}))
+    tree = extract_archive(archive)
+    assert set(tree.paths()) == {"FOO.TXT"}
+    assert tree.get("FOO.TXT").data == b"hello\n"
 
 
 def test_extract_iso_rejects_corrupt_archive(tmp_path):
