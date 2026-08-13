@@ -282,11 +282,13 @@ proves hard.
    Turning this into an automated, assertable CI check (a real "did it
    boot" pass/fail, not a manually-eyeballed screenshot) is still open —
    tracked for M9 (CI action) rather than solved here. **User guidance
-   (2026-08-13): prefer Copperline over Amiberry for that automated
-   check when Copperline is available** — easier to automate than the
-   manual screenshot/cursor-probe dance Amiberry needed here. Amiberry
-   remains the documented fallback (this milestone's own experience) for
-   interactive/manual verification or environments without Copperline.
+   (2026-08-13): prefer Copperline over Amiberry generally, whenever
+   Copperline is available** — it does the same manual checks Amiberry
+   did here (screenshots, input probes) just as well, and is also
+   easier to automate; this isn't a manual-vs-automated split. Amiberry
+   was used in this milestone specifically because Copperline wasn't
+   available to test against in this environment, not because the
+   check was manual — reach for Copperline first wherever it exists.
 2. **`.uaem` exact format** (M3): confirm against amisnap-tool's adopted
    convention and UAE source before implementing; write the byte-format
    note in `docs/`.
