@@ -79,7 +79,8 @@ INVALID = [
     (_minimal() + '\n[requires]\nos = "3.0"\n', "requires].os"),
     (_minimal() + '\n[requires]\nemulator = ["fs-uae"]\n', "emulator[0]"),
     (_minimal() + '\n[requires.per-version."9.9"]\nos = ">= 2.0"\n', "per-version"),
-    (_minimal(source=""), "[source]"),
+    (_minimal(source="") + '\n[install]\ncopy = [{ from = "a", to = "SYS:Libs/" }]\n',
+     "[source]"),
     (_minimal(source='[source.aminet]\nsha256 = { "1.0" = "' + SHA + '" }\n'),
      "aminet].url"),
     (_minimal(source='[source.aminet]\nurl = "x/pkg.lha"\nsha256 = { "1.0" = "abc" }\n'),
@@ -120,6 +121,17 @@ def test_invalid_recipes(write, text, field):
         f"no problem mentioning {field!r} in {[p.field for p in problems]}")
     for p in problems:
         assert p.remedy, "every error carries a remedy"
+
+
+def test_no_op_provider_needs_no_source(write):
+    """The bsdsocket-emulation-style provider: no [install].copy, so no
+    [source] is required — it has nothing to fetch, only a capability to
+    contribute."""
+    text = (
+        '[package]\nname = "pkg"\nversions = ["1.0"]\nprovides = ["bsdsocket"]\n\n'
+        '[requires]\nemulator = ["amiberry", "winuae"]\n'
+    )
+    assert validate_recipe(write(text, name="recipe.toml", subdir="pkg")) == []
 
 
 def test_directory_name_must_match_package_name(write):

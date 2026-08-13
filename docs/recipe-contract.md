@@ -82,7 +82,11 @@ os = ">= 1.3"
 
 ## `[source.*]` — where the archive comes from
 
-At least one source table is required.
+A source table is required whenever `[install].copy` names files to
+fetch. A recipe with no `copy` entries — a pure capability provider that
+only contributes machine-config directives, like the no-op
+`bsdsocket-emulation` provider described below — needs no `[source]` at
+all, since it has nothing to download.
 
 - **`[source.aminet]`** — freely-redistributable path. `url` is the
   Aminet-relative path with `{version}` substituted (required in the URL
@@ -170,6 +174,26 @@ emulator = ["amiberry", "winuae"]
 
 Options are part of the layer cache key: "P96 with uaegfx" and "P96 with
 zz9000" are distinct cached layers.
+
+## `[base]` — base-recipe version identity (base recipes only)
+
+A base recipe (one named by a manifest's `base` key, e.g. `os3.2.2`,
+`wb1.3`, `aros68k`) declares its OS and Kickstart identity so the
+resolver can validate other recipes' `[requires]` against it:
+
+```toml
+[base]
+os-version        = "3.2.2"
+kickstart-version = "47.102"   # optional — only needed if some recipe's
+                                # [requires].kickstart differs from os
+```
+
+Without `[base].os-version`, any recipe declaring `[requires].os` cannot
+be validated against this base and the resolver reports that plainly
+(naming the base recipe that's missing the metadata) rather than silently
+skipping the check. `kickstart-version` is optional: recipes whose
+Kickstart requirement is implied by their OS requirement don't need it,
+and the resolver skips the Kickstart check when a base omits it.
 
 ## `[hook]` — the fenced escape hatch
 

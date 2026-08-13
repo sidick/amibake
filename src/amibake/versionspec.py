@@ -1,13 +1,15 @@
-"""Version strings, constraints, and package specs — syntax only.
+"""Version strings, constraints, and package specs.
 
-Comparison semantics (AmigaVersion ordering, constraint satisfaction) are
-M1's resolver work; M0 validates that what was written is well-formed.
 Versions are always strings: `5.20` is a version, never the float 5.2.
+`AmigaVersion` compares dotted-decimal strings component-wise as
+integers, so `5.20` > `5.3` (unlike a naive string or float compare).
 """
 
 from __future__ import annotations
 
+import operator
 import re
+from dataclasses import dataclass
 
 VERSION_RE = re.compile(r"^\d+(\.\d+)*$")
 NAME_RE = re.compile(r"^[a-z0-9]+([.-][a-z0-9]+)*$")
@@ -61,3 +63,46 @@ def parse_package_spec(text: str) -> tuple[str, list[Constraint]]:
     if len(parts) == 1:
         return name, []
     return name, parse_constraint(parts[1])
+
+
+@dataclass(frozen=True, order=True)
+class AmigaVersion:
+    """A dotted-decimal version, compared component-wise as integers.
+
+    Tuple ordering already gives the semantics we want: `(5, 20) >
+    (5, 3)` because 20 > 3 at the second component, and `(3, 2) <
+    (3, 2, 1)` because a shared prefix with fewer components sorts
+    first. No padding or special-casing needed.
+    """
+
+    parts: tuple[int, ...]
+
+    @classmethod
+    def parse(cls, text: str) -> AmigaVersion:
+        return cls(tuple(int(p) for p in text.split(".")))
+
+    def __str__(self) -> str:
+        return ".".join(str(p) for p in self.parts)
+
+
+_CMP_OPS = {
+    "=": operator.eq,
+    ">=": operator.ge,
+    "<=": operator.le,
+    ">": operator.gt,
+    "<": operator.lt,
+}
+
+
+def satisfies(version: str, constraints: list[Constraint]) -> bool:
+    """Does `version` satisfy every constraint in the list?"""
+    v = AmigaVersion.parse(version)
+    return all(_CMP_OPS[op](v, AmigaVersion.parse(target)) for op, target in constraints)
+
+
+def max_satisfying(versions: list[str], constraints: list[Constraint]) -> str | None:
+    """The highest version in `versions` satisfying all constraints, or None."""
+    candidates = [v for v in versions if satisfies(v, constraints)]
+    if not candidates:
+        return None
+    return max(candidates, key=AmigaVersion.parse)

@@ -7,9 +7,12 @@ import sys
 from pathlib import Path
 
 from . import __version__
+from ._validate import load_toml
 from .errors import AmiBakeError, Problem
 from .manifest import validate_manifest
+from .plan import format_lockfile, write_lockfile
 from .recipe import validate_recipe
+from .resolver import load_recipe_library, resolve
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -24,15 +27,24 @@ def main(argv: list[str] | None = None) -> int:
     lint.add_argument("paths", nargs="+", type=Path,
                       help="recipe dirs, recipe.toml files, or manifest .toml files")
 
-    for name, help_text in (("resolve", "resolve a manifest to a build plan + lockfile"),
-                            ("build", "build a manifest's outputs")):
-        p = sub.add_parser(name, help=help_text)
-        p.add_argument("manifest", type=Path)
+    res = sub.add_parser("resolve", help="resolve a manifest to a build plan + lockfile")
+    res.add_argument("manifest", type=Path)
+    res.add_argument("--recipes", type=Path, default=Path("recipes"),
+                     help="recipe library root (default: ./recipes)")
+    res.add_argument("--lockfile", type=Path, default=None,
+                     help="lockfile output path (default: <manifest>.lock.toml)")
+    res.add_argument("--print", dest="print_only", action="store_true",
+                     help="print the lockfile to stdout instead of writing it")
+
+    build = sub.add_parser("build", help="build a manifest's outputs")
+    build.add_argument("manifest", type=Path)
 
     args = parser.parse_args(argv)
 
     if args.command == "lint":
         return _cmd_lint(args.paths)
+    if args.command == "resolve":
+        return _cmd_resolve(args.manifest, args.recipes, args.lockfile, args.print_only)
     print(f"amibake {args.command} is not implemented yet (arrives in a later "
           f"milestone; see PLAN.md)", file=sys.stderr)
     return 2
@@ -59,6 +71,56 @@ def _cmd_lint(paths: list[Path]) -> int:
                f"{len(errors)} error(s), {len(warnings)} warning(s)")
     print(summary)
     return 1 if errors else 0
+
+
+def _cmd_resolve(manifest_path: Path, recipes_root: Path, lockfile_path: Path | None,
+                 print_only: bool) -> int:
+    problems: list[Problem] = []
+    try:
+        if not manifest_path.is_file():
+            problems.append(Problem(str(manifest_path), "(file)",
+                                    "no such file", "check the path"))
+        else:
+            problems.extend(validate_manifest(manifest_path))
+        if not recipes_root.is_dir():
+            problems.append(Problem(str(recipes_root), "(dir)",
+                                    "recipe library not found",
+                                    "pass --recipes pointing at a directory of "
+                                    "recipe.toml files"))
+        else:
+            for recipe_path in sorted(recipes_root.rglob("recipe.toml")):
+                problems.extend(validate_recipe(recipe_path))
+    except AmiBakeError as e:
+        problems.append(e.problem)
+
+    if problems:
+        for problem in problems:
+            print(problem, file=sys.stderr)
+        print("resolve aborted: manifest or recipe library does not lint clean",
+              file=sys.stderr)
+        return 1
+
+    manifest = load_toml(manifest_path)
+    library = load_recipe_library(recipes_root)
+    result = resolve(manifest_path, manifest, library)
+
+    if not result.ok:
+        for problem in result.problems:
+            print(problem, file=sys.stderr)
+        print(f"{len(result.problems)} error(s) resolving {manifest_path}",
+              file=sys.stderr)
+        return 1
+
+    if print_only:
+        print(format_lockfile(result.plan), end="")
+    else:
+        out = lockfile_path or manifest_path.with_suffix("").with_suffix(".lock.toml")
+        write_lockfile(result.plan, out)
+        names = ", ".join(p.name for p in result.plan.packages) or "(none)"
+        print(f"resolved {manifest_path}: base={result.plan.base.name}, "
+              f"packages=[{names}]")
+        print(f"wrote {out}")
+    return 0
 
 
 def _collect(paths: list[Path], problems: list[Problem]) -> list[Path]:

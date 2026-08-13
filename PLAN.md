@@ -257,6 +257,18 @@ proves hard.
 4. **Recipe library location**: in-repo now; the proposal's
    "versioned with the tool but decoupled" split happens only when
    community PRs make the coupling hurt.
+5. **Settled in M1** (was flagged as needing a base-recipe design): base
+   recipes declare a `[base]` table (`os-version`, optional
+   `kickstart-version`) so the resolver can validate other recipes'
+   `[requires].os`/`kickstart` against the chosen base — documented in
+   `docs/recipe-contract.md`. A base recipe missing this metadata isn't
+   an error by itself; it only surfaces when some dependent package
+   actually needs the check, and the error names the base recipe that's
+   missing it.
+6. **Settled in M1**: `[source]` is only required on a recipe when
+   `[install].copy` names files to fetch — a pure capability provider
+   (the `bsdsocket-emulation` no-op case) has nothing to download and
+   needs no source table.
 
 ## Risk register (deltas from the proposal)
 

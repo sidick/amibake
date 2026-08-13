@@ -10,7 +10,8 @@ from .errors import Problem
 from .manifest import EMULATORS
 from .versionspec import is_name, is_version, parse_constraint, parse_package_spec
 
-TOP_KEYS = {"package", "requires", "source", "install", "verify", "options", "hook"}
+TOP_KEYS = {"package", "requires", "source", "install", "verify", "options", "hook", "base"}
+BASE_KEYS = {"os-version", "kickstart-version"}
 PACKAGE_KEYS = {"name", "versions", "depends", "conflicts", "provides", "strategy"}
 REQUIRES_KEYS = {"os", "kickstart", "cpu", "fpu", "mmu", "emulator", "per-version"}
 SOURCE_KINDS = {"aminet", "github", "assets"}
@@ -39,7 +40,8 @@ def validate_recipe(path: Path) -> list[Problem]:
     if requires is not None:
         _check_requires(c, requires, "[requires]", versions)
 
-    _check_sources(c, doc, versions)
+    copy_actions = ((doc.get("install") or {}).get("copy")) or []
+    _check_sources(c, doc, versions, requires_source=bool(copy_actions))
 
     install = c.typed(doc, "install", dict, "", default=None)
     if install is not None:
@@ -49,6 +51,10 @@ def validate_recipe(path: Path) -> list[Problem]:
     if verify is not None:
         c.unknown_keys(verify, {"exists"}, "[verify]")
         c.string_list(verify, "exists", "[verify]")
+
+    base = c.typed(doc, "base", dict, "", default=None)
+    if base is not None:
+        _check_base(c, base, package)
 
     options = c.typed(doc, "options", dict, "", default={})
     for opt_name, opt in options.items():
@@ -145,12 +151,18 @@ def _check_requires(c: Checker, requires: dict, where: str,
                         'e.g. [requires.per-version."4.12"] with os = ">= 1.3"')
 
 
-def _check_sources(c: Checker, doc: dict, versions: list[str]) -> None:
+def _check_sources(c: Checker, doc: dict, versions: list[str],
+                   requires_source: bool = True) -> None:
     source = c.typed(doc, "source", dict, "", default=None)
     if source is None or not source:
-        c.error("[source]", "recipe declares no source",
-                "add [source.aminet] (url + sha256) for redistributable archives "
-                "or [source.assets] (path) for user-supplied ones")
+        if requires_source:
+            c.error("[source]", "recipe declares no source",
+                    "add [source.aminet]/[source.github] (freely redistributable) "
+                    "or [source.assets] (user-supplied) — required because "
+                    "[install].copy names files to fetch")
+        # else: a no-op recipe (no [install].copy) legitimately has nothing to
+        # fetch — the bsdsocket-emulation-style provider that contributes only
+        # a machine-config directive, per the recipe contract.
         return
     c.unknown_keys(source, SOURCE_KINDS, "[source]")
 
@@ -201,6 +213,21 @@ def _check_sources(c: Checker, doc: dict, versions: list[str]) -> None:
                     "add {version} where the version appears in the file name")
     elif assets is not None:
         c.error("[source.assets]", "must be a table", "write it as [source.assets]")
+
+
+def _check_base(c: Checker, base: dict, package: dict | None) -> None:
+    c.unknown_keys(base, BASE_KEYS, "[base]")
+    os_version = c.typed(base, "os-version", str, "[base]", required=True)
+    if os_version is not None and not is_version(os_version):
+        c.error("[base].os-version", f"bad version {os_version!r}",
+                'use a dotted-decimal version string, e.g. "3.2.2"')
+    kickstart = c.typed(base, "kickstart-version", str, "[base]")
+    if kickstart is not None and not is_version(kickstart):
+        c.error("[base].kickstart-version", f"bad version {kickstart!r}",
+                'use a dotted-decimal version string, e.g. "47.102"')
+    if package is not None and not package.get("strategy"):
+        c.warning("[base]", "recipe declares [base] but [package].strategy is not set",
+                  'base recipes should set strategy = "extract" or "installer"')
 
 
 def _check_sha256_map(c: Checker, table: dict, where: str, versions: list[str]) -> None:

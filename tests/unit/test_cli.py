@@ -1,4 +1,3 @@
-import pytest
 
 from amibake.cli import main
 
@@ -50,10 +49,52 @@ def test_lint_warnings_do_not_fail(tmp_path, capsys):
     assert "1 warning(s)" in captured.out
 
 
-@pytest.mark.parametrize("command", ["build", "resolve"])
-def test_unimplemented_commands_exit_2(tmp_path, capsys, command):
+def test_build_is_unimplemented(tmp_path, capsys):
     manifest = tmp_path / "m.toml"
     manifest.write_text('base = "aros68k"\n')
-    rc = main([command, str(manifest)])
+    rc = main(["build", str(manifest)])
     assert rc == 2
     assert "not implemented" in capsys.readouterr().err
+
+
+def test_resolve_end_to_end(tmp_path, capsys):
+    recipes = tmp_path / "recipes"
+    base_dir = recipes / "os32-fixture"
+    base_dir.mkdir(parents=True)
+    (base_dir / "recipe.toml").write_text(
+        '[package]\nname = "os32-fixture"\nversions = ["3.2.2"]\n'
+        'strategy = "extract"\n\n[base]\nos-version = "3.2.2"\n'
+    )
+    manifest = tmp_path / "m.toml"
+    manifest.write_text('base = "os32-fixture"\n')
+
+    rc = main(["resolve", str(manifest), "--recipes", str(recipes)])
+    captured = capsys.readouterr()
+    assert rc == 0, captured.err
+    assert "resolved" in captured.out
+    lockfile = tmp_path / "m.lock.toml"
+    assert lockfile.is_file()
+    assert 'name = "os32-fixture"' in lockfile.read_text()
+
+
+def test_resolve_reports_named_errors(tmp_path, capsys):
+    recipes = tmp_path / "recipes"
+    recipes.mkdir()
+    manifest = tmp_path / "m.toml"
+    manifest.write_text('base = "nope"\n')
+    rc = main(["resolve", str(manifest), "--recipes", str(recipes)])
+    captured = capsys.readouterr()
+    assert rc == 1
+    assert "nope" in captured.err
+
+
+def test_resolve_aborts_on_dirty_manifest(tmp_path, capsys):
+    recipes = tmp_path / "recipes"
+    recipes.mkdir()
+    manifest = tmp_path / "m.toml"
+    manifest.write_text('base = "os32-fixture"\noutput = ["floppy"]\n')
+    rc = main(["resolve", str(manifest), "--recipes", str(recipes)])
+    captured = capsys.readouterr()
+    assert rc == 1
+    assert "output[0]" in captured.err
+    assert "aborted" in captured.err
