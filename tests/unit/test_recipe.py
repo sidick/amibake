@@ -205,6 +205,52 @@ def test_assets_source_checksum_bad_format_is_an_error(write):
     assert any('sha256."1.0"' in p.field for p in problems)
 
 
+def test_valid_assets_source_with_multiple_paths(write):
+    text = (
+        '[package]\nname = "pkg"\nversions = ["1.0"]\n\n'
+        '[source.assets]\npath = ["Base.lha", "Update.lha"]\n'
+        f'sha256 = {{ "1.0" = ["{SHA}", "{SHA}"] }}\n'
+    )
+    assert validate_recipe(write(text, name="recipe.toml", subdir="pkg")) == []
+
+
+def test_assets_source_multiple_paths_without_checksum_is_fine(write):
+    text = (
+        '[package]\nname = "pkg"\nversions = ["1.0"]\n\n'
+        '[source.assets]\npath = ["Base.lha", "Update.lha"]\n'
+    )
+    assert validate_recipe(write(text, name="recipe.toml", subdir="pkg")) == []
+
+
+def test_assets_source_empty_path_array_is_an_error(write):
+    text = (
+        '[package]\nname = "pkg"\nversions = ["1.0"]\n\n'
+        '[source.assets]\npath = []\n'
+    )
+    problems = errors_of(validate_recipe(write(text, name="recipe.toml", subdir="pkg")))
+    assert any("[source.assets].path" in p.field for p in problems)
+
+
+def test_assets_source_checksum_array_wrong_length_is_an_error(write):
+    text = (
+        '[package]\nname = "pkg"\nversions = ["1.0"]\n\n'
+        '[source.assets]\npath = ["Base.lha", "Update.lha"]\n'
+        f'sha256 = {{ "1.0" = ["{SHA}"] }}\n'
+    )
+    problems = errors_of(validate_recipe(write(text, name="recipe.toml", subdir="pkg")))
+    assert any('sha256."1.0"' in p.field for p in problems)
+
+
+def test_assets_source_checksum_scalar_for_multi_path_is_an_error(write):
+    text = (
+        '[package]\nname = "pkg"\nversions = ["1.0"]\n\n'
+        '[source.assets]\npath = ["Base.lha", "Update.lha"]\n'
+        f'sha256 = {{ "1.0" = "{SHA}" }}\n'
+    )
+    problems = errors_of(validate_recipe(write(text, name="recipe.toml", subdir="pkg")))
+    assert any('sha256."1.0"' in p.field for p in problems)
+
+
 def test_valid_url_source(write):
     text = (
         '[package]\nname = "pkg"\nversions = ["1.0", "2.0"]\n\n'

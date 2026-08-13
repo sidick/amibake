@@ -240,12 +240,8 @@ def _check_sources(c: Checker, doc: dict, versions: list[str],
     assets = source.get("assets")
     if isinstance(assets, dict):
         c.unknown_keys(assets, {"path", "sha256"}, "[source.assets]")
-        path = c.typed(assets, "path", str, "[source.assets]", required=True)
-        if path is not None and len(versions) > 1 and "{version}" not in path:
-            c.error("[source.assets].path",
-                    "recipe lists multiple versions but the path has no {version} "
-                    "placeholder",
-                    "add {version} where the version appears in the file name")
+        raw_path = assets.get("path")
+        paths = _check_assets_path(c, raw_path, versions)
         # Unlike every other source: optional, partial coverage is fine,
         # and a mismatch at build time is a warning, not an error (see
         # fetch.py). Older media especially has no single canonical dump
@@ -258,12 +254,64 @@ def _check_sources(c: Checker, doc: dict, versions: list[str],
         # are actually declared, not every listed [package] version.
         asset_sha256 = c.typed(assets, "sha256", dict, "[source.assets]", default={})
         for ver, digest in asset_sha256.items():
-            if not isinstance(digest, str) or not _SHA256_RE.match(digest):
-                c.error(f'[source.assets].sha256."{ver}"',
-                        "checksum must be a 64-character lower-case hex string",
-                        "use `shasum -a 256 <file>` on the file")
+            _check_assets_digest(c, digest, f'[source.assets].sha256."{ver}"',
+                                 expected_count=len(paths) if paths is not None else None)
     elif assets is not None:
         c.error("[source.assets]", "must be a table", "write it as [source.assets]")
+
+
+def _check_assets_path(c: Checker, raw_path, versions: list[str]) -> list[str] | None:
+    """`path` is a single filename (the common case) or a list of
+    filenames — a real multi-archive install (e.g. AmigaOS 3.2.2: a
+    base full install plus real cumulative 3.2.1/3.2.2 update
+    archives, each fetched and merged under its own `<filename>/`
+    prefix; see [install]'s own doc for the merge). Returns the
+    resolved list of path strings (for sha256-length cross-checking),
+    or None if `path` itself was invalid."""
+    where = "[source.assets].path"
+    if raw_path is None:
+        c.error(where, "required key is missing", "add 'path'")
+        return None
+    if isinstance(raw_path, str):
+        candidates = [raw_path]
+    elif isinstance(raw_path, list) and raw_path and all(isinstance(p, str) for p in raw_path):
+        candidates = raw_path
+    else:
+        c.error(where, "must be a string or a non-empty array of strings",
+                'e.g. path = "Workbench-{version}.adf" or '
+                'path = ["Base.lha", "Update.lha"]')
+        return None
+    if len(versions) > 1:
+        for i, p in enumerate(candidates):
+            if "{version}" not in p:
+                label = where if len(candidates) == 1 else f"{where}[{i}]"
+                c.error(label,
+                        "recipe lists multiple versions but the path has no "
+                        "{version} placeholder",
+                        "add {version} where the version appears in the file name")
+    return candidates
+
+
+def _check_assets_digest(c: Checker, digest, where: str, expected_count: int | None) -> None:
+    """A digest entry matches its version's `path` shape: one hex string
+    for a single-file `path`, a same-length array of hex strings for a
+    multi-file one."""
+    if expected_count is not None and expected_count > 1:
+        if not isinstance(digest, list) or len(digest) != expected_count:
+            c.error(where,
+                    f"must be an array of {expected_count} checksums, matching "
+                    f"path's own length",
+                    "one checksum per path entry, same order")
+            return
+        for i, d in enumerate(digest):
+            if not isinstance(d, str) or not _SHA256_RE.match(d):
+                c.error(f"{where}[{i}]",
+                        "checksum must be a 64-character lower-case hex string",
+                        "use `shasum -a 256 <file>` on the file")
+        return
+    if not isinstance(digest, str) or not _SHA256_RE.match(digest):
+        c.error(where, "checksum must be a 64-character lower-case hex string",
+                "use `shasum -a 256 <file>` on the file")
 
 
 def _check_base(c: Checker, base: dict, package: dict | None) -> None:

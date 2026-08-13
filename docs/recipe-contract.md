@@ -137,6 +137,19 @@ all, since it has nothing to download.
   FFS) is supported alongside `.lha`/`.zip`/`.iso`, the format real
   pre-CD-ROM install media (e.g. Workbench 1.3) ships as.
 
+  `path` may also be an array of filenames, for a real install that's
+  genuinely more than one archive — e.g. `os3.2.2` fetches a base
+  install plus two cumulative point-release update archives (real
+  Hyperion distribution: point releases are incremental patches over
+  the base, not standalone reinstalls). Each archive is extracted
+  independently and merged into one tree under its own
+  `<filename>/`-prefixed namespace (same convention `extract.py` uses
+  for nested `.adf`/`.iso` members inside one archive — see
+  `docs/limits.md`), so `[install].copy` addresses e.g.
+  `AmigaOS-3.2-full.lha/Workbench3.2.adf/#?`. `sha256`, when given,
+  matches shape: a single string for a single-file `path`, an array of
+  the same length (same order) for a multi-file one.
+
 A recipe may declare more than one non-assets source (e.g. `aminet` and
 `github` both freely redistributable) as alternates for the fetcher to
 try; `assets` always wins when the file is present, since a user-supplied
