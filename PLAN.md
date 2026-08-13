@@ -314,17 +314,64 @@ for the whole recipe — shipping only the part that's honestly `>= 1.3`
 matches the recipe's own stated requirement. `manifests/wb13.toml` now
 lists `packages = ["sana2loop = 1.1"]`; resolved and built for real
 against both the live Aminet archive and real WB1.3 media via the CLI
-(`SYS:Devs/loopback.device` lands correctly, `[verify]` passes).
+(`SYS:Devs/Networks/sana2loop.device` lands correctly — path corrected
+same day per the package author, see below — `[verify]` passes).
 Not turned into a live-network pytest test (would make the hermetic
 suite depend on network access every run, same reasoning as AmiSSL/
 ClassAct/AROS in M4) — `test_wb13_recipe.py`/`test_wb13_real_media.py`
 build the base with `packages=()` instead, `dataclasses.replace`d off
 the real resolved plan, so they stay offline-only.
 
-Still open before this milestone's exit bar is fully met: Copperline
-boot verification hasn't been run yet.
+**Install path corrected (package author, 2026-08-13):** the real
+convention is `DEVS:Networks/sana2loop.device` (renamed from the
+archive's own `loopback.device`), not a plain `DEVS:` copy under the
+archive's build name — the Aminet-hosted readme's install section was
+stale. Verified for real via CLI build.
 
-Exit: a KS 1.3 manifest builds from WB 1.3 media and boots.
+**Copperline boot verification done (2026-08-13), closing this
+milestone.** A real `copperline` (and `copperline-ctl`) binary turned
+out to be installed locally (`/opt/homebrew/bin/copperline`) — the
+first time Copperline (rather than Amiberry, M4's substitute) has
+actually been available and used in this project, per the standing
+"prefer Copperline generally" guidance. Real KS1.3 ROM found at
+`/Users/simond/src/copperline-bridgeboard-plugin/nondistributable/kickstart-1.3.rom`
+(outside this repo, correctly marked non-distributable) and copied to
+`assets/roms/kickstart-1.3.rom` (gitignored, per user request: "any
+roms that get used, copy them into the asset directory for future
+use"). Built `manifests/wb13.toml` for real (base + sana2loop, both
+`hdf` and `dir` outputs) via the CLI, then booted the `dir` output
+under Copperline headless (`--screenshot-after`, no window/display
+connection needed — works in this sandboxed session) using a
+`[[filesys]]` HOSTFS mount with `bootpri = 6` (Copperline's own
+directory-as-bootable-AmigaDOS-volume mechanism — no RDB/real disk
+controller authenticity concerns the way `[ide]`/`[scsi]` would raise
+for a stock A500's real hardware limits). Confirmed genuinely booted,
+not just "painted a screen and hung" (the M4 bar): a screenshot at 10s
+shows the real AmigaDOS 1.3 copyright banner and a live `1>` prompt,
+stable through 20s/30s captures; then, following M4's own "moving
+cursor, not a static screenshot" precedent, scripted `version` +
+return via `--press-after` and captured the CLI's live response —
+`Kickstart version 34.5. Workbench version 34.34`, exactly matching
+this build's own real Kickstart/Workbench versions, followed by a
+fresh `1>` prompt. That's the shell genuinely executing our built
+`SYS:C/Version` against ROM-resident `exec.library`/`dos.library`, not
+a frozen frame.
+   Real Copperline CLI gotchas found getting there (useful if this
+   becomes an automated M9 CI check): `--press-after SECS KEY` takes
+   only two arguments in this build, *not* three — the docs' own
+   table agrees (`--key-after SECS KEY MS` is the one with a hold
+   duration); passing a spurious third token gets silently misparsed
+   as a second positional ROM path (`Error: more than one ROM path
+   given`). `--script FILE` had the same failure mode in this build
+   (the script's path itself got swallowed as a second ROM argument)
+   — chained `--press-after`/`--key-after` flags on the command line
+   worked fine and is what was used instead. Repeated
+   `--screenshot-after SECS PATH` flags only honored the *last* one
+   given in this build, contrary to the docs' "the flag repeats"
+   claim — worked around by running one `copperline` invocation per
+   timestamp instead of trying to batch several into one run.
+
+Exit: a KS 1.3 manifest builds from WB 1.3 media and boots. **Met.**
 
 ### M6 — Machine block + emulator config emission (Phase 2)
 
