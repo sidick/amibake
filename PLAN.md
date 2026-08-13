@@ -8,10 +8,12 @@ note the divergence.
 ## Ground rules
 
 - Python 3.11+ (stdlib `tomllib`), packaged with `pyproject.toml`, src
-  layout. amitools and lhasa are runtime dependencies; amitools is used
-  **as a library** (its `amitools.fs` / blkdev / rdb modules), shelling out
-  to `xdftool`/`rdbtool` only where the library API is missing something —
-  each such case gets a code comment naming the missing API.
+  layout. amitools is a runtime dependency, used **as a library** (its
+  `amitools.fs` / blkdev / rdb modules), shelling out to `xdftool`/
+  `rdbtool` only where the library API is missing something — each such
+  case gets a code comment naming the missing API. `.lha` extraction uses
+  `lhafile` (pure Python) rather than the lhasa/`lha` CLI the proposal
+  named — see the M2 entry in "Cross-cutting decisions" below.
 - Every milestone ends in something runnable and tested. No milestone
   depends on assets the CI can't have: AROS 68k nightlies and Aminet
   packages are the CI substrate; OS 3.x/1.3 media paths are exercised
@@ -119,9 +121,9 @@ fields, not string matching.
   under a rolling unversioned filename), configurable mirror list, sha256
   verify, content-addressed download cache (`~/.cache/amibake` or
   `AMIBAKE_CACHE`), `assets/` lookup by checksum for proprietary sources.
-- `extract.py`: `.lha` via lhasa, `.zip`, plus reading files out of ADFs
-  via amitools — all into `tree.py`'s internal representation carrying
-  Amiga metadata.
+- `extract.py`: `.lha` via `lhafile` (pure Python), `.zip` via stdlib,
+  plus reading files out of ADFs via amitools — all into `tree.py`'s
+  internal representation carrying Amiga metadata.
 - `layer.py`: apply a recipe's `[install]` (copy with AmigaDOS patterns,
   cpu-variant selection, envarc, ordered user-startup fragments, assigns)
   to a tree; cache key = hash(recipe text + resolved version + archive
@@ -269,6 +271,18 @@ proves hard.
    `[install].copy` names files to fetch — a pure capability provider
    (the `bsdsocket-emulation` no-op case) has nothing to download and
    needs no source table.
+7. **Settled in M2**: `.lha` extraction uses the `lhafile` PyPI package
+   (pure Python) instead of shelling out to the lhasa/`lha` CLI the
+   proposal named. Reason: lhasa 0.6.0's CLI rejected a legally-shaped
+   level-0 LHA header in direct testing (confirmed correct against
+   `lhafile`'s own parser and a real compressed Aminet/GitHub archive),
+   and even once a working invocation was found (`lha`'s `w=<dir>` must
+   be concatenated onto the command-letter token, not passed as a
+   separate argv entry — undocumented and easy to get wrong), a pure-
+   Python dependency is strictly better for this project: no external
+   binary to install in CI or for contributors, and it makes `.lha`
+   extraction testable with tiny committed fixture archives instead of
+   requiring network access or a system binary in every test run.
 
 ## Risk register (deltas from the proposal)
 

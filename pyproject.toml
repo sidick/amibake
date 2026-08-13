@@ -8,8 +8,10 @@ version = "0.1.0.dev0"
 description = "Manifest-driven Amiga test setup builder"
 readme = "README.md"
 requires-python = ">=3.11"
-# Runtime deps (amitools, lhasa bindings) arrive with M2; M0 is stdlib-only.
-dependencies = []
+# amitools arrives with M3 (HDF/ADF emission). .lha extraction uses
+# lhafile (pure Python) rather than shelling out to the lhasa/lha CLI —
+# see extract.py's module docstring for why.
+dependencies = ["lhafile>=0.3.1"]
 
 [project.scripts]
 amibake = "amibake.cli:main"
