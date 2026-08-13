@@ -1,0 +1,13 @@
+# The proposal's exemplar setup: OS 3.2 with P96 and AmiSSL on an
+# MMU-equipped 030. p96 and classact recipes arrive in M4; linting this
+# manifest checks shape only — package existence is a resolve-time check.
+
+base     = "os3.2.2"
+machine  = { cpu = "68030", fpu = true, mmu = true, ram = "chip:2M,fast:8M", rtg = true }
+packages = [
+  { name = "p96", version = ">= 3.2", card = "uaegfx" },
+  "amissl = 5.27",
+  "classact = 3.3",
+]
+output   = ["hdf"]
+emit     = ["copperline", "amiberry"]

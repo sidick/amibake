@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.venv/
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# User-supplied proprietary media/ROMs — never committed (licensing hygiene).
+assets/
+
+# Image-sized build outputs never enter the repo.
+*.hdf
+*.adf

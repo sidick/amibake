@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "amibake"
+version = "0.1.0.dev0"
+description = "Manifest-driven Amiga test setup builder"
+readme = "README.md"
+requires-python = ">=3.11"
+# Runtime deps (amitools, lhasa bindings) arrive with M2; M0 is stdlib-only.
+dependencies = []
+
+[project.scripts]
+amibake = "amibake.cli:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/amibake"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,33 @@
+# AmiSSL — OpenSSL as an Amiga shared library.
+#
+# Sourced from upstream's GitHub Releases (github.com/jens-maus/amissl)
+# rather than Aminet: Aminet hosts only the current release under a
+# rolling, unversioned filename (AmiSSL-v5-OS3.lha, replaced in place on
+# every upload), which cannot express multiple installable versions.
+# GitHub Releases are tagged per version, so each listed version gets a
+# real, permanent, checksum-pinned URL.
+
+[package]
+name     = "amissl"
+versions = ["5.27", "5.20"]
+
+[requires]
+os  = ">= 3.0"      # per upstream: AmigaOS 3.0+
+cpu = ">= 68020"
+
+[source.github]
+repo   = "jens-maus/amissl"
+asset  = "AmiSSL-{version}-OS3.lha"
+sha256 = { "5.27" = "722476cfbf21c0caf6ff4a77e32ee8baf67d3045db0e9ff2ccce6c782bed5847", "5.20" = "d051c09383da3e02f3293b136234460dd9f6a0d20f0439398a9db5efcc52960e" }
+
+[install]
+copy = [
+  { from = "AmiSSL/Libs/#?",  to = "SYS:Libs/" },
+  { from = "AmiSSL/Certs/#?", to = "SYS:Devs/AmiSSL/Certs/" },
+]
+assigns = [
+  { name = "AmiSSL", path = "SYS:Devs/AmiSSL" },
+]
+
+[verify]
+exists = ["SYS:Libs/amisslmaster.library"]
