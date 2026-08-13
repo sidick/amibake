@@ -17,6 +17,7 @@ class BaseInfo:
     name: str
     os_version: str | None = None
     kickstart_version: str | None = None
+    dos_type: str | None = None
 
 
 @dataclass(frozen=True)
@@ -36,6 +37,7 @@ class ResolvedPackage:
 @dataclass(frozen=True)
 class BuildPlan:
     base: BaseInfo
+    base_package: ResolvedPackage
     machine: dict
     packages: tuple[ResolvedPackage, ...]
     output: tuple[str, ...]
@@ -61,6 +63,20 @@ def format_lockfile(plan: BuildPlan) -> str:
         lines.append(f"os-version = {_toml_value(plan.base.os_version)}")
     if plan.base.kickstart_version is not None:
         lines.append(f"kickstart-version = {_toml_value(plan.base.kickstart_version)}")
+    if plan.base.dos_type is not None:
+        lines.append(f"dos-type = {_toml_value(plan.base.dos_type)}")
+    lines.append(f"version = {_toml_value(plan.base_package.version)}")
+    lines.append(f"recipe-sha256 = {_toml_value(plan.base_package.recipe_sha256)}")
+    if plan.base_package.options:
+        opts = ", ".join(
+            f"{k} = {_toml_value(v)}" for k, v in sorted(plan.base_package.options.items())
+        )
+        lines.append(f"options = {{ {opts} }}")
+    for kind in sorted(plan.base_package.sources):
+        src = plan.base_package.sources[kind]
+        lines.append(f"[base.sources.{kind}]")
+        for key in sorted(src):
+            lines.append(f"{key} = {_toml_value(src[key])}")
 
     lines.append("")
     lines.append("[machine]")

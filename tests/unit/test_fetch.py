@@ -32,6 +32,16 @@ def test_fetch_aminet_source(tmp_path):
     assert calls == ["https://aminet.net/util/libs/pkg-1.0.lha"]
 
 
+def test_fetch_url_source(tmp_path):
+    calls = []
+    sources = {"url": {"url": "https://example.org/dl/pkg.zip/download",
+                       "filename": "pkg.zip", "sha256": SHA}}
+    path = fetch_sources(sources, tmp_path, http_get=_fake_http_get(calls))
+    assert path.read_bytes() == DATA
+    assert calls == ["https://example.org/dl/pkg.zip/download"]
+    assert path.suffix == ".zip"  # from filename, not the /download-suffixed url
+
+
 def test_assets_source_wins_over_network_sources(tmp_path):
     assets_root = tmp_path / "assets"
     assets_root.mkdir()

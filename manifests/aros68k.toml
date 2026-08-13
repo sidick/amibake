@@ -1,0 +1,6 @@
+# The zero-encumbrance smoke target: builds from nothing, no
+# user-supplied assets required. Proposal's own stated role for AROS
+# 68k ("every recipe's smoke target") — this is the exemplar for it.
+base     = "aros68k"
+machine  = { cpu = "68020" }
+output   = ["hdf", "dir"]

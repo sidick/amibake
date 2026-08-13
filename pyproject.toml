@@ -12,8 +12,10 @@ requires-python = ">=3.11"
 # the lhasa/lha CLI — see extract.py's module docstring for why. amitools
 # is used as a library for HDF/RDB/.uaem emission (emit/hdf.py,
 # emit/dirtree.py) — see emit/hdf.py for a documented workaround for an
-# amitools 0.8.1 bug in HDFBlockDevice.
-dependencies = ["lhafile>=0.3.1", "amitools>=0.8.1"]
+# amitools 0.8.1 bug in HDFBlockDevice. pycdlib reads (and, in tests,
+# writes) ISO9660/Rock Ridge images — base-recipe install media (AROS
+# nightlies now, real OS install CDs later) ship this way.
+dependencies = ["lhafile>=0.3.1", "amitools>=0.8.1", "pycdlib>=1.14"]
 
 [project.scripts]
 amibake = "amibake.cli:main"

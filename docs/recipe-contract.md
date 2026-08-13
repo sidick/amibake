@@ -108,6 +108,16 @@ all, since it has nothing to download.
   e.g. `"v{version}"`); `sha256` maps every listed version to its archive
   checksum, same rule as `[source.aminet]`. The download URL is built as
   `https://github.com/{repo}/releases/download/{tag}/{asset}`.
+- **`[source.url]`** — freely-redistributable path, for anything not
+  Aminet or GitHub (SourceForge, a project's own site, …). `url` is the
+  full fetch URL with `{version}` substituted (required when the recipe
+  lists more than one version); `sha256` maps every listed version to
+  its archive checksum, same rule as the other sources. `filename` is
+  optional and used **only** to detect the archive format (`.lha`/
+  `.zip`/`.iso`) — needed when the fetch URL itself doesn't end in the
+  real extension (e.g. SourceForge's download links end in `/download`),
+  in which case set it to the real filename (`{version}` substituted the
+  same way). Defaults to `url` when omitted.
 - **`[source.assets]`** — proprietary path. `path` names a file the user
   supplies in their `assets/` directory (with `{version}`, same rule).
   Absent asset = clear error naming the missing file. Nothing proprietary
@@ -125,8 +135,11 @@ expresses exactly that.
 
 - `copy` — array of `{ from, to }` tables. `from` is a path inside the
   extracted archive and may use AmigaDOS patterns (`#?`, `?`, `(a|b)`);
-  `to` is an Amiga path on the target (`SYS:`, `ENVARC:`, …) ending in
-  `/` for into-directory copies. Optional keys:
+  `to` is an Amiga path on the target (`SYS:`, `ENVARC:`, …) — an
+  into-directory copy either ends in `/` (`SYS:Libs/`) or is a bare
+  volume with no sub-path (`SYS:`, its own root directory); anything
+  else names an exact single destination file, valid only when `from`
+  matches exactly one archive path. Optional keys:
   - `cpu-variant = true` — select the 000/020/040/060 binary variant
     matching the machine block from archives that ship them.
   - `when = "<option> = <value>"` — apply only when the manifest's option
@@ -184,8 +197,9 @@ resolver can validate other recipes' `[requires]` against it:
 ```toml
 [base]
 os-version        = "3.2.2"
-kickstart-version = "47.102"   # optional — only needed if some recipe's
-                                # [requires].kickstart differs from os
+kickstart-version = "47.102"        # optional — only needed if some recipe's
+                                     # [requires].kickstart differs from os
+dos-type          = "ffs-intl"      # optional — default "ffs-intl"
 ```
 
 Without `[base].os-version`, any recipe declaring `[requires].os` cannot
@@ -194,6 +208,15 @@ be validated against this base and the resolver reports that plainly
 skipping the check. `kickstart-version` is optional: recipes whose
 Kickstart requirement is implied by their OS requirement don't need it,
 and the resolver skips the Kickstart check when a base omits it.
+
+`dos-type` picks the hdf output's filesystem: one of `ofs`, `ffs`,
+`ofs-intl`, `ffs-intl` (the default), `ofs-intl-dircache`,
+`ffs-intl-dircache`, `ofs-intl-longname`, `ffs-intl-longname`.
+`international` mode is a 2.0+ FFS extension — a Kickstart 1.3 base
+needs plain `ofs` or `ffs`, never an `-intl` variant. `-longname`
+variants (DOS6/DOS7) allow filenames past the classic 30-character
+limit; pick one when the base's own content needs it (AROS's bundled
+fonts are the first real example found).
 
 ## `[hook]` — the fenced escape hatch
 

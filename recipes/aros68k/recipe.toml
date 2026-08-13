@@ -1,0 +1,71 @@
+# AROS 68k — the zero-encumbrance base: fetched from a nightly build,
+# builds from nothing with no user-supplied assets, every recipe's smoke
+# target. Real AmigaOS 3.x bases (M5) come from user-supplied install
+# media instead; this one is what CI can build without anything from the
+# user at all.
+#
+# Source: the m68k-amiga nightly's "boot-iso" artifact from AROS's
+# SourceForge project — a zip wrapping one ISO9660+RockRidge image (the
+# "AROS Live CD" filesystem tree), which extract.py's zip-wrapping-iso
+# expansion handles transparently. Pinned to the 2026-08-13 nightly;
+# every AROS nightly is a new, differently-checksummed build, so bump
+# `versions` and add a matching sha256 entry to move to a newer one —
+# never edit a version's checksum in place.
+#
+# AROS boots via "softkick": a small AmigaOS-compatible bootstrap loads
+# AROS's own relocatable ROM image into RAM. Under emulation the natural
+# equivalent is loading that ROM image directly as Kickstart — but wiring
+# that into emitted emulator configs is M6 (emulator config emission)
+# work, not yet built. This recipe only populates the SYS: partition
+# content (the "boot/" ROM files, the Emergency-Boot real-hardware
+# rescue floppy, and the AROS.boot marker are real-hardware/softkick
+# artifacts, deliberately excluded here). Demos/ and Developer/ are also
+# excluded — bulk not needed for a test-bed base.
+
+[package]
+name     = "aros68k"
+versions = ["20260813"]
+strategy = "extract"
+
+[base]
+# AROS targets the AmigaOS 3.1 API (per aros.org/wikipedia, "implements
+# 82% of AmigaOS 3.1's components" as of the date this recipe was
+# written) — not a complete or exact 3.1, so requires.os checks against
+# this base are optimistic, not a guarantee: a package requiring 3.0+/
+# 3.1 may still hit an AROS gap in the unimplemented ~18%. No better
+# single version number exists to advertise, since AROS doesn't publish
+# its own AmigaOS-equivalence number.
+os-version = "3.1"
+# AROS's bundled fonts ship names past the classic 30-char AmigaDOS
+# limit (e.g. "Dustismo Roman Bold Italic.font") — needs DOS7 long
+# filenames; confirmed by a real build failure against the default
+# ffs-intl (DOS3) before this was added.
+dos-type   = "ffs-intl-longname"
+
+[source.url]
+url      = "https://sourceforge.net/projects/aros/files/nightly2/{version}/Binaries/AROS-{version}-amiga-m68k-boot-iso.zip/download"
+filename = "AROS-{version}-amiga-m68k-boot-iso.zip"
+sha256   = { "20260813" = "b25ce025fe2d30ed2c9c4dd4bce4acf7d95cd0d46eaf19e27b7ba5e707582882" }
+
+[install]
+copy = [
+  { from = "C/#?",        to = "SYS:C/" },
+  { from = "Classes/#?",  to = "SYS:Classes/" },
+  { from = "Devs/#?",     to = "SYS:Devs/" },
+  { from = "Expansion/#?", to = "SYS:Expansion/" },
+  { from = "Fonts/#?",    to = "SYS:Fonts/" },
+  { from = "L/#?",        to = "SYS:L/" },
+  { from = "Libs/#?",     to = "SYS:Libs/" },
+  { from = "Locale/#?",   to = "SYS:Locale/" },
+  { from = "Prefs/#?",    to = "SYS:Prefs/" },
+  { from = "Rexxc/#?",    to = "SYS:Rexxc/" },
+  { from = "S/#?",        to = "SYS:S/" },
+  { from = "Storage/#?",  to = "SYS:Storage/" },
+  { from = "System/#?",   to = "SYS:System/" },
+  { from = "Tools/#?",    to = "SYS:Tools/" },
+  { from = "Utilities/#?", to = "SYS:Utilities/" },
+  # WBStartup/ ships empty in this nightly — nothing to copy.
+]
+
+[verify]
+exists = ["SYS:Libs/dos.library", "SYS:C/Assign", "SYS:S/Startup-Sequence"]

@@ -62,11 +62,27 @@ _SIZE_MARGIN = 1.5
 _MIN_SIZE = 4 * 1024 * 1024
 _MB = 1024 * 1024
 
+# recipe.py's DOS_TYPES schema names -> amitools DosType constants.
+# Kept here (not in recipe.py) because recipe.py has no amitools
+# dependency — it validates the string, this module interprets it.
+DOS_TYPE_MAP = {
+    "ofs": DosType.DOS_OFS,
+    "ffs": DosType.DOS_FFS,
+    "ofs-intl": DosType.DOS_OFS_INTL,
+    "ffs-intl": DosType.DOS_FFS_INTL,
+    "ofs-intl-dircache": DosType.DOS_OFS_INTL_DIRCACHE,
+    "ffs-intl-dircache": DosType.DOS_FFS_INTL_DIRCACHE,
+    "ofs-intl-longname": DosType.DOS_OFS_INTL_LONGNAME,
+    "ffs-intl-longname": DosType.DOS_FFS_INTL_LONGNAME,
+}
+DEFAULT_DOS_TYPE = "ffs-intl"
 
-def write_hdf(tree: Tree, path: Path, dos_type: int = DosType.DOS_FFS_INTL,
+
+def write_hdf(tree: Tree, path: Path, dos_type: str = DEFAULT_DOS_TYPE,
              volume_name: str = "SYS", drive_name: str = "DH0") -> None:
     tree = tree.materialize()
     size = _estimate_size(tree)
+    dos_type_const = DOS_TYPE_MAP[dos_type]
 
     factory = BlkDevFactory()
     blkdev = factory.create(str(path), force=True, options={"size": size, "type": "hdf"})
@@ -75,14 +91,14 @@ def write_hdf(tree: Tree, path: Path, dos_type: int = DosType.DOS_FFS_INTL,
         rdisk.create(blkdev.get_geometry())
         lo_hi = rdisk.get_free_cyl_ranges()[0]
         partition = rdisk.add_partition(
-            FSString(drive_name), lo_hi, dos_type=dos_type, boot_pri=0)
+            FSString(drive_name), lo_hi, dos_type=dos_type_const, boot_pri=0)
 
         part_blkdev = partition.create_blkdev()
         part_blkdev.open()
         try:
             vol = ADFSVolume(part_blkdev)
             root_meta = RootMetaInfo(create_ts=_EPOCH, disk_ts=_EPOCH, mod_ts=_EPOCH)
-            vol.create(FSString(volume_name), meta_info=root_meta, dos_type=dos_type)
+            vol.create(FSString(volume_name), meta_info=root_meta, dos_type=dos_type_const)
             _populate(vol, tree)
             vol.close()
         finally:

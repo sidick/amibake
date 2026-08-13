@@ -27,12 +27,37 @@ def test_copy_directory_pattern():
 
 def test_copy_pattern_matches_nested_paths():
     """`#?` matches across path separators, so a pattern anchored at
-    "AmiSSL/Libs/#?" also picks up an archive's CPU-variant subdirectory."""
+    "AmiSSL/Libs/#?" also picks up an archive's CPU-variant subdirectory
+    — and the destination mirrors that subdirectory rather than
+    flattening both matches onto the same basename."""
     install = {"copy": [{"from": "AmiSSL/Libs/#?", "to": "SYS:Libs/"}]}
     tree = apply_layer(Tree(), "amissl", install, _archive())
-    # both archive matches share the basename "amisslmaster.library";
-    # directory-copy semantics mean the later match (sorted order) wins.
     assert tree.exists("SYS:Libs/amisslmaster.library")
+    assert tree.exists("SYS:Libs/AmigaOS3/amisslmaster.library")
+
+
+def test_copy_preserves_subdirectory_structure():
+    archive = Tree()
+    archive.put("Devs/DOSDrivers/CD0", b"driver")
+    archive.put("Devs/Keymaps/usa", b"keymap")
+    install = {"copy": [{"from": "Devs/#?", "to": "SYS:Devs/"}]}
+    tree = apply_layer(Tree(), "aros", install, archive)
+    assert tree.get("SYS:Devs/DOSDrivers/CD0").data == b"driver"
+    assert tree.get("SYS:Devs/Keymaps/usa").data == b"keymap"
+
+
+def test_copy_bare_volume_is_directory_target():
+    """"SYS:" (no trailing slash, no sub-path) is its own root directory —
+    same into-directory semantics as an explicit trailing "/"."""
+    install = {"copy": [{"from": "AmiSSL/Certs/#?", "to": "SYS:"}]}
+    tree = apply_layer(Tree(), "amissl", install, _archive())
+    assert set(tree.paths()) == {"SYS:root.0", "SYS:root.1"}
+
+
+def test_copy_single_file_destination_with_multiple_matches_is_an_error():
+    install = {"copy": [{"from": "AmiSSL/Certs/#?", "to": "SYS:Certs.dat"}]}
+    with pytest.raises(LayerError, match="matched 2 files"):
+        apply_layer(Tree(), "amissl", install, _archive())
 
 
 def test_copy_preserves_metadata():
@@ -78,6 +103,30 @@ def test_apply_layer_does_not_mutate_base():
 def test_no_op_package_with_empty_install_and_archive():
     tree = apply_layer(Tree(), "bsdsocket-emulation", {}, Tree())
     assert tree.paths() == []
+
+
+class TestWhenConditions:
+    def _install(self):
+        return {"copy": [
+            {"from": "AmiSSL/Certs/root.0", "to": "SYS:A", "when": "card = uaegfx"},
+            {"from": "AmiSSL/Certs/root.1", "to": "SYS:B", "when": "card = zz9000"},
+        ]}
+
+    def test_only_matching_entry_applies(self):
+        tree = apply_layer(Tree(), "p96", self._install(), _archive(), {"card": "uaegfx"})
+        assert tree.exists("SYS:A")
+        assert not tree.exists("SYS:B")
+
+    def test_no_matching_entry_copies_nothing(self):
+        tree = apply_layer(Tree(), "p96", self._install(), _archive(), {"card": "picasso-iv"})
+        assert tree.paths() == []
+
+    def test_bool_option_condition(self):
+        install = {"copy": [
+            {"from": "AmiSSL/Certs/root.0", "to": "SYS:A", "when": "debug = true"},
+        ]}
+        assert apply_layer(Tree(), "p", install, _archive(), {"debug": True}).exists("SYS:A")
+        assert not apply_layer(Tree(), "p", install, _archive(), {"debug": False}).exists("SYS:A")
 
 
 class TestLayerCache:

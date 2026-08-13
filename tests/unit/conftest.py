@@ -55,6 +55,41 @@ def make_lha_archive(files: dict[str, bytes]) -> bytes:
     return out + b"\x00"  # end-of-archive sentinel
 
 
+def make_iso(files: dict[str, bytes]) -> bytes:
+    """Build a small ISO9660+Rock Ridge image in-process via pycdlib, for
+    hermetic extract.py tests. Keys are archive-relative paths (no
+    leading '/'); intermediate directories are created automatically."""
+    import io
+
+    import pycdlib
+
+    iso = pycdlib.PyCdlib()
+    iso.new(rock_ridge="1.09")
+    made_dirs: set[str] = set()
+
+    def ensure_dir(iso_dir: str, rr_dir: str) -> None:
+        if not rr_dir or rr_dir in made_dirs:
+            return
+        parent_rr = rr_dir.rsplit("/", 1)[0] if "/" in rr_dir else ""
+        parent_iso = iso_dir.rsplit("/", 1)[0] if "/" in iso_dir else ""
+        ensure_dir(parent_iso, parent_rr)
+        iso.add_directory(iso_dir, rr_name=rr_dir.rsplit("/", 1)[-1])
+        made_dirs.add(rr_dir)
+
+    for name, data in files.items():
+        rr_dir = name.rsplit("/", 1)[0] if "/" in name else ""
+        iso_dir = "/" + rr_dir.upper().replace("/", "/") if rr_dir else ""
+        ensure_dir(iso_dir, rr_dir)
+        basename = name.rsplit("/", 1)[-1]
+        iso_name = f"{iso_dir}/{basename.upper()};1" if iso_dir else f"/{basename.upper()};1"
+        iso.add_fp(io.BytesIO(data), len(data), iso_name, rr_name=basename)
+
+    buf = io.BytesIO()
+    iso.write_fp(buf)
+    iso.close()
+    return buf.getvalue()
+
+
 def fields_of(problems):
     return [p.field for p in problems]
 

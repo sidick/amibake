@@ -1,0 +1,30 @@
+# ClassAct — the BOOPSI GUI toolkit (window.class, layout.gadget,
+# listbrowser.gadget, and 30+ others) that OS 3.1 needs and OS 3.2
+# bundles natively. The archive ships a `.020`-suffixed sibling for
+# layout.gadget (the same real-world CPU-variant convention documented
+# in the cpu/fpu-variants decision log) but no Install script to
+# confirm the intended selection logic against, unlike AmiSSL's — the
+# generic (non-suffixed) file is used here for broad compatibility
+# rather than guessing at a pin.
+
+[package]
+name     = "classact"
+versions = ["3.3"]
+
+[requires]
+os = ">= 3.0"
+
+[source.aminet]
+url    = "dev/gui/classact33.lha"
+sha256 = { "3.3" = "8b046832ce59cee894c749822952ad08c7a1dd1e1b7569a1dd6909d648581924" }
+
+[install]
+copy = [
+  { from = "Classes/#?.class",         to = "SYS:Classes/" },
+  # ".gadget" (not ".gadget.020") excludes the CPU-variant sibling.
+  { from = "Classes/gadgets/#?.gadget", to = "SYS:Classes/Gadgets/" },
+  { from = "Classes/images/#?",         to = "SYS:Classes/Images/" },
+]
+
+[verify]
+exists = ["SYS:Classes/window.class", "SYS:Classes/Gadgets/layout.gadget"]

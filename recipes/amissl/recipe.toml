@@ -20,9 +20,18 @@ repo   = "jens-maus/amissl"
 asset  = "AmiSSL-{version}-OS3.lha"
 sha256 = { "5.27" = "722476cfbf21c0caf6ff4a77e32ee8baf67d3045db0e9ff2ccce6c782bed5847", "5.20" = "d051c09383da3e02f3293b136234460dd9f6a0d20f0439398a9db5efcc52960e" }
 
+# Install-AmiSSL (the real installer script) copies amisslmaster.library
+# flat into SYS:Libs/, and the CPU-specific amissl_v#?.library (its
+# version-numbered filename changes per release, hence the wildcard)
+# into SYS:Libs/AmiSSL/ — regardless of which of the two CPU-tier source
+# subdirectories it came from. The 68020-40 tier is hardcoded here since
+# cpu-variant selection isn't implemented yet (see PLAN.md's cpu/fpu-
+# variants decision log — deferred until a real recipe needed it, which
+# this now is); the 68060 tier is currently unreachable from any recipe.
 [install]
 copy = [
-  { from = "AmiSSL/Libs/#?",  to = "SYS:Libs/" },
+  { from = "AmiSSL/Libs/AmigaOS3/amisslmaster.library", to = "SYS:Libs/" },
+  { from = "AmiSSL/Libs/AmigaOS3/AmiSSL/68020-40/amissl_v#?.library", to = "SYS:Libs/AmiSSL/" },
   { from = "AmiSSL/Certs/#?", to = "SYS:Devs/AmiSSL/Certs/" },
 ]
 assigns = [

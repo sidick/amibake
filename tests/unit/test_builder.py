@@ -29,6 +29,19 @@ def _write_recipe(tmp_path, name="amissl"):
     return path
 
 
+def _no_op_base_package(tmp_path, name="fixture-base"):
+    """A base with no [install] at all — the fetch/tree assertions in
+    this file care about the manifest's own packages, not the base."""
+    recipe_path = tmp_path / f"{name}.recipe.toml"
+    recipe_path.write_text("")
+    return ResolvedPackage(
+        name=name, version="1.0", options={},
+        recipe_path=str(recipe_path),
+        recipe_sha256=hashlib.sha256(recipe_path.read_bytes()).hexdigest(),
+        sources={},
+    )
+
+
 def _plan_with_one_package(tmp_path):
     recipe_path = _write_recipe(tmp_path)
     pkg = ResolvedPackage(
@@ -40,6 +53,7 @@ def _plan_with_one_package(tmp_path):
     )
     return BuildPlan(
         base=BaseInfo(name="fixture-base", os_version="3.2.2"),
+        base_package=_no_op_base_package(tmp_path),
         machine={"cpu": "68030"},
         packages=(pkg,),
         output=("hdf",),
@@ -86,10 +100,11 @@ def test_shared_prefix_layer_reused_across_two_plans(tmp_path):
                             "tag": "1.0", "sha256": ARCHIVE_SHA}},
     )
     base = BaseInfo(name="fixture-base", os_version="3.2.2")
-    plan1 = BuildPlan(base=base, machine={}, packages=(shared_pkg,),
-                      output=("hdf",), emit=())
-    plan2 = BuildPlan(base=base, machine={}, packages=(shared_pkg,),
-                      output=("dir",), emit=())  # different output, same layer
+    base_pkg = _no_op_base_package(tmp_path)
+    plan1 = BuildPlan(base=base, base_package=base_pkg, machine={},
+                      packages=(shared_pkg,), output=("hdf",), emit=())
+    plan2 = BuildPlan(base=base, base_package=base_pkg, machine={},
+                      packages=(shared_pkg,), output=("dir",), emit=())  # same layer
 
     cache_root = tmp_path / "cache"
     calls = []
@@ -109,7 +124,8 @@ def test_no_op_package_skips_fetch(tmp_path):
         sources={},
     )
     plan = BuildPlan(
-        base=BaseInfo(name="fixture-base", os_version="3.2.2"), machine={},
+        base=BaseInfo(name="fixture-base", os_version="3.2.2"),
+        base_package=_no_op_base_package(tmp_path, "other-base"), machine={},
         packages=(pkg,), output=("hdf",), emit=(),
     )
     calls = []

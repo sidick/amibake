@@ -166,12 +166,22 @@ against. OS 3.2 (the proposal's Phase 1 exemplar) follows immediately in M5.
 - Real recipes: AmiSSL, ClassAct 3.3 (both freely fetchable) — exercised
   in CI on the AROS base where compatible; P96 with the `card` option
   (uaegfx path testable, asset paths gated).
-- First boot verification: build an AROS manifest, boot the hdf under
-  Copperline/Amiberry headless in CI, assert boot marker (a user-startup
-  fragment echoing to serial/console — mechanism to be settled against
-  Copperline's harness in this milestone).
+- First boot verification: build an AROS manifest, boot it under
+  Amiberry, confirm a genuine interactive boot (not just a static
+  screenshot) via live mouse-cursor response over MCP — see the
+  "Cross-cutting decisions" boot-verification entry for what this did
+  and didn't settle (real, manual, local verification; automated CI
+  wiring is M9).
 
-Exit: `manifests/aros68k.toml` builds and boots in CI.
+Status: done. `manifests/aros68k.toml` builds real content (96MB, 72
+libraries, all core system dirs) and boots interactively under Amiberry,
+verified locally. AmiSSL (already existed, fixed two real bugs surfaced
+along the way — see decision log), ClassAct 3.3, and P96 (proprietary,
+`[source.assets]`, unverified against a real archive — see its recipe's
+own header comment) are real recipes. Base recipe content is now wired
+into `build_tree` (previously a no-op). Not done: automated CI boot
+assertion (M9); P96 build-tested against real data (no licensed archive
+available to any session).
 
 ### M5 — OS 3.2 extract base (Phase 1's centrepiece)
 
@@ -246,10 +256,32 @@ proves hard.
 
 ## Cross-cutting decisions to settle early (flagged, not blocking M0)
 
-1. **Boot-verification channel** (M4): how CI observes "it booted" under
-   Copperline/Amiberry — serial output, screenshot+marker, or harness
-   API. Settle against what Copperline already offers; Amiberry's MCP
-   `wait_for_log_pattern`/screenshot tooling is a known-working fallback.
+1. **Settled in M4**: boot-verification channel — how CI observes "it
+   booted." Copperline wasn't available to test against in this
+   environment; validated the Amiberry MCP screenshot approach directly
+   instead, manually, against the real `manifests/aros68k.toml` build:
+   loaded the manifest's own pinned nightly ROM (softkicked via
+   `kickstart_rom_file`/`kickstart_ext_rom_file` pointing at the exact
+   `aros-rom.bin`/`aros-ext.bin` the recipe fetched) and the built `dir`
+   output mounted as a directory hard drive, and confirmed a genuine
+   interactive boot — not just a static "looks booted" screenshot — by
+   moving the mouse via IPC and observing the cursor render and track in
+   real time on a live "Workbench Screen". A static screenshot alone
+   would have been ambiguous (a hung Intuition can still have painted a
+   screen); the moving-cursor check is the actual reusable signal for a
+   future automated harness. Two real findings from getting there:
+   - AROS's own ROM (`aros-rom.bin` + `aros-ext.bin`, 512K each) loads
+     as a normal split Kickstart/extended-ROM pair in Amiberry — no
+     special "softkick" dance needed under emulation, since the
+     emulator can just place the ROM image directly rather than
+     bootstrapping it from a floppy the way real hardware must.
+   - A directory-mounted base boots correctly but visibly slower during
+     first-boot scanning than a native block device would — expected,
+     not a bug, and a reason to prefer `hdf` output over `dir` for any
+     future timed/automated boot-verification step.
+   Turning this into an automated, assertable CI check (a real "did it
+   boot" pass/fail, not a manually-eyeballed screenshot) is still open —
+   tracked for M9 (CI action) rather than solved here.
 2. **`.uaem` exact format** (M3): confirm against amisnap-tool's adopted
    convention and UAE source before implementing; write the byte-format
    note in `docs/`.
@@ -306,21 +338,87 @@ proves hard.
    a deliberate delay between two builds specifically so a regression
    here fails reliably rather than flakily.
 
-9. **Open, flagged in M3, not yet settled**: `emit/hdf.py`'s `dos_type`
-   (OFS vs FFS, plain vs international, DOS7 long filenames) is
-   currently a Python-level default parameter
-   (`DosType.DOS_FFS_INTL`), not exposed through the manifest or
-   recipe schema anywhere. The natural home is the `[base]` table
-   (alongside `os-version`/`kickstart-version`) since filesystem
-   choice is a base-OS property: an OS 3.1/3.2 base wants at least
-   FFS-international, OS 3.2 could opt into DOS7 long names, and a
-   WB 1.3 base needs plain FFS *without* international mode — 1.3
-   predates the international-mode FFS extension, so `DOS_FFS` (DOS1),
-   not `DOS_FFS_INTL`, is the correct target there (OFS may also be
-   preferable for authenticity, per the base recipe's own choice).
-   Deliberately not designed further until a real base recipe (M4/M5)
-   exists to validate the schema against, matching how `cpu-variants`
-   is being held.
+9. **Settled in M4**: `[base].dos-type` — flagged open in M3, settled
+   the moment a real base recipe needed it. AROS's bundled fonts ship
+   names past the classic 30-character AmigaDOS limit (e.g. `Dustismo
+   Roman Bold Italic.font`), which a real build against the old default
+   (`ffs-intl`, DOS3) rejected outright — confirming DOS7 long
+   filenames are a real, not hypothetical, requirement. `[base]` now
+   accepts `dos-type` (one of `ofs`/`ffs`/`-intl`/`-intl-dircache`/
+   `-intl-longname` variants, default `ffs-intl`), threaded through
+   `BaseInfo` and the lockfile; `emit/hdf.py` maps the schema string to
+   amitools' `DosType` constant (kept out of `recipe.py`, which has no
+   amitools dependency).
+10. **Found in M4, three real gaps in `layer.py`'s `[install].copy`,
+    each caught by building a real recipe against real archives, not
+    by reasoning about the schema in the abstract:**
+    - Directory-style copies (`to` ending in `/`) flattened every match
+      to its basename, discarding subdirectory structure. Fine for
+      AmiSSL's flat `Certs/`, silently wrong for anything needing to
+      mirror nested directories (AROS's `Devs/DOSDrivers/`, `Devs/
+      Keymaps/`, …) — and it was actively *hiding* AmiSSL's own real
+      CPU-variant layout (`AmiSSL/Libs/AmigaOS3/amisslmaster.library`
+      vs `AmiSSL/Libs/AmigaOS3/AmiSSL/68020-40/amissl_v#?.library`
+      silently colliding onto one flattened path). Fixed: a
+      directory-style copy now preserves the path *relative to the
+      pattern's literal prefix* (the text before its first wildcard,
+      trimmed to the last `/`), so `Devs/#?` mirrors real subdirectory
+      structure while a pattern that's already anchored at the exact
+      file needing selection (as AmiSSL's fixed recipe now does) still
+      flattens correctly. Caught by AmiSSL's `[verify]` failing for
+      real once the flattening stopped masking it — the shipped recipe
+      had been silently relying on an accidental basename collision.
+    - A bare volume (`to = "SYS:"`, no trailing `/`) wasn't recognized
+      as a directory-style destination, so a multi-match copy into a
+      volume root collapsed onto one literal path. Fixed: bare volumes
+      (ending in `:`) are now treated the same as an explicit `/`. Also
+      added: a single-file destination (`to` naming an exact file) with
+      more than one `from` match is now a hard error instead of a
+      silent last-write-wins overwrite.
+    - `[install].copy`'s `when` condition was validated for syntax by
+      `recipe.py` but never actually *evaluated* — `apply_layer` had no
+      code path reading it at all, so every conditional copy entry
+      would have run unconditionally. Found while writing the real p96
+      recipe, which genuinely needs it (one `.card` file per `card`
+      option value). Fixed: `apply_layer` now takes the package's
+      resolved `options` and skips entries whose `when` doesn't match.
+11. **Found in M4**: some `.lha` archives (ClassAct 3.3's, a real one)
+    store paths with `\` separators instead of `/` — a DOS-era
+    archiving-tool artifact, not meaningful Amiga path syntax.
+    `extract.py` now normalizes `\` to `/` on the way into the Tree, so
+    `[install].copy` patterns (which assume `/`) match either kind.
+12. **Found in M4**: P96 is commercial and copyrighted (renamed from
+    Picasso96 after a trademark dispute over the Picasso family name);
+    the current maintainer doesn't permit public redistribution. The
+    proposal's own licensing section already anticipated this
+    ("iComp P96" listed under proprietary packages) — `recipes/p96`
+    uses `[source.assets]`, matching that design, and its `[install]`
+    section is built from a real (older, freely-distributed pre-rename)
+    Picasso96 archive's confirmed structure rather than the current
+    licensed one, which no session here has access to. Flagged in the
+    recipe's own header comment as the one recipe nobody could
+    test-build end-to-end against real data.
+13. **Added in M4**: `[source.url]` — a generic direct-URL source
+    (`url` template + optional `filename` used only for archive-format
+    detection, since some hosts' download links don't end in the real
+    extension — SourceForge's end in `/download`). Needed because
+    AROS's nightlies are hosted on SourceForge, not Aminet or GitHub.
+14. **Added in M4**: ISO9660 (with Rock Ridge) extraction via
+    `pycdlib` (pure Python, no external binary — same reasoning as
+    `lhafile`), plus a fixed rule in `extract.py`: a `.zip`/`.lha`
+    containing exactly one nested `.iso` member has it transparently
+    expanded and merged in, matching how AROS's nightly (and likely
+    future real OS install media) is packaged. `tests/unit/conftest.py`
+    gained `make_iso()`, a hermetic in-process ISO builder mirroring
+    `make_lha_archive()`.
+15. **Settled in M4**: base recipes now actually contribute to the
+    built tree. `resolver.py` resolves the base as its own
+    `ResolvedPackage` (`plan.base_package`, separate from
+    `plan.packages`, which stays exactly what the manifest asked for —
+    no existing test needed to change), and `builder.py` applies it as
+    the first layer with the same fetch/cache/layer machinery as any
+    package. Previously `build_tree` silently started from an empty
+    tree and ignored the base entirely.
 
 ## Prior art discovered during implementation
 

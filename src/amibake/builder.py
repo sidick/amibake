@@ -1,9 +1,8 @@
 """Ties fetch, extract, and layer together: BuildPlan -> Tree.
 
-Base recipes don't yet contribute anything to the tree — populating a
-base from install media is M4/M5's extract-strategy work. For now the
-builder starts from an empty tree and applies each resolved package's
-layer in dependency order, exactly as the resolver ordered them.
+The base is applied first as a layer exactly like any package (same
+[install]/fetch/cache machinery) — plan.base_package is the resolver's
+resolved record for it — then each of plan.packages in dependency order.
 """
 
 from __future__ import annotations
@@ -22,32 +21,35 @@ def build_tree(plan: BuildPlan, cache_root: Path, assets_root: Path | None = Non
     tree = Tree()
     parent_key: str | None = None
 
-    for pkg in plan.packages:
-        key = layer.compute_layer_key(
-            parent_key, pkg.recipe_sha256, pkg.version, pkg.options,
-            _archive_sha256(pkg),
-        )
-        if use_cache:
-            cached = layer.load_layer_cache(key, cache_root)
-            if cached is not None:
-                tree = cached
-                parent_key = key
-                continue
-
-        recipe_doc = load_toml(Path(pkg.recipe_path))
-        install = recipe_doc.get("install") or {}
-        if install.get("copy"):
-            archive_path = fetch.fetch_sources(pkg.sources, cache_root, assets_root, http_get)
-            archive_tree = extract.extract_archive(archive_path)
-        else:
-            archive_tree = Tree()
-        tree = layer.apply_layer(tree, pkg.name, install, archive_tree)
-
-        if use_cache:
-            layer.save_layer_cache(tree, key, cache_root)
-        parent_key = key
+    for pkg in (plan.base_package, *plan.packages):
+        tree, parent_key = _apply_one(
+            tree, parent_key, pkg, cache_root, assets_root, http_get, use_cache)
 
     return tree
+
+
+def _apply_one(tree: Tree, parent_key: str | None, pkg: ResolvedPackage,
+               cache_root: Path, assets_root: Path | None, http_get: fetch.HttpGet,
+               use_cache: bool) -> tuple[Tree, str]:
+    key = layer.compute_layer_key(
+        parent_key, pkg.recipe_sha256, pkg.version, pkg.options, _archive_sha256(pkg))
+    if use_cache:
+        cached = layer.load_layer_cache(key, cache_root)
+        if cached is not None:
+            return cached, key
+
+    recipe_doc = load_toml(Path(pkg.recipe_path))
+    install = recipe_doc.get("install") or {}
+    if install.get("copy"):
+        archive_path = fetch.fetch_sources(pkg.sources, cache_root, assets_root, http_get)
+        archive_tree = extract.extract_archive(archive_path)
+    else:
+        archive_tree = Tree()
+    tree = layer.apply_layer(tree, pkg.name, install, archive_tree, pkg.options)
+
+    if use_cache:
+        layer.save_layer_cache(tree, key, cache_root)
+    return tree, key
 
 
 def _archive_sha256(pkg: ResolvedPackage) -> str:

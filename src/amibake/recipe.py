@@ -11,10 +11,19 @@ from .manifest import EMULATORS
 from .versionspec import is_name, is_version, parse_constraint, parse_package_spec
 
 TOP_KEYS = {"package", "requires", "source", "install", "verify", "options", "hook", "base"}
-BASE_KEYS = {"os-version", "kickstart-version"}
+BASE_KEYS = {"os-version", "kickstart-version", "dos-type"}
+# Names, not amitools' own DosType constants — recipe.py has no amitools
+# dependency (schema validation only); emit/hdf.py maps these strings to
+# amitools.fs.DosType values at build time.
+DOS_TYPES = {
+    "ofs", "ffs",
+    "ofs-intl", "ffs-intl",
+    "ofs-intl-dircache", "ffs-intl-dircache",
+    "ofs-intl-longname", "ffs-intl-longname",
+}
 PACKAGE_KEYS = {"name", "versions", "depends", "conflicts", "provides", "strategy"}
 REQUIRES_KEYS = {"os", "kickstart", "cpu", "fpu", "mmu", "emulator", "per-version"}
-SOURCE_KINDS = {"aminet", "github", "assets"}
+SOURCE_KINDS = {"aminet", "github", "url", "assets"}
 INSTALL_KEYS = {"copy", "envarc", "user-startup", "assigns"}
 COPY_KEYS = {"from", "to", "cpu-variant", "when"}
 OPTION_TYPES = {"enum", "bool", "string"}
@@ -157,9 +166,9 @@ def _check_sources(c: Checker, doc: dict, versions: list[str],
     if source is None or not source:
         if requires_source:
             c.error("[source]", "recipe declares no source",
-                    "add [source.aminet]/[source.github] (freely redistributable) "
-                    "or [source.assets] (user-supplied) — required because "
-                    "[install].copy names files to fetch")
+                    "add [source.aminet]/[source.github]/[source.url] (freely "
+                    "redistributable) or [source.assets] (user-supplied) — "
+                    "required because [install].copy names files to fetch")
         # else: a no-op recipe (no [install].copy) legitimately has nothing to
         # fetch — the bsdsocket-emulation-style provider that contributes only
         # a machine-config directive, per the recipe contract.
@@ -202,6 +211,28 @@ def _check_sources(c: Checker, doc: dict, versions: list[str],
     elif github is not None:
         c.error("[source.github]", "must be a table", "write it as [source.github]")
 
+    url_source = source.get("url")
+    if isinstance(url_source, dict):
+        c.unknown_keys(url_source, {"url", "filename", "sha256"}, "[source.url]")
+        url = c.typed(url_source, "url", str, "[source.url]", required=True)
+        if url is not None and len(versions) > 1 and "{version}" not in url:
+            c.error("[source.url].url",
+                    "recipe lists multiple versions but the url has no {version} "
+                    "placeholder",
+                    "add {version} where the version appears in the URL")
+        # `filename` is for suffix detection only (fetch verbatim uses
+        # `url`) — some hosts (SourceForge's /download redirect trigger)
+        # don't end their URL in the real archive's extension.
+        filename = c.typed(url_source, "filename", str, "[source.url]")
+        if filename is not None and len(versions) > 1 and "{version}" not in filename:
+            c.error("[source.url].filename",
+                    "recipe lists multiple versions but filename has no "
+                    "{version} placeholder",
+                    "add {version} where the version appears in the filename")
+        _check_sha256_map(c, url_source, "[source.url]", versions)
+    elif url_source is not None:
+        c.error("[source.url]", "must be a table", "write it as [source.url]")
+
     assets = source.get("assets")
     if isinstance(assets, dict):
         c.unknown_keys(assets, {"path"}, "[source.assets]")
@@ -225,6 +256,10 @@ def _check_base(c: Checker, base: dict, package: dict | None) -> None:
     if kickstart is not None and not is_version(kickstart):
         c.error("[base].kickstart-version", f"bad version {kickstart!r}",
                 'use a dotted-decimal version string, e.g. "47.102"')
+    dos_type = c.typed(base, "dos-type", str, "[base]")
+    if dos_type is not None and dos_type not in DOS_TYPES:
+        c.error("[base].dos-type", f"unknown dos-type {dos_type!r}",
+                f"use one of: {', '.join(sorted(DOS_TYPES))}")
     if package is not None and not package.get("strategy"):
         c.warning("[base]", "recipe declares [base] but [package].strategy is not set",
                   'base recipes should set strategy = "extract" or "installer"')

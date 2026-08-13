@@ -107,6 +107,29 @@ def test_write_hdf_is_deterministic_across_a_wall_clock_boundary(tmp_path):
     assert out_a.read_bytes() == out_b.read_bytes()
 
 
+def test_write_hdf_default_dos_type_rejects_long_filenames(tmp_path):
+    t = Tree()
+    t.put("SYS:Fonts/Dustismo Roman Bold Italic.font", b"fontdata")
+    out = tmp_path / "out.hdf"
+    import amitools.fs.FSError
+
+    try:
+        write_hdf(t, out)
+    except amitools.fs.FSError.FSError:
+        pass
+    else:
+        raise AssertionError("expected the default ffs-intl (no longname) to reject this name")
+
+
+def test_write_hdf_longname_dos_type_allows_long_filenames(tmp_path):
+    t = Tree()
+    t.put("SYS:Fonts/Dustismo Roman Bold Italic.font", b"fontdata")
+    out = tmp_path / "out.hdf"
+    write_hdf(t, out, dos_type="ffs-intl-longname")
+    contents = _read_hdf(out)
+    assert contents["Fonts/Dustismo Roman Bold Italic.font"] == b"fontdata"
+
+
 def test_to_physical_path_matches_hdf_layout():
     assert to_physical_path("SYS:Libs/foo.library") == "Libs/foo.library"
     assert to_physical_path("ENVARC:AmiSSL/opts") == "Prefs/Env-Archive/AmiSSL/opts"

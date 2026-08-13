@@ -11,7 +11,7 @@ from ._validate import load_toml
 from .builder import build_tree
 from .emit.archive import write_tgz, write_zip
 from .emit.dirtree import write_dirtree
-from .emit.hdf import write_hdf
+from .emit.hdf import DEFAULT_DOS_TYPE, write_hdf
 from .errors import AmiBakeError, Problem
 from .manifest import validate_manifest
 from .plan import BuildPlan, format_lockfile, write_lockfile
@@ -169,7 +169,7 @@ def _cmd_build(manifest_path: Path, recipes_root: Path, out_dir: Path | None,
     tree = build_tree(plan, cache_root, assets_root, use_cache=use_cache)
 
     verify_problems: list[str] = []
-    for pkg in plan.packages:
+    for pkg in (plan.base_package, *plan.packages):
         recipe: LoadedRecipe = library[pkg.name]
         verify_problems.extend(verify_exists(tree, pkg.name, recipe.doc))
     if verify_problems:
@@ -185,7 +185,10 @@ def _cmd_build(manifest_path: Path, recipes_root: Path, out_dir: Path | None,
     for fmt in plan.output:
         suffix, emit = _EMITTERS[fmt]
         target = out_dir / f"{stem}{suffix}"
-        emit(tree, target)
+        if fmt == "hdf":
+            emit(tree, target, dos_type=plan.base.dos_type or DEFAULT_DOS_TYPE)
+        else:
+            emit(tree, target)
         written.append(str(target))
 
     print(f"built {manifest_path}: base={plan.base.name}, "

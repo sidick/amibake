@@ -27,6 +27,24 @@ class LayerError(Exception):
     pass
 
 
+def _literal_prefix(pattern: str) -> str:
+    """The directory a pattern is rooted at — the literal text before its
+    first wildcard, trimmed back to the last '/' boundary (so a pattern
+    with no wildcard at all, e.g. an exact filename, yields its parent
+    directory, not the whole matched string). Used to compute each
+    match's path *relative to the pattern*, so a directory-style copy
+    preserves subdirectory structure instead of flattening every match
+    to its basename."""
+    head = pattern
+    for i, ch in enumerate(pattern):
+        if ch in "#?(":
+            head = pattern[:i]
+            break
+    if "/" not in head:
+        return ""
+    return head.rsplit("/", 1)[0] + "/"
+
+
 def _amiga_pattern_to_regex(pattern: str) -> re.Pattern:
     """Translate the AmigaDOS pattern subset the recipe contract documents
     (`#?`, `?`, `(a|b|c)` alternation) to a regex. `#?` matches any
@@ -54,14 +72,31 @@ def _amiga_pattern_to_regex(pattern: str) -> re.Pattern:
     return re.compile("^" + "".join(out) + "$", re.IGNORECASE)
 
 
-def apply_layer(base: Tree, package_name: str, install: dict, archive: Tree) -> Tree:
+def _when_matches(when: str, options: dict) -> bool:
+    """Evaluate a copy entry's `when = "<option> = <value>"` condition
+    against this package's resolved options."""
+    key, _, value = when.partition("=")
+    key = key.strip()
+    value = value.strip()
+    actual = options.get(key)
+    if isinstance(actual, bool):
+        return value.lower() == ("true" if actual else "false")
+    return str(actual) == value
+
+
+def apply_layer(base: Tree, package_name: str, install: dict, archive: Tree,
+                options: dict | None = None) -> Tree:
     """Apply one recipe's [install] section to `base`, returning a new
     Tree (base is not mutated). `archive` is the extracted source archive
     the [install].copy `from` patterns match against; pass an empty Tree
     for packages with no copy actions (pure capability providers)."""
     tree = base.clone()
+    options = options or {}
 
     for entry in install.get("copy") or []:
+        when = entry.get("when")
+        if when is not None and not _when_matches(when, options):
+            continue
         pattern = _amiga_pattern_to_regex(entry["from"])
         matches = [p for p in archive.paths() if pattern.match(p)]
         if not matches:
@@ -69,9 +104,24 @@ def apply_layer(base: Tree, package_name: str, install: dict, archive: Tree) -> 
                 f"{package_name}: [install].copy pattern {entry['from']!r} "
                 f"matched nothing in the archive")
         to = entry["to"]
+        # A bare volume ("SYS:") is its own root directory, same as an
+        # explicit trailing "/" — both are directory-style destinations.
+        into_dir = to.endswith("/") or to.endswith(":")
+        if not into_dir and len(matches) > 1:
+            raise LayerError(
+                f"{package_name}: [install].copy pattern {entry['from']!r} "
+                f"matched {len(matches)} files but {to!r} names a single "
+                f"destination file — end 'to' with '/' for an into-directory "
+                f"copy, or narrow 'from' to match exactly one file")
+        prefix = _literal_prefix(entry["from"])
         for src_path in matches:
-            basename = src_path.rsplit("/", 1)[-1]
-            dest = to if not to.endswith("/") else to + basename
+            # Path relative to the pattern's literal prefix, so a
+            # directory-style copy mirrors subdirectory structure
+            # (Devs/#? -> SYS:Devs/ keeps Devs/Keymaps/foo as
+            # SYS:Devs/Keymaps/foo) rather than flattening every match
+            # to its basename.
+            relative = src_path[len(prefix):] if src_path.startswith(prefix) else src_path
+            dest = to + relative if into_dir else to
             src = archive.get(src_path)
             tree.put(dest, src.data, src.meta)
 

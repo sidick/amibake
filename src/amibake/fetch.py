@@ -55,6 +55,7 @@ def fetch_sources(sources: dict, cache_root: Path, assets_root: Path | None = No
     for kind, build_url, filename_field in (
         ("github", _github_url, "asset"),
         ("aminet", _aminet_url, "url"),
+        ("url", _url_url, "filename"),
     ):
         src = sources.get(kind)
         if not src:
@@ -79,7 +80,7 @@ def fetch_sources(sources: dict, cache_root: Path, assets_root: Path | None = No
                 f"sha256 if this is expected")
         return _store(cache_root, actual, data, suffix)
 
-    raise FetchError("no usable source declared (none of assets/github/aminet)")
+    raise FetchError("no usable source declared (none of assets/github/aminet/url)")
 
 
 def _github_url(src: dict) -> str:
@@ -88,6 +89,10 @@ def _github_url(src: dict) -> str:
 
 def _aminet_url(src: dict) -> str:
     return AMINET_MIRROR.rstrip("/") + "/" + src["url"].lstrip("/")
+
+
+def _url_url(src: dict) -> str:
+    return src["url"]
 
 
 def _cache_path(cache_root: Path, sha256: str, suffix: str) -> Path:

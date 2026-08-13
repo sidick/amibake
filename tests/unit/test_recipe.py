@@ -169,6 +169,39 @@ def test_multi_version_asset_needs_placeholder(write):
     assert any("{version}" in p.problem for p in problems)
 
 
+def test_valid_url_source(write):
+    text = (
+        '[package]\nname = "pkg"\nversions = ["1.0", "2.0"]\n\n'
+        '[source.url]\n'
+        'url      = "https://example.org/dl/pkg-{version}.zip/download"\n'
+        'filename = "pkg-{version}.zip"\n'
+        f'sha256   = {{ "1.0" = "{SHA}", "2.0" = "{SHA}" }}\n'
+    )
+    problems = validate_recipe(write(text, name="recipe.toml", subdir="pkg"))
+    assert problems == []
+
+
+def test_url_source_multi_version_needs_placeholder(write):
+    text = (
+        '[package]\nname = "pkg"\nversions = ["1.0", "2.0"]\n\n'
+        '[source.url]\nurl = "https://example.org/pkg.zip"\n'
+        f'sha256 = {{ "1.0" = "{SHA}", "2.0" = "{SHA}" }}\n'
+    )
+    problems = errors_of(validate_recipe(write(text, name="recipe.toml", subdir="pkg")))
+    assert any("{version}" in p.problem for p in problems)
+
+
+def test_url_source_filename_multi_version_needs_placeholder(write):
+    text = (
+        '[package]\nname = "pkg"\nversions = ["1.0", "2.0"]\n\n'
+        '[source.url]\nurl = "https://example.org/pkg-{version}.zip/download"\n'
+        'filename = "pkg.zip"\n'
+        f'sha256 = {{ "1.0" = "{SHA}", "2.0" = "{SHA}" }}\n'
+    )
+    problems = errors_of(validate_recipe(write(text, name="recipe.toml", subdir="pkg")))
+    assert any("filename" in p.field for p in problems)
+
+
 def test_multi_version_url_needs_placeholder(write):
     text = (
         '[package]\nname = "pkg"\nversions = ["1.0", "2.0"]\n\n'
@@ -177,3 +210,20 @@ def test_multi_version_url_needs_placeholder(write):
     )
     problems = errors_of(validate_recipe(write(text, name="recipe.toml", subdir="pkg")))
     assert any("{version}" in p.problem for p in problems)
+
+
+def test_valid_base_dos_type(write):
+    text = (
+        '[package]\nname = "pkg"\nversions = ["1.0"]\nstrategy = "extract"\n\n'
+        '[base]\nos-version = "3.1"\ndos-type = "ffs-intl-longname"\n'
+    )
+    assert validate_recipe(write(text, name="recipe.toml", subdir="pkg")) == []
+
+
+def test_invalid_base_dos_type(write):
+    text = (
+        '[package]\nname = "pkg"\nversions = ["1.0"]\nstrategy = "extract"\n\n'
+        '[base]\nos-version = "3.1"\ndos-type = "zfs"\n'
+    )
+    problems = errors_of(validate_recipe(write(text, name="recipe.toml", subdir="pkg")))
+    assert any("dos-type" in p.field for p in problems)

@@ -1,0 +1,55 @@
+# P96 (formerly Picasso96) — the RTG graphics stack. Commercial and
+# copyrighted since the Picasso96 -> P96 rename (the Picasso family
+# objected to the old name); current maintainer no longer permits
+# public redistribution, so — like the proposal's own "iComp P96"
+# example under proprietary packages — this recipe sources from
+# assets/, never a public URL. Nothing proprietary is ever fetched or
+# cached publicly.
+#
+# [install] below reflects the long-standing P96 layout (Picasso96API.
+# library + rtg.library direct in SYS:Libs/, per-card .card/.chip
+# drivers in SYS:Libs/Picasso96/) confirmed against a real (older,
+# freely-distributed pre-rename) Picasso96 archive — the architecture
+# predates and is independent of the licensing change, but exact
+# filenames for the current 3.6.3 release should be checked against
+# the real licensed archive once available; this is the one recipe in
+# the library nobody here could test-build end-to-end.
+
+[package]
+name     = "p96"
+versions = ["3.6.3"]
+
+[requires]
+os  = ">= 3.0"       # Kickstart/Workbench 3.0 (V39)+
+cpu = ">= 68020"
+
+[source.assets]
+path = "P96-{version}.lha"
+
+[install]
+copy = [
+  { from = "Picasso96Install/Libs/Picasso96API.library", to = "SYS:Libs/" },
+  { from = "Picasso96Install/Libs/Picasso96/rtg.library", to = "SYS:Libs/Picasso96/" },
+  { from = "Picasso96Install/Libs/Picasso96/emulation.library", to = "SYS:Libs/Picasso96/" },
+  { from = "Picasso96Install/Libs/Picasso96/fastlayers.library", to = "SYS:Libs/Picasso96/" },
+  { from = "Picasso96Install/Libs/Picasso96/uaegfx.card", to = "SYS:Libs/Picasso96/", when = "card = uaegfx" },
+  { from = "Picasso96Install/Libs/Picasso96/PicassoIV.card", to = "SYS:Libs/Picasso96/", when = "card = picasso-iv" },
+  { from = "Picasso96Install/Libs/Picasso96/CVision3D.card", to = "SYS:Libs/Picasso96/", when = "card = cybervision64-3d" },
+  { from = "Picasso96Install/Libs/Picasso96/zz9000.card", to = "SYS:Libs/Picasso96/", when = "card = zz9000" },
+]
+assigns = [
+  { name = "Picasso96", path = "SYS:Libs/Picasso96" },
+]
+
+[options.card]
+type     = "enum"
+values   = ["uaegfx", "picasso-iv", "cybervision64-3d", "zz9000"]
+required = true
+
+# uaegfx is UAE-family emulator-internal RTG, not a real board driver —
+# needs an emulator that actually implements it.
+[options.card.requires.uaegfx]
+emulator = ["amiberry", "winuae"]
+
+[verify]
+exists = ["SYS:Libs/Picasso96API.library"]

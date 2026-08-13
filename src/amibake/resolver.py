@@ -68,9 +68,33 @@ def resolve(manifest_path: Path, manifest: dict, library: dict[str, LoadedRecipe
             "check spelling, or the base recipe has not been added yet"))
         return ResolveResult(None, problems)
     base_info = _base_info(base)
+    base_versions = (base.doc.get("package") or {}).get("versions") or []
+    base_version = max_satisfying(base_versions, [])
+    if base_version is None:
+        problems.append(Problem(
+            str(base.path), "base", f"base recipe {base.name!r} declares no versions",
+            "add at least one version to [package].versions"))
+        return ResolveResult(None, problems)
 
     machine = manifest.get("machine") or {}
     emit = manifest.get("emit") or []
+
+    # The base is its own layer — applied first, same [install]/[requires]/
+    # [options] machinery as any package, but resolved separately from
+    # plan.packages (which stays exactly what the manifest asked for).
+    base_requires = _effective_requires(base.doc, base_version)
+    _validate_requires(problems, manifest_file, "base", base_requires,
+                       base_info, machine, emit)
+    base_options = _validate_options(problems, manifest_file, "base", base,
+                                     {}, base_info, machine, emit)
+    base_package = ResolvedPackage(
+        name=base.name,
+        version=base_version,
+        options=base_options,
+        recipe_path=str(base.path),
+        recipe_sha256=hashlib.sha256(base.path.read_bytes()).hexdigest(),
+        sources=_extract_sources(base.doc, base_version),
+    )
 
     resolved: dict[str, ResolvedPackage] = {}
     order: list[str] = []
@@ -155,6 +179,7 @@ def resolve(manifest_path: Path, manifest: dict, library: dict[str, LoadedRecipe
 
     plan = BuildPlan(
         base=base_info,
+        base_package=base_package,
         machine=machine,
         packages=tuple(resolved[n] for n in order),
         output=tuple(manifest.get("output") or ["hdf"]),
@@ -222,6 +247,7 @@ def _base_info(base: LoadedRecipe) -> BaseInfo:
         name=base.name,
         os_version=table.get("os-version"),
         kickstart_version=table.get("kickstart-version"),
+        dos_type=table.get("dos-type"),
     )
 
 
@@ -405,6 +431,15 @@ def _extract_sources(doc: dict, version: str) -> dict:
             "asset": github["asset"].replace("{version}", version),
             "tag": tag_template.replace("{version}", version),
             "sha256": (github.get("sha256") or {}).get(version, ""),
+        }
+
+    url_source = source.get("url")
+    if url_source:
+        filename = url_source.get("filename", url_source["url"])
+        out["url"] = {
+            "url": url_source["url"].replace("{version}", version),
+            "filename": filename.replace("{version}", version),
+            "sha256": (url_source.get("sha256") or {}).get(version, ""),
         }
 
     assets = source.get("assets")
