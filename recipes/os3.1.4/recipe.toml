@@ -1,0 +1,126 @@
+# AmigaOS 3.1.4 (Hyperion's current retail continuation of Commodore's
+# original 3.1, not that original release itself — see naming note
+# below) — the third extract base after aros68k and wb1.3, and the
+# first proving the format generalizes to a genuinely Installer-driven
+# OS rather than a plain-copy floppy set.
+#
+# Real, legitimately-owned media: assets/hyperion/
+# AmigaOS-3.1.4-A500_A600_A2000.zip — 7 raw .adf disk images plus a
+# ROMs/ directory with the real Kickstart 3.1 ROM (kick.a500a600a2000.
+# 46.143.bin, KS revision 46.143 — copied to
+# assets/roms/kickstart-46.143.rom for boot verification). Confirmed
+# 2026-08-13 by extracting every disk with this project's own
+# extract.py (which needed a real fix first — see below) and reading
+# the archive's real `Install/Install` Installer-language script
+# (152KB) directly, not guessed.
+#
+# Naming: this is "os3.1.4", not "os3.1" — the real, distinctly
+# versioned Hyperion 2018+ continuation release, genuinely different
+# content from Commodore's original 1994 3.1. If a recipe for the
+# original ever exists, "os3.1" is its name to have, not this one's.
+#
+# extract.py gap found and fixed to build this recipe at all: the real
+# zip is 7 nested .adf disks, several sharing root-level filenames
+# (every disk has its own Disk.info, etc.) — extract.py's existing
+# nested-archive expansion (built for AROS's single-nested-ISO nightly)
+# merged flat, which would have silently collided and dropped files
+# here. Nested .adf members now expand under their own
+# <member-filename>/ prefix instead (Workbench3_1_4.adf/C/Dir, etc.)
+# — see extract.py's own comments.
+#
+# Real default-install-path translation (per docs/limits.md's "Real
+# Installer-language scripting" — the script itself isn't executed):
+# read `Install/Install` directly. On the real auto-detected multi-disk
+# source path (askForWorkbench/askForExtras/.../askForLocale all stay
+# FALSE — no interactive prompts), it does, in order:
+#   (copyfiles (source workbenchPath) (all))   -- the whole Workbench disk
+#   (copyfiles (source extrasPath) (all))      -- the whole Extras disk
+#   (copyfiles (source fontPath))              -- the whole Fonts disk
+#   (copyfiles (source storagePath) ...)       -- Storage's DOSDrivers/
+#                                                  Printers/Monitors/Keymaps
+#   plus L/FastFileSystem and Libs/workbench.library + Libs/icon.library
+#   copied directly from the Install disk itself (not Storage/Workbench)
+# — reproduced below as literal [install].copy entries, later entries
+# naturally overwriting earlier same-path files exactly like the real
+# script's own sequential copy order.
+#
+# Extras is real, default-installed content here — unlike wb1.3's
+# excluded Extras1.3 disk or aros68k's excluded Demos/Developer, this
+# one is genuinely part of the default path: every Prefs editor
+# (IControl, ScreenMode, Time, WBPattern, ...), Tools/Commodities
+# (Exchange, ClickToFront, Blanker, ...), CrossDOS. Confirmed by
+# listing the real disk, not assumed.
+#
+# Deliberately excluded:
+#   - ModulesA500_3.1.4.adf (and the A600/A2000 siblings) — real
+#     LoadModule-based ROM-patch modules, per-board (LIBS/A500/ vs
+#     LIBS/A1000/ exec.library variants, etc.). NOT a capability gap
+#     for this base specifically (package author, 2026-08-13): these
+#     only matter when running an *older, unpatched* 3.0/3.1 ROM chip
+#     and using LoadModule to bring its behaviour up to 3.1.4 in
+#     software. This base pairs with the real, current
+#     kickstart-46.143.rom (the actual 3.1.4 ROM image, not an older
+#     chip being patched) — the modules would be redundant on it. A
+#     future base explicitly targeting an older physical ROM revision
+#     patched up via LoadModule would be a different, real use case;
+#     genuine hardware-board detection (which variant to pick) would be
+#     the actual [install]-can't-express limit there, per docs/limits.md.
+#   - Non-English locale catalogs — matches the real default path
+#     exactly (askForLocale stays FALSE; English is built in, no
+#     catalog copy in that path at all).
+#   - Storage3_1_4.adf's "glowicons/" (124 files, a cosmetic icon
+#     theme) — real content, but bulk not needed for a test-bed base,
+#     same reasoning as aros68k excluding Demos/Developer. Storage's
+#     "DataTypes" subdirectory doesn't actually exist on this disk
+#     (only a DataTypes.info icon) despite being listed as a target
+#     directory in the Installer script — real datatype drivers live
+#     under the Workbench disk's own Devs/DataTypes instead, already
+#     covered by the whole-disk Workbench copy above.
+
+[package]
+name     = "os3.1.4"
+versions = ["3.1.4"]
+strategy = "extract"
+
+[base]
+os-version        = "3.1.4"
+kickstart-version = "46.143"
+# The real KS 3.1 ROM revision, from the archive's own ROMs/to_burn/
+# kick.a500a600a2000.46.143.bin — this is specifically the A500/A600/
+# A2000 hardware-class image. Other real Amiga classes (A1200, A3000,
+# A4000, ...) burn a genuinely different ROM binary despite sharing
+# this same nominal "46.143" revision number (this very zip separately
+# ships an unsplit/unswapped A500-only variant too, under ROMs/
+# unsplit_unswapped/) — [base].kickstart-version alone can't
+# distinguish them, and neither can the resulting assets/roms/
+# kickstart-46.143.rom convention if a second hardware class's recipe
+# ever needs its own, different, same-numbered ROM. Not solved here —
+# named as a real gap, same as the other hardware-detection limits
+# above, until a second real hardware-class base actually needs it.
+
+[source.assets]
+# Single real release — no {version} substitution needed (see
+# docs/recipe-contract.md's [source.assets] convention).
+path   = "hyperion/AmigaOS-3.1.4-A500_A600_A2000.zip"
+sha256 = { "3.1.4" = "7f2d118f27e2f0cef6f7990574aecc935687d0b288b2a1d859a8ea930557f8be" }
+
+[install]
+copy = [
+  { from = "Workbench3_1_4.adf/#?",           to = "SYS:" },
+  { from = "Extras3_1_4.adf/#?",               to = "SYS:" },
+  { from = "Fonts.adf/#?",                     to = "SYS:Fonts/" },
+  { from = "Storage3_1_4.adf/DOSDrivers/#?",   to = "SYS:Storage/DOSDrivers/" },
+  { from = "Storage3_1_4.adf/Printers/#?",     to = "SYS:Storage/Printers/" },
+  { from = "Storage3_1_4.adf/Monitors/#?",     to = "SYS:Storage/Monitors/" },
+  { from = "Storage3_1_4.adf/Keymaps/#?",      to = "SYS:Storage/Keymaps/" },
+  { from = "Install3_1_4.adf/L/FastFileSystem",       to = "SYS:L/FastFileSystem" },
+  { from = "Install3_1_4.adf/Libs/workbench.library", to = "SYS:Libs/workbench.library" },
+  { from = "Install3_1_4.adf/Libs/icon.library",      to = "SYS:Libs/icon.library" },
+]
+
+[verify]
+exists = [
+  "SYS:Libs/workbench.library",
+  "SYS:Libs/diskfont.library",
+  "SYS:Tools/Commodities/Exchange",
+]

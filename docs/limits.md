@@ -33,6 +33,21 @@ its own comments, naming what was read to derive it:
   worked on this recipe; structure inferred from an older pre-rename
   archive's confirmed layout, explicitly flagged unverified in the
   recipe's own comments.
+- `recipes/os3.1.4` — the first base built this way (`aros68k`/`wb1.3`
+  are plain-copy floppy sets with no real Installer at all): the real
+  152KB `Install/Install` Installer-language script was read directly
+  and its default, non-interactive path translated declaratively. It
+  also excludes a real `ModulesA500_3.1.4.adf`/`ModulesA600...`/
+  `ModulesA2000...` set of per-board `LoadModule` ROM-patch modules —
+  *not* a capability gap here, though (package author, 2026-08-13):
+  those only matter when running an older, unpatched 3.0/3.1 ROM chip
+  and using `LoadModule` to bring it up to 3.1.4 behaviour in
+  software. This base pairs with the real, current 3.1.4 ROM image
+  itself, on which the modules would be redundant. A future base
+  deliberately targeting an older physical ROM patched up via
+  `LoadModule` would be a real, different use case — hardware-board
+  detection (which module variant to pick) would be the genuine
+  `[install]`-can't-express limit there. See the recipe's own comments.
 
 This also covers **decisions the real Installer makes from filesystem
 state rather than a user prompt** — e.g. a script that puts a manual
@@ -93,6 +108,16 @@ plain A500 — that AmiBake's `machine` block has no way to select; UAE's
 `uaehf0`/hardfile2 path wasn't grounded against a real example yet
 either). A manifest with `emit` set needs `dir` in `output` or the
 emitter fails with a named error.
+
+The ROM-path convention (`assets/roms/kickstart-{[base].kickstart-
+version}.rom`) is keyed only by revision number, but real hardware
+classes sharing the same nominal revision can burn genuinely different
+ROM binaries — confirmed directly: `recipes/os3.1.4`'s own real media
+ships both an `a500a600a2000` and a separate `a500`-only ROM image,
+both "46.143". Not solved — a second real hardware-class base sharing
+a revision number with an existing one would collide on the same
+`assets/roms/kickstart-{version}.rom` path; see `recipes/os3.1.4`'s
+own comments.
 
 ## AmigaDOS pattern matching subset
 

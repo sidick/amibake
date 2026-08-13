@@ -1,0 +1,9 @@
+# The M7 exemplar: AmigaOS 3.1.4, a genuinely Installer-driven base
+# built by translating the real Hyperion Installer script's default
+# path declaratively (see recipes/os3.1.4's own comments). No packages
+# yet — reqtools is a real, shipped 3.0+-capable package that could
+# layer here once this manifest wants one.
+base    = "os3.1.4"
+machine = { cpu = "68020", fpu = true }
+output  = ["hdf", "dir"]
+emit    = ["copperline", "amiberry"]
