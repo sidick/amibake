@@ -238,6 +238,67 @@ lists no packages — the *positive* build+boot fixture landed here is
 the base build itself, not yet a boot-verified full manifest; boot
 verification (Copperline preferred per house policy) is still pending.
 
+**Real media supplied and recipe corrected against it (user, 2026-08-13,
+same day):** user dropped a TOSEC WB dump set into `assets/`. Built and
+verified against real "Workbench v1.3 rev 34.20 (GB)" and
+"Workbench v1.3.3 rev 34.34 (US)" floppy-1 ADFs (`assets/Workbench-1.3.adf`
+/ `assets/Workbench-1.3.3.adf`, both real, legitimate, unmodified TOSEC
+dumps — their sha256 is now in the recipe). This real-media pass found
+and fixed real bugs/wrong assumptions, none of which the synthetic
+fixture (matched case by construction) could have caught:
+- **Real bug in `layer.py`**: `[install].copy` pattern matching is
+  case-insensitive (`re.IGNORECASE`, correct — real archives mix case
+  freely) but the literal-prefix relative-path stripping used to
+  preserve subdirectory structure was case-*sensitive*, so a pattern
+  like `Libs/#?` matching real lower-case `libs/diskfont.library` failed
+  its prefix strip silently and produced `SYS:Libs/libs/diskfont.library`
+  instead of `SYS:Libs/diskfont.library` — wrong path, no error. Fixed
+  to strip case-insensitively while preserving the archive's real
+  casing for the remainder.
+- **Wrong recipe assumption**: the original recipe's `[verify]` checked
+  for `SYS:Libs/dos.library` — real KS1.3-era `dos.library` (and
+  `exec.library`, `mathffp.library`) are resident in Kickstart ROM, not
+  shipped as disk files at all, unlike 2.0+ where more of the OS lives
+  on-disk. Real disk content confirmed via the new ADF reader: only
+  `mathieeedoubbas`/`mathieeedoubtrans`/`mathtrans`/`diskfont`/`icon`/
+  `info`/`translator`/`version` libraries are on-disk. `[verify]` now
+  checks `SYS:Libs/diskfont.library` instead.
+- **Wrong recipe assumption**: original comment claimed Prefs/System/
+  Utilities/Shell (the actual Workbench desktop GUI) were only on the
+  "Extras1.3" disk excluded by design — false, real disk 1 ships them
+  too. Recipe now explicitly scopes to a CLI/AmigaDOS-level boot
+  environment (C:/Devs:/L:/Libs:/Fonts: only) as a real, documented
+  choice rather than a mistaken assumption, and flags the known
+  consequence: the *real* on-disk Startup-Sequence calls
+  `SYS:System/SetMap` and `LoadWB`, neither viable with this subset, so
+  it isn't copied.
+- **Open framework-level design gap, not yet resolved** (also aligns
+  with user's own observation, 2026-08-13, that `ENVARC:` is 2.0+ only):
+  real 1.3's Startup-Sequence never sources `S:User-Startup` at all —
+  that's a 2.0+ convention alongside `ENVARC:`. This means AmiBake's
+  normal `[install].user-startup` fragment-layering mechanism currently
+  has no way to actually run on a wb1.3 base — nothing sources that
+  file at boot. The base recipe's old "add a RAM-based ENV: via
+  user-startup" workaround was removed since it was pointless (nothing
+  executes it) — real 1.3's own `S:StartupII` already does
+  `makedir ram:env` / `assign ENV: ram:env` itself when its real
+  Startup-Sequence chain runs, so RAM ENV: isn't even wb1.3's problem to
+  solve. Still open: how (or whether) a 1.3 base should support
+  `user-startup`-style package extension at all — needs a decision
+  before any package recipe both targets a 1.3 base and ships
+  `user-startup` fragments expecting them to run.
+- Added `tests/unit/test_wb13_real_media.py`, skipped when
+  `assets/Workbench-1.3.3.adf` is absent (CI/fresh clones never have
+  it) — the genuine real-media build+verify check; passes now.
+- `[package].versions` now `["1.3.3", "1.3"]`, both backed by real
+  checksums (34.34 US unmodified, 34.20 GB unmodified — no unmodified
+  non-regional 34.20 dump was in the supplied set).
+
+Still open before this milestone's exit bar is fully met: the
+user-startup-on-1.3 design gap above; `sana2loop` isn't shipped so
+there's no real *package* to layer and boot; Copperline boot
+verification hasn't been run yet.
+
 Exit: a KS 1.3 manifest builds from WB 1.3 media and boots.
 
 ### M6 — Machine block + emulator config emission (Phase 2)

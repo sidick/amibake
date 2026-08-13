@@ -119,8 +119,16 @@ def apply_layer(base: Tree, package_name: str, install: dict, archive: Tree,
             # directory-style copy mirrors subdirectory structure
             # (Devs/#? -> SYS:Devs/ keeps Devs/Keymaps/foo as
             # SYS:Devs/Keymaps/foo) rather than flattening every match
-            # to its basename.
-            relative = src_path[len(prefix):] if src_path.startswith(prefix) else src_path
+            # to its basename. AmigaDOS matching is case-insensitive
+            # (real archives mix case with the recipe's own patterns —
+            # e.g. real Workbench 1.3 media ships lower-case "libs/"
+            # against a "Libs/#?" pattern), so this strip must be too;
+            # a case-sensitive strip would silently fail and leave the
+            # prefix duplicated in the destination path instead.
+            if src_path.lower().startswith(prefix.lower()):
+                relative = src_path[len(prefix):]
+            else:
+                relative = src_path
             dest = to + relative if into_dir else to
             src = archive.get(src_path)
             tree.put(dest, src.data, src.meta)

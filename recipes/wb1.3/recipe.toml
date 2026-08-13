@@ -4,32 +4,50 @@
 # this ecosystem (sana2loop's KS 1.3/68000 target, TheWire13-style
 # stacks) per the proposal's own text.
 #
-# Scoped to the "Workbench1.3" boot disk only — the second "Extras1.3"
-# disk (BasicDemos and other optional utilities) isn't included, same
-# reasoning as excluding AROS's Demos/Developer from bases/aros68k: not
-# needed for a working boot environment.
+# VERIFIED against real media 2026-08-13: user supplied a TOSEC WB
+# dump set; this recipe was built/checked against real
+# "Workbench v1.3 rev 34.20 (GB)" and "Workbench v1.3.3 rev 34.34"
+# floppy-disk-1 ADFs (both unmodified TOSEC dumps). Confirms: OFS,
+# lower-case top-level dirs (c/devs/l/libs/s/fonts — AmigaDOS matching
+# is case-insensitive so the patterns below work regardless), and that
+# dos.library/exec.library/mathffp.library are *not* on disk at all —
+# they're resident in Kickstart ROM on 1.x, unlike 2.0+ where more of
+# the OS lives on-disk. [verify] below checks real on-disk libraries
+# instead.
 #
-# UNVERIFIED against real media (proprietary; no session here has a
-# legitimate copy to test-build against) — structure is grounded in
-# real technical documentation (see PLAN.md's M5 notes): a real
-# Startup-Sequence.HD from a genuine "Workbench1.3"-labelled ADF
-# confirms the SYS:/C:/L:/FONTS:/S:/DEVS:/LIBS: assign set, and
-# disk-format analysis of that same ADF confirms OFS and the presence
-# of dos.library/mathffp.library/topaz.font/garnet.font at the expected
-# locations. The full per-directory content below is the well-
-# established, undisputed general shape of a 1.3 boot disk, not
-# independently re-derived from that one ADF's complete listing.
+# Scoped to this floppy's C:/Devs:/L:/Libs:/S:/Fonts: content only —
+# real disk 1 *also* ships Prefs/System/Utilities drawers and a Shell
+# icon (the actual Workbench desktop GUI), which this recipe does not
+# copy: this targets a CLI/AmigaDOS-level boot environment, not a
+# pixel-faithful Workbench desktop. Known consequence: the disk's own
+# real S:Startup-Sequence (also not copied, see below) calls
+# `SYS:System/SetMap` and `LoadWB`, neither of which would work with
+# only this subset — so packages should not assume a real 1.3
+# Startup-Sequence is present. The second "Extras1.3" disk (BasicDemos
+# and other optional utilities) isn't included either, same reasoning
+# as excluding AROS's Demos/Developer from bases/aros68k.
 #
-# Only "1.3" is listed here — there were minor Workbench/Kickstart 1.3
-# sub-revisions (e.g. 1.3.4, later ROM revisions) whose disk contents
-# may differ slightly; add them as separate `versions` entries (with
-# their own `[source.assets].path` and, if ever known, `sha256`) once
-# someone with real media can confirm the differences, rather than
-# guessing now.
+# KNOWN GAP, not yet resolved: real 1.3 has no `IF EXISTS S:User-Startup
+# / EXECUTE S:User-Startup` line in its Startup-Sequence at all (that's
+# a 2.0+ convention, same generation as ENVARC: — confirmed by the real
+# disk's own Startup-Sequence/StartupII content, and by user
+# confirmation 2026-08-13 that ENVARC: itself is 2.0+ only, which this
+# recipe correctly never uses). This means AmiBake's normal
+# `[install].user-startup` layering mechanism — any other package's
+# fragments merged into S:User-Startup — currently has no way to run on
+# a wb1.3 base: nothing sources that file at boot. Not fixed here since
+# it's a framework-level design question (synthesize a minimal
+# Startup-Sequence? extend the schema with a literal-content S: file
+# mechanism?), not a wb1.3-recipe-only concern — see PLAN.md's M5 notes.
+#
+# Sub-revisions: "1.3" here is rev 34.20 (GB dump — unmodified, and a
+# superset of the US disk's keymaps); "1.3.3" is rev 34.34 (US dump,
+# unmodified, no regional variant). Other real sub-revisions (34.21,
+# 1.3.2/34.28, ...) exist and can be added the same way if ever needed.
 
 [package]
 name     = "wb1.3"
-versions = ["1.3"]
+versions = ["1.3.3", "1.3"]
 strategy = "extract"
 
 [base]
@@ -38,12 +56,12 @@ kickstart-version = "34.5"   # the real KS 1.3 ROM revision
 dos-type          = "ofs"    # 1.3 predates the international FFS extension
 
 [source.assets]
-path = "Workbench-{version}.adf"
-# No sha256: no verified checksum available to any session that's
-# worked on this recipe. [source.assets]'s checksum is optional and
-# partial coverage is fine — add one here if it ever becomes known
-# (e.g. cross-referenced from a public disk-image database), but a
-# recipe with none is completely normal, not a gap to apologize for.
+path   = "Workbench-{version}.adf"
+sha256 = { "1.3" = "961193c379678f79ef604b76e0bc5ab1828af812583389473b45499764f0b962", "1.3.3" = "4cfd278ab763f90df165e971a31f4b86a5e02b7f78c7b9d376eb301121b8e233" }
+# Both from real unmodified TOSEC dumps (see comment above) — legitimate
+# known-good checksums, not placeholders. Still optional/partial-
+# coverage/warn-not-fail per the recipe contract: a different (but
+# equally valid) dump of the same disk shouldn't be rejected.
 
 [install]
 copy = [
@@ -51,16 +69,8 @@ copy = [
   { from = "Devs/#?",  to = "SYS:Devs/" },
   { from = "L/#?",     to = "SYS:L/" },
   { from = "Libs/#?",  to = "SYS:Libs/" },
-  { from = "S/#?",     to = "SYS:S/" },
   { from = "Fonts/#?", to = "SYS:Fonts/" },
-]
-# Real 1.3 has no ENV:/ENVARC: concept at all (a 2.0+ addition) — later-
-# ported tools often assume ENV: exists regardless, so the base adds a
-# RAM-based one for compatibility, per the proposal's own text ("the
-# RAM-based ENV: assign").
-user-startup = [
-  { order = 0, lines = ["MakeDir RAM:ENV", "Assign ENV: RAM:ENV"] },
 ]
 
 [verify]
-exists = ["SYS:Libs/dos.library", "SYS:Fonts/topaz.font"]
+exists = ["SYS:Libs/diskfont.library", "SYS:Fonts/topaz.font"]
