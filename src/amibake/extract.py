@@ -31,7 +31,7 @@ from amitools.fs.ADFSVolume import ADFSVolume
 from amitools.fs.blkdev.ADFBlockDevice import ADFBlockDevice
 from amitools.fs.FSError import FSError
 
-from .tree import Tree
+from .tree import AmigaMeta, Tree
 
 
 class ExtractError(Exception):
@@ -143,7 +143,18 @@ def _walk_adf_dir(node, prefix: str, tree: Tree) -> None:
         if entry.is_dir():
             _walk_adf_dir(entry, f"{rel}/", tree)
         else:
-            tree.put(rel, bytes(entry.get_file_data()))
+            # Real protection bits (e.g. the "pure" flag real Startup-
+            # Sequence/StartupII `resident ... pure` lines expect on
+            # resident-safe binaries) live on the ADF's own directory
+            # entry, not in the file data — amitools populates
+            # meta_info.protect from the same raw block field its own
+            # emit-side ProtectFlags(...) round-trips, so this is a
+            # straight passthrough, not a re-derivation. Found by
+            # booting a real extracted disk under Copperline and seeing
+            # spurious "Pure bit not set" warnings that don't happen on
+            # real hardware.
+            protect = entry.get_meta_info().protect or 0
+            tree.put(rel, bytes(entry.get_file_data()), AmigaMeta(protection=protect))
 
 
 def _extract_zip(path: Path) -> Tree:

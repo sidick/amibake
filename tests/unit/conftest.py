@@ -90,18 +90,25 @@ def make_iso(files: dict[str, bytes]) -> bytes:
     return buf.getvalue()
 
 
-def make_adf(files: dict[str, bytes], volume_name: str = "Workbench") -> bytes:
+def make_adf(files: dict[str, bytes], volume_name: str = "Workbench",
+            protection: dict[str, int] | None = None) -> bytes:
     """Build a minimal OFS Amiga floppy disk image (.adf) in-process via
     amitools, for hermetic extract.py tests of the wb1.3 recipe's real
     source format — no network, no external tool, no committed 880K
     fixture. Keys are archive-relative paths ('C/Dir', 'S/Startup-
-    Sequence'); intermediate directories are created automatically."""
+    Sequence'); intermediate directories are created automatically.
+    `protection` optionally sets real ADFSNode protect-bit masks (e.g.
+    `amitools.fs.ProtectFlags.ProtectFlags.FIBF_PURE`) per path, for
+    testing that extract.py round-trips them — see the real "Pure bit
+    not set" bug this caught, found booting a real disk under
+    Copperline."""
     import io
 
     from amitools.fs.ADFSVolume import ADFSVolume
     from amitools.fs.blkdev.ADFBlockDevice import ADFBlockDevice
     from amitools.fs.FSString import FSString
 
+    protection = protection or {}
     buf = io.BytesIO()
     blkdev = ADFBlockDevice(adf_file=None, fobj=buf)
     blkdev.create()
@@ -122,6 +129,8 @@ def make_adf(files: dict[str, bytes], volume_name: str = "Workbench") -> bytes:
         dir_path = name.rsplit("/", 1)[0] if "/" in name else ""
         ensure_dir(dir_path)
         volume.write_file(data, FSString(name))
+        if name in protection:
+            volume.get_file_path_name(FSString(name)).change_protect(protection[name])
 
     volume.close()
     blkdev.flush()

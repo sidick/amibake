@@ -4,7 +4,7 @@ import pytest
 
 from amibake.extract import ExtractError, extract_archive
 
-from .conftest import make_iso, make_lha_archive
+from .conftest import make_adf, make_iso, make_lha_archive
 
 
 def test_extract_lha(tmp_path):
@@ -62,6 +62,35 @@ def test_extract_unknown_suffix(tmp_path):
     archive.write_bytes(b"whatever")
     with pytest.raises(ExtractError, match="don't know how to extract"):
         extract_archive(archive)
+
+
+def test_extract_adf(tmp_path):
+    archive = tmp_path / "test.adf"
+    archive.write_bytes(make_adf({"C/Dir": b"dir-binary", "S/Startup-Sequence": b"lines"}))
+    tree = extract_archive(archive)
+    assert tree.get("C/Dir").data == b"dir-binary"
+    assert tree.get("S/Startup-Sequence").data == b"lines"
+
+
+def test_extract_adf_preserves_real_protection_bits(tmp_path):
+    """Real bug, found by booting a real extracted disk under
+    Copperline: extract.py wasn't reading each file's real ADF
+    protection bits at all (every extracted file silently got
+    AmigaMeta()'s default, protection=0), so real 1.3 media's own
+    `resident ... pure`-eligible binaries lost their real PURE bit and
+    Copperline correctly warned "Pure bit not set" at boot — a warning
+    that doesn't happen on real hardware with the real disk."""
+    from amitools.fs.ProtectFlags import ProtectFlags
+
+    archive = tmp_path / "test.adf"
+    archive.write_bytes(make_adf(
+        {"C/Execute": b"binary", "S/Startup-Sequence": b"script"},
+        protection={"C/Execute": ProtectFlags.FIBF_PURE,
+                    "S/Startup-Sequence": ProtectFlags.FIBF_SCRIPT},
+    ))
+    tree = extract_archive(archive)
+    assert tree.get("C/Execute").meta.protection == ProtectFlags.FIBF_PURE
+    assert tree.get("S/Startup-Sequence").meta.protection == ProtectFlags.FIBF_SCRIPT
 
 
 def test_extract_iso(tmp_path):
