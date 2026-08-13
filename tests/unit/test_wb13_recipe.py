@@ -47,8 +47,15 @@ def _build_wb13_tree(tmp_path):
     result = resolve(MANIFEST_PATH, manifest, library)
     assert result.ok, [str(p) for p in result.problems]
 
-    tree = build_tree(result.plan, tmp_path / "cache", assets_root)
-    return tree, result.plan, library
+    # The real manifest now layers sana2loop, a real [source.aminet]
+    # package — fetching it for real would make this hermetic test
+    # depend on live network access on every run. Base-only here (same
+    # pattern as test_builder.py's synthetic packages); sana2loop's own
+    # real fetch+build was verified manually against the live Aminet
+    # archive and real WB1.3 media, same as AmiSSL/ClassAct/AROS in M4.
+    plan = dataclasses.replace(result.plan, packages=())
+    tree = build_tree(plan, tmp_path / "cache", assets_root)
+    return tree, plan, library
 
 
 def test_wb13_builds_and_verifies(tmp_path):

@@ -1,0 +1,45 @@
+# sana2loop — the proposal's own suggested 1.3-capable exemplar package
+# (see PLAN.md's M5 notes): a hardware-free SANA-II loopback network
+# device, real Aminet release comm/net/sana2loop.lha, confirmed to
+# extract/build via this project's own extract.py against the real
+# downloaded archive.
+#
+# Real archive layout (confirmed 2026-08-13 against the actual
+# downloaded .lha, not guessed): a single "sana2loop/" directory
+# containing loopback.device, four Shell tools (SanaInfo/SanaDump/
+# SanaSend/SanaConform), an AmigaGuide manual, a BSD-2-Clause LICENSE,
+# and a readme.
+#
+# Only loopback.device is installed here. Per the archive's own readme:
+# the device itself targets "plain 68000 and Kickstart 1.3" (2 MB RAM,
+# no utility.library/dos.library calls from its I/O path), but the four
+# companion Shell tools need AmigaOS 2.04 (V37)+ (CreateMsgPort()/
+# CreateIORequest() are V36+ Exec calls). [requires] here is a single
+# os floor for the whole recipe, so honestly advertising "works on
+# wb1.3" means shipping only the part that's actually true on 1.3 —
+# the diagnostic tools are a natural future addition (a `>= 2.04`
+# variant, or an option) once a recipe actually needs them, not
+# something to guess at now.
+#
+# Not copied to DEVS:Networks/ — the readme calls that a *separate*,
+# optional step only relevant once a real TCP/IP stack recipe (AmiTCP,
+# Roadshow, ...) exists to consume it; nothing in this repo does yet.
+
+[package]
+name     = "sana2loop"
+versions = ["1.1"]
+
+[requires]
+os = ">= 1.3"
+
+[source.aminet]
+url    = "comm/net/sana2loop.lha"
+sha256 = { "1.1" = "2cd6bafbc7698989148020de61cd5f31f6d55141897f5a80f63a01594a08acc8" }
+
+[install]
+copy = [
+  { from = "sana2loop/loopback.device", to = "SYS:Devs/loopback.device" },
+]
+
+[verify]
+exists = ["SYS:Devs/loopback.device"]

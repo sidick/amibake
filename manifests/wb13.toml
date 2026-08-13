@@ -1,7 +1,8 @@
 # Proposal success criterion 3: a KS 1.3 manifest that builds from real
-# media with no manual step, and a machine block pairing it with a
-# 1.3-capable ROM. No packages listed yet — sana2loop (the proposal's
-# own suggested 1.3-capable exemplar) isn't a shipped recipe here.
-base    = "wb1.3"
-machine = { cpu = "68000", ram = "chip:512K" }
-output  = ["hdf", "dir"]
+# media with no manual step, a machine block pairing it with a
+# 1.3-capable ROM, and sana2loop (the proposal's own suggested
+# 1.3-capable exemplar package) as the real thing to layer and boot.
+base     = "wb1.3"
+machine  = { cpu = "68000", ram = "chip:512K" }
+packages = ["sana2loop = 1.1"]
+output   = ["hdf", "dir"]

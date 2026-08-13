@@ -301,9 +301,28 @@ to check both forms; verified end-to-end with a synthetic downstream
 package's `user-startup` fragment actually landing in, and being
 sourced from, the real wb1.3 base's authored Startup-Sequence.
 
-Still open before this milestone's exit bar is fully met: `sana2loop`
-isn't shipped so there's no real *package* to layer and boot; Copperline boot
-verification hasn't been run yet.
+**`recipes/sana2loop` shipped (2026-08-13):** the proposal's own
+suggested 1.3-capable exemplar package, real Aminet release
+`comm/net/sana2loop.lha` (v1.1, `[requires].os = ">= 1.3"`). Real
+archive layout confirmed against the actual downloaded .lha (not
+guessed) — a `sana2loop/` dir with `loopback.device` and four
+2.04+-only Shell tools (SanaInfo/SanaDump/SanaSend/SanaConform). Only
+`loopback.device` is installed: per the archive's own readme the
+device itself targets "plain 68000 and Kickstart 1.3", but the tools
+need AmigaOS 2.04+ (V36+ Exec calls), and `[requires]` is one os floor
+for the whole recipe — shipping only the part that's honestly `>= 1.3`
+matches the recipe's own stated requirement. `manifests/wb13.toml` now
+lists `packages = ["sana2loop = 1.1"]`; resolved and built for real
+against both the live Aminet archive and real WB1.3 media via the CLI
+(`SYS:Devs/loopback.device` lands correctly, `[verify]` passes).
+Not turned into a live-network pytest test (would make the hermetic
+suite depend on network access every run, same reasoning as AmiSSL/
+ClassAct/AROS in M4) — `test_wb13_recipe.py`/`test_wb13_real_media.py`
+build the base with `packages=()` instead, `dataclasses.replace`d off
+the real resolved plan, so they stay offline-only.
+
+Still open before this milestone's exit bar is fully met: Copperline
+boot verification hasn't been run yet.
 
 Exit: a KS 1.3 manifest builds from WB 1.3 media and boots.
 
