@@ -497,6 +497,48 @@ not just what was surveyed before Phase 1.
   memory `project-amibake-cpu-variants` — it solves a problem amipkg
   deliberately doesn't attempt, for a structural reason specific to how
   each project maps packages to upstream artifacts.
+- **HstWB Installer** (github.com/henrikstengaard/hstwb-installer,
+  hstwb.firstrealize.com), found 2026-08-13, user-directed. By far the
+  closest prior art found — a Windows/PowerShell tool that "automates
+  installation of Amiga OS, Kickstart roms and packages" onto RDB HDF
+  images for WinUAE/FS-UAE/Amiberry/real hardware, driving the install
+  through WinUAE/FS-UAE itself (the `installer` strategy this project
+  has deferred to Phase 3.5, not the `extract` strategy this project
+  prefers). Same author as `hst-imager` (the `.uaem` format reference
+  from M3) and `picasso96-package` (the P96 recipe research in M4) —
+  clearly the person to credit across several parts of this project.
+  Its package manifest (a sibling `hstwb-package` repo,
+  `hstwb-package.json`) independently converges on the same shape
+  *again*: `name`/`version`, `dependencies` (name + implicit ordering
+  via `priority`), `assigns`, `amigaOsVersions` (our `requires.os`).
+  Two concretely useful, reusable findings:
+  - `data/amiga-os-entries.csv` and `data/kickstart-entries.csv` in the
+    main repo are real, community-maintained MD5 databases identifying
+    exact AmigaOS install-disk and Kickstart-ROM files by hash — e.g.
+    every OS 3.2 disk (Hyperion Entertainment's official release, 99
+    entries covering required and optional disks) and the Kickstart
+    1.3 (34.5) ROM, sourced from Cloanto Amiga Forever and Hyperion
+    distributions. Directly useful for M8 (OS 3.2 media) and M5 (the
+    KS 1.3 ROM asset) — not to fetch (still proprietary, still
+    `[source.assets]`-only) but to *verify* a user-supplied asset is
+    genuinely the right file before building against it.
+  - This exposed a real gap worth fixing when M5/M8 land: `[source.
+    assets]` has no checksum verification at all today (noted as a
+    known limitation in `builder.py`'s `_archive_sha256` docstring
+    since M2) — an edited-in-place or wrong-version asset silently
+    poisons the build. An optional checksum field on `[source.assets]`
+    (recipe declares it however sourced — hand-computed, or cross-
+    referenced from a database like HstWB's) would let `fetch.py` give
+    the same clear, named "this isn't the file I expected" error
+    proprietary assets currently can't get. Not implemented — deferred
+    to M5/M8, same as `cpu-variants`, until a real recipe needs it.
+  - Amiberry's own MCP tooling (`identify_rom`) does the same kind of
+    hash-based identification interactively (CRC32 against its bundled
+    ROM database, confirmed working against a real `amiga-os-310-
+    a1200.rom`) — useful as a developer-workflow aid when preparing
+    `assets/` contents by hand, but not something amibake's own build
+    pipeline should depend on (it requires Amiberry/its MCP server
+    running, unlike a portable embedded checksum database).
 
 ## Risk register (deltas from the proposal)
 
