@@ -277,7 +277,9 @@ A recipe *may* declare `script = "hook.py"` for the genuinely
 scripted-installer minority. Hooks are flagged by the linter, reviewed
 harder, and a package whose installer makes decisions a recipe can't
 express stays in the honest-limits table (`docs/limits.md`) rather than
-being half-supported.
+being half-supported. `docs/limits.md` also has the fuller picture of
+what's not expressible yet and when reaching for a hook is (and isn't)
+the right call — read it before writing one.
 
 `hook.py` sits next to `recipe.toml` and defines one top-level function:
 

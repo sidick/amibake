@@ -20,6 +20,8 @@ validation) works; resolve/build arrive per [PLAN.md](PLAN.md).
 - [docs/recipe-contract.md](docs/recipe-contract.md) — the recipe contract:
   everything needed to add support for a package, without reading builder
   source
+- [docs/limits.md](docs/limits.md) — what the declarative schema can't
+  express yet, and how real recipes that hit a limit handled it
 - [PLAN.md](PLAN.md) — implementation plan and milestones
 
 ## Development
