@@ -395,6 +395,44 @@ as the proposal says; a first-boot deferred-install stage (Emu68-Imager's
 technique) is the recorded alternative if determinism under the harness
 proves hard.
 
+## Future work (not scheduled)
+
+Ideas flagged during implementation that are real and worth doing, but
+aren't part of the M0-M10 sequence and haven't been sized/placed yet.
+
+- **Update checking.** Recipes pin an exact version + checksum by
+  design (reproducibility), so nothing should auto-upgrade — but
+  there's currently no way to learn a recipe has fallen behind
+  upstream without manually re-checking Aminet/GitHub by hand. A
+  future `amibake check-updates` (name TBD) would compare each
+  recipe's declared `[package].versions` against the live upstream
+  (Aminet's current listing for `[source.aminet]`, the GitHub Releases
+  API for `[source.github]`) and report which recipes have a newer
+  upstream version available — purely advisory, prints a report, never
+  edits a recipe or a lockfile itself.
+- **GitHub as a fetch-time fallback for Aminet, not just an
+  alternate-to-declare.** `docs/recipe-contract.md` already documents
+  that a recipe may declare more than one non-assets source "as
+  alternates for the fetcher to try," but `fetch.py`'s actual
+  `fetch_sources()` doesn't implement that: it picks the first source
+  present in a fixed priority (github > aminet > url) and hard-fails if
+  *that one* fails — it never falls through to a second declared
+  source. Real motivating case (user, 2026-08-13): Aminet often hosts
+  only the *current* release under a rolling filename that gets
+  replaced in place (already documented as a `[source.aminet]`
+  limitation), so a pinned older version's archive can simply vanish
+  from Aminet while remaining permanently available as a tagged GitHub
+  release — sana2loop is the concrete example, still fetchable from
+  every one of its tagged releases at github.com/sidick/sana2loop even
+  once Aminet only shows the latest. Future feature: real fetch-time
+  fallback — when a recipe declares both `[source.aminet]` and
+  `[source.github]` for the same version and the preferred source's
+  fetch fails (network error, 404, or a checksum mismatch that looks
+  like "this version isn't there anymore" rather than "the file
+  changed unexpectedly"), automatically retry the next declared
+  alternate before raising `FetchError`, rather than failing on the
+  first attempt.
+
 ## Cross-cutting decisions to settle early (flagged, not blocking M0)
 
 1. **Settled in M4**: boot-verification channel — how CI observes "it
