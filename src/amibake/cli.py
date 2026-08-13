@@ -8,7 +8,7 @@ from pathlib import Path
 
 from . import __version__
 from ._validate import load_toml
-from .builder import build_tree
+from .builder import HookError, build_tree
 from .emit import collect_emulator_config
 from .emit.archive import write_tgz, write_zip
 from .emit.copperline import EmitError as CopperlineEmitError
@@ -58,6 +58,10 @@ def main(argv: list[str] | None = None) -> int:
                        help="assets/ directory for proprietary sources")
     build.add_argument("--no-cache", action="store_true",
                        help="bypass the layer cache")
+    build.add_argument("--allow-hooks", action="store_true",
+                       help="run [hook] scripts (review them first — arbitrary "
+                            "Python executed during the build); the build fails "
+                            "naming the hook if this is omitted and one is needed")
 
     args = parser.parse_args(argv)
 
@@ -66,7 +70,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "resolve":
         return _cmd_resolve(args.manifest, args.recipes, args.lockfile, args.print_only)
     return _cmd_build(args.manifest, args.recipes, args.out, args.cache,
-                      args.assets, not args.no_cache)
+                      args.assets, not args.no_cache, args.allow_hooks)
 
 
 def _cmd_lint(paths: list[Path]) -> int:
@@ -114,8 +118,11 @@ def _lint_then_resolve(manifest_path: Path, recipes_root: Path):
     except AmiBakeError as e:
         problems.append(e.problem)
 
-    if problems:
-        return None, None, problems, "lint"
+    errors = [p for p in problems if p.severity == "error"]
+    if errors:
+        return None, None, errors, "lint"
+    for problem in problems:  # warnings only, at this point — errors already returned
+        print(problem, file=sys.stderr)
 
     manifest = load_toml(manifest_path)
     library = load_recipe_library(recipes_root)
@@ -164,14 +171,20 @@ _EMITTERS = {
 
 
 def _cmd_build(manifest_path: Path, recipes_root: Path, out_dir: Path | None,
-               cache_root: Path, assets_root: Path | None, use_cache: bool) -> int:
+               cache_root: Path, assets_root: Path | None, use_cache: bool,
+               allow_hooks: bool = False) -> int:
     result, library, problems, stage = _lint_then_resolve(manifest_path, recipes_root)
     if result is None:
         _print_lint_or_resolve_failure(manifest_path, problems, stage)
         return 1
     plan: BuildPlan = result.plan
 
-    tree = build_tree(plan, cache_root, assets_root, use_cache=use_cache)
+    try:
+        tree = build_tree(plan, cache_root, assets_root, use_cache=use_cache,
+                          allow_hooks=allow_hooks)
+    except HookError as e:
+        print(e, file=sys.stderr)
+        return 1
 
     verify_problems: list[str] = []
     for pkg in (plan.base_package, *plan.packages):

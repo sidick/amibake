@@ -49,6 +49,62 @@ def test_lint_warnings_do_not_fail(tmp_path, capsys):
     assert "1 warning(s)" in captured.out
 
 
+def _hook_recipes(tmp_path, hook_body):
+    recipes = tmp_path / "recipes"
+    base_dir = recipes / "basefix"
+    base_dir.mkdir(parents=True)
+    (base_dir / "recipe.toml").write_text(
+        '[package]\nname = "basefix"\nversions = ["1.0"]\n'
+        'strategy = "extract"\n\n[base]\nos-version = "3.1"\n'
+    )
+    hook_dir = recipes / "hooktest"
+    hook_dir.mkdir(parents=True)
+    (hook_dir / "recipe.toml").write_text(
+        '[package]\nname = "hooktest"\nversions = ["1.0"]\n\n'
+        '[hook]\nscript = "hook.py"\n'
+    )
+    (hook_dir / "hook.py").write_text(hook_body)
+    manifest = tmp_path / "m.toml"
+    manifest.write_text('base = "basefix"\npackages = ["hooktest"]\noutput = ["dir"]\n')
+    return recipes, manifest
+
+
+def test_build_warning_only_recipe_still_builds(tmp_path, capsys):
+    """A lint *warning* (e.g. a declared hook) must not abort build/resolve
+    the way an *error* does — real bug found wiring up hook execution:
+    _lint_then_resolve treated any problem, including warnings, as fatal."""
+    recipes, manifest = _hook_recipes(
+        tmp_path, "def apply(tree, archive, options):\n    return tree\n")
+    rc = main(["build", str(manifest), "--recipes", str(recipes),
+              "--cache", str(tmp_path / "cache")])
+    captured = capsys.readouterr()
+    assert rc == 1  # blocked, but by the *hook* gate, not the lint warning
+    assert "declares a Python hook" in captured.err
+    assert "does not lint clean" not in captured.err
+
+
+def test_build_hook_requires_allow_hooks_flag(tmp_path, capsys):
+    recipes, manifest = _hook_recipes(
+        tmp_path, "def apply(tree, archive, options):\n    return tree\n")
+    rc = main(["build", str(manifest), "--recipes", str(recipes),
+              "--cache", str(tmp_path / "cache")])
+    assert rc == 1
+    assert "--allow-hooks" in capsys.readouterr().err
+
+
+def test_build_hook_runs_with_allow_hooks_flag(tmp_path, capsys):
+    recipes, manifest = _hook_recipes(tmp_path, (
+        'def apply(tree, archive, options):\n'
+        '    tree.put("SYS:HookProof", b"it ran")\n'
+        '    return tree\n'
+    ))
+    rc = main(["build", str(manifest), "--recipes", str(recipes),
+              "--cache", str(tmp_path / "cache"), "--allow-hooks"])
+    captured = capsys.readouterr()
+    assert rc == 0, captured.err
+    assert (tmp_path / "m" / "HookProof").read_bytes() == b"it ran"
+
+
 def test_build_end_to_end(tmp_path, capsys):
     recipes = tmp_path / "recipes"
     base_dir = recipes / "os32-fixture"

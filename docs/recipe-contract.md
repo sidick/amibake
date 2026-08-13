@@ -276,9 +276,30 @@ sets `net` inside `[hostsocket]`.
 A recipe *may* declare `script = "hook.py"` for the genuinely
 scripted-installer minority. Hooks are flagged by the linter, reviewed
 harder, and a package whose installer makes decisions a recipe can't
-express stays in the honest-limits table rather than being half-supported.
-(Hook execution is not yet implemented; declaring one is legal and lints
-with a warning.)
+express stays in the honest-limits table (`docs/limits.md`) rather than
+being half-supported.
+
+`hook.py` sits next to `recipe.toml` and defines one top-level function:
+
+```python
+def apply(tree, archive, options):
+    # tree: the Tree built so far (base + every earlier package's
+    #   [install], already applied).
+    # archive: the recipe's own extracted [source] archive (empty Tree
+    #   if it declares no [install].copy).
+    # options: this package's resolved [options] answers.
+    # Must return a Tree — either `tree` mutated, or a fresh one.
+    return tree
+```
+
+Called *after* the recipe's own `[install]` (copy/envarc/user-startup/
+assigns/files) has already been applied — declarative first, hook for
+whatever's left. Fenced, not automatic: `amibake build` fails naming
+the hook and refusing to run it unless invoked with `--allow-hooks` —
+review the script first (it runs arbitrary Python during your build).
+The layer cache key covers the hook script's own content alongside
+`recipe.toml`'s, so editing one without the other still busts the
+cache correctly.
 
 ## Contributing a recipe
 

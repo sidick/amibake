@@ -29,6 +29,18 @@ class LoadedRecipe:
     doc: dict
 
 
+def _recipe_content_hash(recipe: LoadedRecipe) -> str:
+    """recipe.toml's own bytes, plus its hook script's bytes when it
+    declares one — a hook is real executable content the layer cache
+    key must cover too, or editing hook.py without touching recipe.toml
+    would silently serve a stale cached layer."""
+    h = hashlib.sha256(recipe.path.read_bytes())
+    script = (recipe.doc.get("hook") or {}).get("script")
+    if script:
+        h.update((recipe.path.parent / script).read_bytes())
+    return h.hexdigest()
+
+
 def load_recipe_library(root: Path) -> dict[str, LoadedRecipe]:
     """Load every recipe.toml under `root`, keyed by package name.
 
@@ -92,7 +104,7 @@ def resolve(manifest_path: Path, manifest: dict, library: dict[str, LoadedRecipe
         version=base_version,
         options=base_options,
         recipe_path=str(base.path),
-        recipe_sha256=hashlib.sha256(base.path.read_bytes()).hexdigest(),
+        recipe_sha256=_recipe_content_hash(base),
         sources=_extract_sources(base.doc, base_version),
     )
 
@@ -148,7 +160,7 @@ def resolve(manifest_path: Path, manifest: dict, library: dict[str, LoadedRecipe
             resolve_one(dep_name, dep_constraints, {}, f"{label} -> {dep_name}")
 
         visiting.discard(recipe.name)
-        recipe_sha256 = hashlib.sha256(recipe.path.read_bytes()).hexdigest()
+        recipe_sha256 = _recipe_content_hash(recipe)
         resolved[recipe.name] = ResolvedPackage(
             name=recipe.name,
             version=version,
