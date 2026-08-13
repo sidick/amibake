@@ -23,3 +23,5 @@ jobs:
       - run: pytest -q
       - name: Lint shipped recipes and manifests
         run: amibake lint recipes manifests
+      - name: Recipe smoke build (build + [verify] against aros68k)
+        run: python tools/ci_recipe_smoke.py
