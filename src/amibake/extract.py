@@ -51,7 +51,7 @@ def extract_archive(path: Path) -> Tree:
     else:
         raise ExtractError(
             f"don't know how to extract {path.name!r} (supported: .lha, .zip, .iso, .adf)")
-    return _expand_nested_isos(tree)
+    return _expand_nested_adfs(_expand_nested_isos(tree))
 
 
 def _expand_nested_isos(tree: Tree) -> Tree:
@@ -72,6 +72,37 @@ def _expand_nested_isos(tree: Tree) -> Tree:
         for p in inner.paths():
             f = inner.get(p)
             merged.put(p, f.data, f.meta)
+    return merged
+
+
+def _expand_nested_adfs(tree: Tree) -> Tree:
+    """Unlike `_expand_nested_isos` (built for AROS's single-nested-ISO
+    nightly zip, safe to merge flat since there's only ever one), a real
+    multi-disk OS install (e.g. AmigaOS 3.1.4's 7-.adf Hyperion zip) has
+    *several* nested `.adf` disks that often share root-level filenames
+    (every disk has its own `Disk.info`, etc.) — merging those flat would
+    silently collide and drop files. Each expanded disk's paths are kept
+    under a `<member-filename>/` prefix instead, so `[install].copy`
+    patterns can address one disk unambiguously, e.g. `Workbench3_1_4.adf/
+    C/Dir`."""
+    adf_members = [p for p in tree.paths() if p.lower().endswith(".adf")]
+    if not adf_members:
+        return tree
+    merged = Tree()
+    for path in tree.paths():
+        if path in adf_members:
+            continue
+        f = tree.get(path)
+        merged.put(path, f.data, f.meta)
+    for adf_path in adf_members:
+        with tempfile.NamedTemporaryFile(suffix=".adf") as tmp:
+            tmp.write(tree.get(adf_path).data)
+            tmp.flush()
+            inner = _extract_adf(Path(tmp.name))
+        prefix = adf_path.rsplit("/", 1)[-1]
+        for p in inner.paths():
+            f = inner.get(p)
+            merged.put(f"{prefix}/{p}", f.data, f.meta)
     return merged
 
 

@@ -126,3 +126,25 @@ def test_extract_nested_iso_inside_zip(tmp_path):
     assert set(tree.paths()) == {"nightly/LICENSE", "boot/rom.bin", "readme.txt"}
     assert tree.get("boot/rom.bin").data == b"romdata"
     assert not any(p.lower().endswith(".iso") for p in tree.paths())
+
+
+def test_extract_nested_adfs_inside_zip_are_prefixed_by_member_name(tmp_path):
+    """A real multi-disk OS install (e.g. AmigaOS 3.1.4's Hyperion zip)
+    wraps several .adf disks that often share root-level filenames —
+    unlike the single-nested-ISO case, these must NOT merge flat or
+    same-named files from different disks would collide and silently
+    drop. Each expanded disk's paths land under its own
+    <member-filename>/ prefix instead."""
+    adf_a = make_adf({"Disk.info": b"disk-a-icon", "C/Dir": b"a-dir-binary"})
+    adf_b = make_adf({"Disk.info": b"disk-b-icon", "C/List": b"b-list-binary"})
+    archive = tmp_path / "wrapped.zip"
+    with zipfile.ZipFile(archive, "w") as zf:
+        zf.writestr("A.adf", adf_a)
+        zf.writestr("B.adf", adf_b)
+    tree = extract_archive(archive)
+    assert set(tree.paths()) == {
+        "A.adf/Disk.info", "A.adf/C/Dir", "B.adf/Disk.info", "B.adf/C/List",
+    }
+    assert tree.get("A.adf/Disk.info").data == b"disk-a-icon"
+    assert tree.get("B.adf/Disk.info").data == b"disk-b-icon"
+    assert not any(p.lower().endswith(".adf") for p in tree.paths())
