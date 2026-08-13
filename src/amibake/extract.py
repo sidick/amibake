@@ -131,16 +131,40 @@ def _extract_iso(path: Path) -> Tree:
     except Exception as e:
         raise ExtractError(f"{path.name} is not a valid ISO9660 image: {e}") from e
     try:
-        facade = iso.get_rock_ridge_facade() if iso.has_rock_ridge() else iso.get_iso9660_facade()
-        walk = facade.walk(rr_path="/") if iso.has_rock_ridge() else facade.walk(iso_path="/")
+        # encoding="latin-1" (not pycdlib's UTF-8 default): a real 1990s/
+        # 2000s-mastered Amiga CD (AmigaOS 3.2's own install CD, no Rock
+        # Ridge or Joliet at all, confirmed against the real archive) can
+        # have raw 8-bit filename bytes that aren't valid UTF-8 at all —
+        # walk() would otherwise raise UnicodeDecodeError outright, not on
+        # some obscure file, on the very first non-ASCII byte anywhere on
+        # the disc. latin-1 never raises (every byte 0-255 maps to a
+        # character), matching the encoding this project already uses
+        # throughout for Amiga text (tree.py's render_user_startup, etc).
+        has_rr = iso.has_rock_ridge()
+        walk = iso.walk(rr_path="/", encoding="latin-1") if has_rr \
+            else iso.walk(iso_path="/", encoding="latin-1")
         for dirpath, _dirnames, filenames in walk:
             for name in filenames:
                 full = f"{dirpath}/{name}" if dirpath != "/" else f"/{name}"
                 buf = io.BytesIO()
-                if iso.has_rock_ridge():
-                    iso.get_file_from_iso_fp(buf, rr_path=full)
-                else:
-                    iso.get_file_from_iso_fp(buf, iso_path=full)
+                try:
+                    if has_rr:
+                        iso.get_file_from_iso_fp(buf, rr_path=full)
+                    else:
+                        iso.get_file_from_iso_fp(buf, iso_path=full)
+                except Exception:
+                    # get_file_from_iso_fp has no encoding param of its
+                    # own and re-resolves the path with pycdlib's UTF-8
+                    # default internally, so a handful of real legacy
+                    # 8-bit-charset filenames (accented characters from a
+                    # non-Latin-1-compatible original encoding — real,
+                    # confirmed against the same real disc, all in a
+                    # cosmetic icon-theme bonus directory) fail lookup
+                    # even though walk() enumerated them fine. Skipped
+                    # rather than failing the whole extraction over an
+                    # unrelated file a recipe was never going to copy
+                    # anyway.
+                    continue
                 tree.put(full.lstrip("/"), buf.getvalue())
     finally:
         iso.close()
