@@ -43,6 +43,33 @@ def _is_network_buildable(recipe: LoadedRecipe) -> bool:
     return bool(set(source) - {"assets"})
 
 
+def _default_option_answers(recipe: LoadedRecipe) -> dict:
+    """Best-effort answers for [options] the recipe requires with no
+    declared default (e.g. picasso96-2's `card`, which p96-style recipes
+    always needed but only a proprietary-source recipe had before —
+    proprietary recipes are never auto-discovered, so this gap was never
+    exercised until a real network-buildable one had a required option).
+    Picks the first declared enum value / `false` for bool; a recipe
+    whose only buildable combination isn't the first enum value would
+    need a real fix here, not a workaround, since CI should exercise a
+    genuinely representative build."""
+    answers = {}
+    for opt_name, opt in (recipe.doc.get("options") or {}).items():
+        if not opt.get("required") or opt.get("default") is not None:
+            continue
+        if opt.get("type") == "enum" and opt.get("values"):
+            answers[opt_name] = opt["values"][0]
+        elif opt.get("type") == "bool":
+            answers[opt_name] = False
+    return answers
+
+
+def _toml_value(value) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return f'"{value}"'
+
+
 def main() -> int:
     library = load_recipe_library(RECIPES_ROOT)
     targets = sorted(name for name, r in library.items() if _is_network_buildable(r))
@@ -53,11 +80,17 @@ def main() -> int:
     failures = []
     for name in targets:
         print(f"--- {name} ---")
+        answers = _default_option_answers(library[name])
+        if answers:
+            fields = ", ".join(f"{k} = {_toml_value(v)}" for k, v in answers.items())
+            package_entry = f'{{ name = "{name}", {fields} }}'
+        else:
+            package_entry = f'"{name}"'
         manifest_text = (
             f'base = "{BASE_NAME}"\n'
             f'machine = {{ cpu = "{MACHINE["cpu"]}", fpu = {str(MACHINE["fpu"]).lower()}, '
             f'mmu = {str(MACHINE["mmu"]).lower()} }}\n'
-            f'packages = ["{name}"]\n'
+            f'packages = [{package_entry}]\n'
             f'output = ["dir"]\n'
         )
         with tempfile.TemporaryDirectory() as tmp:

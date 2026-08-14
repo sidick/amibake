@@ -7,7 +7,7 @@ plus matching emulator configuration — a Dockerfile for Amiga setups.
 ```toml
 base     = "os3.2.2"
 machine  = { cpu = "68030", fpu = true, mmu = true, ram = "fast:8M", rtg = true }
-packages = ["p96 >= 3.2", "amissl = 5.27", "classact = 3.3"]
+packages = ["picasso96-3 >= 3.2", "amissl = 5.27", "classact = 3.3"]
 emit     = ["copperline", "amiberry"]
 ```
 

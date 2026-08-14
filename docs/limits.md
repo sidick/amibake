@@ -29,9 +29,11 @@ its own comments, naming what was read to derive it:
   (see below), so the recipe copies the generic (non-suffixed) binary.
 - `recipes/wb1.3` — no Installer at all (real 1.3 predates it) but the
   same translation approach for its plain-copy Startup-Sequence.
-- `recipes/p96` — no licensed copy available to any session that's
-  worked on this recipe; structure inferred from an older pre-rename
-  archive's confirmed layout, explicitly flagged unverified in the
+- `recipes/picasso96-3` — no licensed copy available to any session
+  that's worked on this recipe; structure confirmed instead against the
+  real, freely-redistributable `picasso96-2` archive (same architecture,
+  predates the licensing change — see `recipes/picasso96-2`), still
+  flagged as unverified against the actual 3.6.3 release in the
   recipe's own comments.
 - `recipes/os3.1.4` — the first base built this way (`aros68k`/`wb1.3`
   are plain-copy floppy sets with no real Installer at all): the real
@@ -71,7 +73,8 @@ so in a comment, the same as any other default-path translation.
 When the default path alone can't produce a working install (a real
 decision tree with no reasonable single answer), that package either
 gets an `[options]` axis for the manifest to answer explicitly (see
-`[options.card]` in `recipes/p96` for the pattern), or is named here
+`[options.card]` in `recipes/picasso96-3`/`recipes/picasso96-2` for the
+pattern), or is named here
 as genuinely unsupported rather than guessed at.
 
 ## `[hook]` — when the above isn't enough

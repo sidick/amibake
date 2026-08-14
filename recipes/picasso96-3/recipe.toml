@@ -6,17 +6,25 @@
 # assets/, never a public URL. Nothing proprietary is ever fetched or
 # cached publicly.
 #
+# Named `picasso96-3` (not `p96`) to sit next to the freely-
+# redistributable `picasso96-2` (the real, Aminet-hosted 2.0 release,
+# CI-buildable — see recipes/picasso96-2) without "p96"/"picasso96"
+# reading as unrelated packages; AmiBake has no version-range dispatch
+# from one package name to several recipes (each recipe is its own
+# name), so a free-vs-commercial version split is two ordinary
+# recipes, same shape as amipkg's per-CPU-tier catalog entries.
+#
 # [install] below reflects the long-standing P96 layout (Picasso96API.
 # library + rtg.library direct in SYS:Libs/, per-card .card/.chip
-# drivers in SYS:Libs/Picasso96/) confirmed against a real (older,
-# freely-distributed pre-rename) Picasso96 archive — the architecture
+# drivers in SYS:Libs/Picasso96/) confirmed against the real, freely-
+# distributed picasso96-2 archive (see that recipe) — the architecture
 # predates and is independent of the licensing change, but exact
 # filenames for the current 3.6.3 release should be checked against
 # the real licensed archive once available; this is the one recipe in
 # the library nobody here could test-build end-to-end.
 
 [package]
-name     = "p96"
+name     = "picasso96-3"
 versions = ["3.6.3"]
 
 [requires]

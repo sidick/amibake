@@ -12,7 +12,7 @@ never silently become the float 5.2. All version values are strings.
 base     = "os3.2.2"
 machine  = { cpu = "68030", fpu = true, mmu = true, ram = "fast:8M", rtg = true }
 packages = [
-  "p96 >= 3.2",
+  "picasso96-3 >= 3.2",
   "amissl = 5.20",
   "classact = 3.3",
 ]
@@ -54,10 +54,10 @@ and recipes validate against each separately.
 Each element of `packages` is either:
 
 - **A string**: `"name"` or `"name <constraint>"`, e.g. `"amissl = 5.20"`,
-  `"p96 >= 3.2"`. Constraint operators: `=`, `>=`, `<=`, `>`, `<`;
+  `"picasso96-3 >= 3.2"`. Constraint operators: `=`, `>=`, `<=`, `>`, `<`;
   conjunctions comma-separated: `"mui >= 3.8, < 4.0"`.
 - **A table**: when a recipe declares options, the manifest answers them
-  inline: `{ name = "p96", version = ">= 3.2", card = "uaegfx" }`.
+  inline: `{ name = "picasso96-3", version = ">= 3.2", card = "uaegfx" }`.
   `name` is required; `version` is a constraint string; every other key
   is an option answer (string, integer, or boolean) validated against the
   recipe's `[options]` declarations at resolve time.

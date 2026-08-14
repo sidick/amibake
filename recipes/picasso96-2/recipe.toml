@@ -1,0 +1,64 @@
+# Picasso96 2.0 (driver/video/Picasso96.lha) — the freely-redistributable
+# predecessor to the commercial P96 (see recipes/picasso96-3's header:
+# same architecture, split into two recipes because AmiBake has no
+# version-range dispatch from one package name to several recipes).
+# ShareWare (fee requested, not required): the real archive's own
+# Picasso96.readme states "No distribution restrictions as long as the
+# archive is complete and none of the files within is changed" — so,
+# unlike picasso96-3, this one is genuinely `[source.aminet]`-fetchable
+# and CI-buildable.
+#
+# Derived by downloading the real archive from Aminet and inspecting it
+# directly (paths, the real InstallPicasso96 Installer-language script's
+# card-selection bitmask, and Picasso96.readme's stated requirements) —
+# not guessed. Real contents confirm picasso96-3's long-assumed layout:
+# Picasso96API.library + rtg.library/emulation.library/fastlayers.library
+# direct under Libs/ and Libs/Picasso96/, one self-contained .card driver
+# per board with no CPU-tier variants at all (single 68020+ generic
+# build each). zz9000 doesn't exist yet in this 1999 release — that
+# board is picasso96-3-only. [options.card] here only models the three
+# boards actually reachable from a manifest today (uaegfx is what
+# Copperline/Amiberry emulate; picasso-iv/cybervision64-3d are the real
+# board names already established by picasso96-3) — the real archive
+# ships a dozen more (Altais, Domino, Graffity, Merlin, oMniBus,
+# PicassoII, Piccolo, PiccoloSD64, Pixel64, RetinaBLT-Z3, Spectrum),
+# left unmodeled since no recipe or CI path can exercise real hardware.
+
+[package]
+name     = "picasso96-2"
+versions = ["2.0"]
+
+[requires]
+os  = ">= 3.0"       # per Picasso96.readme: Kickstart/Workbench 3.0 (V39)+
+cpu = ">= 68020"
+
+[source.aminet]
+url    = "driver/video/Picasso96.lha"
+sha256 = { "2.0" = "0146d4a2aaadb82ec454dde6ca4fb33a3f646ca4c0daa46e569c025f4d9728af" }
+
+[install]
+copy = [
+  { from = "Picasso96Install/Libs/Picasso96API.library", to = "SYS:Libs/" },
+  { from = "Picasso96Install/Libs/Picasso96/rtg.library", to = "SYS:Libs/Picasso96/" },
+  { from = "Picasso96Install/Libs/Picasso96/emulation.library", to = "SYS:Libs/Picasso96/" },
+  { from = "Picasso96Install/Libs/Picasso96/fastlayers.library", to = "SYS:Libs/Picasso96/" },
+  { from = "Picasso96Install/Libs/Picasso96/uaegfx.card", to = "SYS:Libs/Picasso96/", when = "card = uaegfx" },
+  { from = "Picasso96Install/Libs/Picasso96/PicassoIV.card", to = "SYS:Libs/Picasso96/", when = "card = picasso-iv" },
+  { from = "Picasso96Install/Libs/Picasso96/CVision3D.card", to = "SYS:Libs/Picasso96/", when = "card = cybervision64-3d" },
+]
+assigns = [
+  { name = "Picasso96", path = "SYS:Libs/Picasso96" },
+]
+
+[options.card]
+type     = "enum"
+values   = ["uaegfx", "picasso-iv", "cybervision64-3d"]
+required = true
+
+# uaegfx is UAE-family emulator-internal RTG, not a real board driver —
+# needs an emulator that actually implements it.
+[options.card.requires.uaegfx]
+emulator = ["amiberry", "winuae"]
+
+[verify]
+exists = ["SYS:Libs/Picasso96API.library"]
