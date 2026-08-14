@@ -119,7 +119,7 @@ all, since it has nothing to download.
   lists more than one version); `sha256` maps every listed version to
   its archive checksum, same rule as the other sources. `filename` is
   optional and used **only** to detect the archive format (`.lha`/
-  `.zip`/`.iso`) — needed when the fetch URL itself doesn't end in the
+  `.run`/`.zip`/`.iso`) — needed when the fetch URL itself doesn't end in the
   real extension (e.g. SourceForge's download links end in `/download`),
   in which case set it to the real filename (`{version}` substituted the
   same way). Defaults to `url` when omitted.
@@ -134,8 +134,14 @@ all, since it has nothing to download.
   (but equally valid) backup or re-dump of the same official disk
   shouldn't be rejected as if it were wrong. `path`'s extension picks
   the extraction format — `.adf` (a raw Amiga floppy disk image, OFS or
-  FFS) is supported alongside `.lha`/`.zip`/`.iso`, the format real
+  FFS) is supported alongside `.lha`/`.run`/`.zip`/`.iso`, the format real
   pre-CD-ROM install media (e.g. Workbench 1.3) ships as.
+
+  Across every source kind, `.run` means an **LhA self-extracting
+  archive** (an AmigaOS executable stub with an LhA archive appended —
+  how some Aminet essentials, including LhA itself at `util/arc/lha.run`,
+  are distributed). The embedded archive is located and extracted
+  directly; the stub is never executed.
 
   `path` may also be an array of filenames, for a real install that's
   genuinely more than one archive — e.g. `os3.2.2` fetches a base

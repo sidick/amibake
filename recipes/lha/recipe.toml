@@ -1,0 +1,46 @@
+# LhA 2.15 (util/arc/lha.run) — the standard Amiga archiver. Useful well
+# beyond "another package": a C:LhA on the built system is what future
+# installer-strategy recipes (and in-emulator test tasks) will use to
+# unpack archives, so it provides the "lha" capability for others to
+# depend on.
+#
+# Derived by downloading the real lha.run from Aminet and extracting it
+# (it's an LhA self-extracting archive — an AmigaOS hunk executable stub
+# with a plain LhA archive appended; extract.py's `.run` support was
+# built against this exact file). Real contents:
+#
+#   lha_68k  lha_68020  lha_68040  LhA.guide  lha_68k.readme
+#
+# This is the first real archive seen shipping per-CPU builds side by
+# side — the concrete example PLAN.md's deferred cpu-variants design was
+# waiting for. Until that lands, the generic 68000 build (lha_68k, runs
+# on every CPU) is installed as C:LhA, matching how the SFX and every
+# LhA distribution before it install by hand.
+#
+# The readme states no OS/Kickstart floor and classic LhA runs on 1.2+,
+# so no [requires] block is asserted.
+
+[package]
+name        = "lha"
+versions    = ["2.15"]
+depends     = []
+conflicts   = []
+provides    = ["lha"]
+
+[source.aminet]
+# Aminet's rolling unversioned filename (see docs/recipe-contract.md's
+# [source.aminet] caveat) — single listed version, so no {version}
+# substitution.
+url         = "util/arc/lha.run"
+sha256      = { "2.15" = "76bae515264fcc3e1c69058ff03a4bcb096152a732cf19fdb03cceee18932497" }
+
+[install]
+copy = [
+  # Generic 68000 build, renamed to its conventional command name.
+  # (lha_68020/lha_68040 are deliberately not installed — see header.)
+  { from = "lha_68k",   to = "SYS:C/LhA" },
+  { from = "LhA.guide", to = "SYS:Help/" },
+]
+
+[verify]
+exists = ["SYS:C/LhA"]

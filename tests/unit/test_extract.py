@@ -67,6 +67,44 @@ def test_extract_zip_rejects_corrupt_archive(tmp_path):
         extract_archive(archive)
 
 
+def _sfx_stub(archive: bytes, offset_field: bool = True) -> bytes:
+    """A fake LhA self-extractor: executable-stub bytes, then the archive.
+    With offset_field, embeds the real stub's "SFX!" marker + version long
+    + big-endian archive-offset long (layout from the real lha.run 2.15)."""
+    stub = b"\x00\x00\x03\xf3" + b"\x4e\x75" * 20  # hunk magic + m68k RTS filler
+    if offset_field:
+        stub += b"SFX!" + (0x100).to_bytes(4, "big")
+        stub += (len(stub) + 4).to_bytes(4, "big")
+    return stub + archive
+
+
+def test_extract_lha_sfx_run_via_offset_field(tmp_path):
+    archive = tmp_path / "test.run"
+    archive.write_bytes(_sfx_stub(make_lha_archive({
+        "lha_68k": b"binary", "LhA.guide": b"guide",
+    })))
+    tree = extract_archive(archive)
+    assert set(tree.paths()) == {"lha_68k", "LhA.guide"}
+    assert tree.get("lha_68k").data == b"binary"
+
+
+def test_extract_lha_sfx_run_via_header_scan(tmp_path):
+    """A stub without the "SFX!" offset field still extracts: the member
+    headers are found by scanning for the -lh?- method id."""
+    archive = tmp_path / "test.run"
+    archive.write_bytes(_sfx_stub(make_lha_archive({"lha_68k": b"binary"}),
+                                  offset_field=False))
+    tree = extract_archive(archive)
+    assert set(tree.paths()) == {"lha_68k"}
+
+
+def test_extract_lha_sfx_rejects_file_without_archive(tmp_path):
+    archive = tmp_path / "bad.run"
+    archive.write_bytes(b"\x00\x00\x03\xf3 just an executable, no archive")
+    with pytest.raises(ExtractError, match="no LhA archive found"):
+        extract_archive(archive)
+
+
 def test_extract_unknown_suffix(tmp_path):
     archive = tmp_path / "test.rar"
     archive.write_bytes(b"whatever")

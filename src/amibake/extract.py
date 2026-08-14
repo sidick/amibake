@@ -7,7 +7,10 @@ Ridge extensions when present — real install/nightly media almost
 always carries them) via `pycdlib`, another pure-Python dependency, no
 external binary; `.adf` (a raw Amiga floppy disk image — OFS or FFS, the
 `[source.assets]` format for pre-2.0 boot media like Workbench 1.3) via
-`amitools`, the same dependency already used by the `hdf` emitter.
+`amitools`, the same dependency already used by the `hdf` emitter;
+`.run` (LhA self-extracting archives, how some Aminet essentials —
+including LhA itself — are distributed) by locating the LhA stream
+appended to the executable stub and handing it to `lhafile`.
 Extracted paths keep their archive-relative form (no Amiga volume
 prefix) — layer.py's `copy` patterns match against these.
 
@@ -49,6 +52,8 @@ def extract_archive(path: Path) -> Tree:
     suffix = path.suffix.lower()
     if suffix == ".lha":
         tree = _extract_lha(path)
+    elif suffix == ".run":
+        tree = _extract_lha_sfx(path)
     elif suffix == ".zip":
         tree = _extract_zip(path)
     elif suffix == ".iso":
@@ -57,7 +62,8 @@ def extract_archive(path: Path) -> Tree:
         tree = _extract_adf(path)
     else:
         raise ExtractError(
-            f"don't know how to extract {path.name!r} (supported: .lha, .zip, .iso, .adf)")
+            f"don't know how to extract {path.name!r} "
+            "(supported: .lha, .run, .zip, .iso, .adf)")
     tree = _expand_nested_adfs(_expand_nested_isos(tree))
     return _decompress_z(tree)
 
@@ -167,20 +173,56 @@ def _expand_nested_adfs(tree: Tree) -> Tree:
 
 
 def _extract_lha(path: Path) -> Tree:
-    tree = Tree()
     try:
-        lf = lhafile.LhaFile(str(path))
-        for info in lf.infolist():
-            if info.filename.endswith("/") or info.filename.endswith("\\"):
-                continue
-            # Some .lha archives (DOS-era archiving tools) store paths
-            # with '\' separators instead of '/' — normalize so [install]
-            # copy patterns (which assume '/') match either kind.
-            name = info.filename.replace("\\", "/")
-            tree.put(name, lf.read(info.filename))
+        return _lha_members(lhafile.LhaFile(str(path)))
     except lhafile.BadLhafile as e:
         raise ExtractError(f"{path.name} is not a valid .lha archive: {e}") from e
+
+
+def _lha_members(lf: lhafile.LhaFile) -> Tree:
+    tree = Tree()
+    for info in lf.infolist():
+        if info.filename.endswith("/") or info.filename.endswith("\\"):
+            continue
+        # Some .lha archives (DOS-era archiving tools) store paths
+        # with '\' separators instead of '/' — normalize so [install]
+        # copy patterns (which assume '/') match either kind.
+        name = info.filename.replace("\\", "/")
+        tree.put(name, lf.read(info.filename))
     return tree
+
+
+_SFX_MARKER = b"SFX!"
+_LHA_METHOD_RE = re.compile(rb"-lh[0-9d]-")
+
+
+def _extract_lha_sfx(path: Path) -> Tree:
+    """Aminet `.run` files (e.g. util/arc/lha.run, LhA's own distribution)
+    are LhA self-extracting archives: an AmigaOS hunk executable stub with
+    a plain LhA archive appended. The stub embeds an "SFX!" marker
+    followed by a version long and a big-endian long holding the file
+    offset of the archive start (layout confirmed against the real
+    lha.run 2.15) — try that offset first, then fall back to probing
+    every plausible member-header position (`-lh?-` method id at header
+    byte 2) for stubs without the marker. A probe can fail arbitrarily
+    (the method-id bytes may occur inside the stub's own code), so any
+    parse error just moves to the next candidate."""
+    data = path.read_bytes()
+    candidates: list[int] = []
+    marker = data.find(_SFX_MARKER)
+    if marker >= 0 and marker + 12 <= len(data):
+        candidates.append(int.from_bytes(data[marker + 8:marker + 12], "big"))
+    candidates += (m.start() - 2 for m in _LHA_METHOD_RE.finditer(data) if m.start() >= 2)
+    seen: set[int] = set()
+    for off in candidates:
+        if off in seen or not 0 <= off < len(data):
+            continue
+        seen.add(off)
+        try:
+            return _lha_members(lhafile.LhaFile(io.BytesIO(data[off:])))
+        except Exception:
+            continue
+    raise ExtractError(f"{path.name}: no LhA archive found inside self-extracting file")
 
 
 def _extract_iso(path: Path) -> Tree:
