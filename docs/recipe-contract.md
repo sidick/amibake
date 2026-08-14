@@ -196,22 +196,33 @@ expresses exactly that.
   Optional keys:
   - `variants` — an array of candidate archive paths, in priority order,
     for archives that ship separate CPU/FPU-tier sibling files (e.g. a
-    generic `foo` plus a faster `foo.040`). Each entry is `{ path, cpu,
-    fpu, mmu }`: `path` is an exact archive-relative file (not a
-    wildcard pattern), and `cpu`/`fpu`/`mmu` are a predicate — same
-    shape as `[requires]` — at least one of which must be given. The
-    builder walks `variants` in order and uses the first entry whose
-    predicate is satisfied by the manifest's `machine` block **and**
-    whose `path` exists in this archive, falling back to `from` if none
-    match. Whichever wins is always installed at the destination `to`
-    would have given the `from` fallback (the unsuffixed name), so a
-    manifest's package list never has to know which sibling got picked:
+    generic `foo` plus a faster `foo.040`) or a whole CPU-tier
+    subdirectory swap (e.g. `AmiSSL3/68020-40/amissl_v362.library` vs a
+    `68060/` sibling directory). Each entry is `{ path, cpu, fpu, mmu }`:
+    `path` is an AmigaDOS pattern — same subset `from` uses (`#?`, `?`,
+    `(a|b|c)`), required to match exactly one file in this archive — and
+    `cpu`/`fpu`/`mmu` are a predicate — same shape as `[requires]` — at
+    least one of which must be given. The builder walks `variants` in
+    order and uses the first entry whose predicate is satisfied by the
+    manifest's `machine` block **and** whose `path` resolves to exactly
+    one archive file, falling back to `from` if none match (or erroring
+    if a candidate's `path` matches more than one — narrow it). Whichever
+    wins is always installed at the destination `to` would have given
+    the `from` fallback (the unsuffixed name), so a manifest's package
+    list never has to know which sibling got picked:
 
     ```toml
     { from = "lha_68k", to = "SYS:C/LhA",
       variants = [
         { path = "lha_68040", cpu = ">= 68040" },
         { path = "lha_68020", cpu = ">= 68020" },
+      ] }
+
+    { from = "AmiSSL/Libs/AmigaOS3/amisslmaster.library", to = "SYS:Libs/" },
+    { from = "AmiSSL/Libs/AmigaOS3/AmiSSL/68020-40/amissl_v#?.library",
+      to   = "SYS:Libs/AmiSSL/",
+      variants = [
+        { path = "AmiSSL/Libs/AmigaOS3/AmiSSL/68060/amissl_v#?.library", cpu = ">= 68060" },
       ] }
     ```
 

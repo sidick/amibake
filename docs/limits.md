@@ -91,23 +91,24 @@ reading the real installer carefully.
 
 Some real archives ship more than one binary per library, suffixed by
 target CPU. `[install].copy`'s `variants` (see
-`docs/recipe-contract.md`) handles the case confirmed against a real
-archive: a generic fallback file plus sibling CPU/FPU-tier files
-alongside it, one archive-relative path per candidate (`recipes/lha`,
-built against the real `util/arc/lha.run`, which ships `lha_68k` /
-`lha_68020` / `lha_68040` side by side).
+`docs/recipe-contract.md`) covers both real shapes confirmed so far:
 
-Not yet handled by `variants`: a whole **subdirectory** swap rather
-than sibling files — real AmiSSL ships
-`AmiSSL/Libs/AmigaOS3/AmiSSL/68020-40/amissl_v#?.library` next to a
-`68060/` sibling *directory*, not a same-directory suffixed file, so
-`recipes/amissl` still hardcodes the 68020-40 pin with a comment
-pointing here rather than using `variants`. `recipes/classact`'s real
-archive (`layout.gadget` vs `layout.gadget.020`) is the same-directory
-shape `variants` does cover, but its recipe still pattern-excludes the
-suffix (`Classes/gadgets/#?.gadget`) rather than selecting it — not yet
-revisited to use `variants` instead. See `src/amibake/layer.py`'s own
-module docstring; tracked in `PLAN.md`.
+- A generic fallback file plus sibling CPU/FPU-tier files alongside it
+  in the same directory (`recipes/lha`, built against the real
+  `util/arc/lha.run`, which ships `lha_68k` / `lha_68020` / `lha_68040`
+  side by side).
+- A whole **subdirectory** swap with a version-varying filename inside
+  (`recipes/amissl`, built against the real GitHub-Releases archive,
+  which ships `AmiSSL/Libs/AmigaOS3/AmiSSL/68020-40/amissl_v362.library`
+  next to a `68060/` sibling directory) — `variants[].path` is itself an
+  AmigaDOS pattern, not a literal filename, so it can match "this
+  release's file, whichever tier" the same way `from` does.
+
+Not yet migrated to `variants`: `recipes/classact`'s real archive
+(`layout.gadget` vs `layout.gadget.020`) is the same-directory shape
+`variants` covers, but its recipe still pattern-excludes the suffix
+(`Classes/gadgets/#?.gadget`) rather than selecting it. See
+`src/amibake/layer.py`'s own module docstring; tracked in `PLAN.md`.
 
 ## Per-version `[install]`
 

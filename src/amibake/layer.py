@@ -4,10 +4,13 @@ reused across every manifest that shares it.
 
 CPU/FPU-tier archive variants (picking the 68020/68040/... sibling of a
 generic binary): see `[install].copy`'s `variants` key in
-docs/recipe-contract.md and `_select_variant` below. Only covers the
-confirmed real shape — sibling files next to a generic fallback in the
-same directory (`recipes/lha`) — not a whole-subdirectory swap
-(AmiSSL's real archive layout; see docs/limits.md).
+docs/recipe-contract.md and `_select_variant` below. Each candidate's
+`path` is itself an AmigaDOS pattern (same subset `from` uses, required
+to match exactly one archive file) rather than a literal filename, so it
+covers both a same-directory suffixed sibling (`recipes/lha`'s
+lha_68k/lha_68020/lha_68040) and a whole-subdirectory swap with a
+version-varying filename inside (`recipes/amissl`'s real
+68020-40/68060 tiers, each containing `amissl_v<release>.library`).
 """
 
 from __future__ import annotations
@@ -107,18 +110,32 @@ def _variant_predicate_matches(variant: dict, machine: dict) -> bool:
     return True
 
 
-def _select_variant(variants: list[dict], archive: Tree, machine: dict) -> str | None:
+def _select_variant(package_name: str, variants: list[dict], archive: Tree,
+                    machine: dict) -> str | None:
     """The first `variants[]` candidate whose predicate matches `machine`
-    and whose `path` actually exists in this archive (case-insensitively
-    — AmigaDOS semantics, same rule `copy`'s own matching uses), or None
-    if every candidate misses (the caller then keeps the `from` fallback).
-    Author-controlled list order is the only precedence rule — list a
-    more specific predicate first when two could both match."""
+    and whose `path` resolves to exactly one file in this archive, or
+    None if every candidate misses (the caller then keeps the `from`
+    fallback). Author-controlled list order is the only precedence rule
+    — list a more specific predicate first when two could both match.
+
+    `path` uses the same AmigaDOS pattern subset as `from` (not just an
+    exact filename): real AmiSSL ships CPU-tier siblings as a whole
+    *subdirectory* swap with a version-numbered filename inside
+    (`AmiSSL/68020-40/amissl_v362.library` vs a `68060/` sibling), so a
+    literal path can't express "this release's file, whichever tier" —
+    the pattern needs its own wildcard the same way `from` does."""
     for variant in variants:
         if not _variant_predicate_matches(variant, machine):
             continue
-        if archive.exists(variant["path"]):
-            return variant["path"]
+        pattern = _amiga_pattern_to_regex(variant["path"])
+        matches = [p for p in archive.paths() if pattern.match(p)]
+        if len(matches) > 1:
+            raise LayerError(
+                f"{package_name}: variants[].path {variant['path']!r} matched "
+                f"{len(matches)} files in the archive — narrow it to match "
+                f"exactly one")
+        if matches:
+            return matches[0]
     return None
 
 
@@ -160,7 +177,8 @@ def apply_layer(base: Tree, package_name: str, install: dict, archive: Tree,
                 f"{package_name}: [install].copy pattern {entry['from']!r} "
                 f"has 'variants' but matched {len(matches)} files — variants "
                 f"only support a single fallback match")
-        chosen_path = _select_variant(variants, archive, machine) if variants else None
+        chosen_path = (
+            _select_variant(package_name, variants, archive, machine) if variants else None)
         prefix = _literal_prefix(entry["from"])
         for src_path in matches:
             # Path relative to the pattern's literal prefix, so a

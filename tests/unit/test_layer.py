@@ -220,6 +220,38 @@ class TestCopyVariants:
         with pytest.raises(LayerError, match="only support a single fallback match"):
             apply_layer(Tree(), "lha", install, archive, machine={"cpu": "68040"})
 
+    def test_variant_path_is_itself_a_pattern_subdirectory_swap(self):
+        """The real amissl formula: a whole CPU-tier *subdirectory* swap,
+        not a same-directory suffixed sibling, with a version-varying
+        filename inside each tier's directory — `variants[].path` must
+        itself pattern-match, not name a literal file."""
+        archive = Tree()
+        archive.put("AmiSSL/Libs/AmigaOS3/AmiSSL/68020-40/amissl_v362.library", b"020-40")
+        archive.put("AmiSSL/Libs/AmigaOS3/AmiSSL/68060/amissl_v362.library", b"060")
+        install = {"copy": [{
+            "from": "AmiSSL/Libs/AmigaOS3/AmiSSL/68020-40/amissl_v#?.library",
+            "to": "SYS:Libs/AmiSSL/",
+            "variants": [
+                {"path": "AmiSSL/Libs/AmigaOS3/AmiSSL/68060/amissl_v#?.library", "cpu": ">= 68060"},
+            ],
+        }]}
+        fallback = apply_layer(Tree(), "amissl", install, archive, machine={"cpu": "68020"})
+        assert fallback.get("SYS:Libs/AmiSSL/amissl_v362.library").data == b"020-40"
+        picked = apply_layer(Tree(), "amissl", install, archive, machine={"cpu": "68060"})
+        assert picked.get("SYS:Libs/AmiSSL/amissl_v362.library").data == b"060"
+
+    def test_variant_path_matching_more_than_one_file_is_an_error(self):
+        archive = Tree()
+        archive.put("Lib/foo", b"generic")
+        archive.put("Lib/040/foo.a", b"a")
+        archive.put("Lib/040/foo.b", b"b")
+        install = {"copy": [{
+            "from": "Lib/foo", "to": "SYS:Libs/foo",
+            "variants": [{"path": "Lib/040/#?", "cpu": ">= 68040"}],
+        }]}
+        with pytest.raises(LayerError, match="matched 2 files"):
+            apply_layer(Tree(), "pkg", install, archive, machine={"cpu": "68040"})
+
 
 class TestLayerCache:
     def test_round_trips_files_and_metadata(self, tmp_path):

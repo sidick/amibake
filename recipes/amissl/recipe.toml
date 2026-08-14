@@ -24,14 +24,15 @@ sha256 = { "5.27" = "722476cfbf21c0caf6ff4a77e32ee8baf67d3045db0e9ff2ccce6c782be
 # flat into SYS:Libs/, and the CPU-specific amissl_v#?.library (its
 # version-numbered filename changes per release, hence the wildcard)
 # into SYS:Libs/AmiSSL/ — regardless of which of the two CPU-tier source
-# subdirectories it came from. The 68020-40 tier is hardcoded here since
-# cpu-variant selection isn't implemented yet (see PLAN.md's cpu/fpu-
-# variants decision log — deferred until a real recipe needed it, which
-# this now is); the 68060 tier is currently unreachable from any recipe.
+# subdirectories it came from. 68020-40 is the fallback (correct for any
+# machine.cpu >= the [requires] floor); a manifest targeting an actual
+# 68060 machine gets the 68060/ sibling instead (confirmed against the
+# real 5.27 archive: both directories hold one identically-versioned
+# amissl_v#?.library, differing only by which CPU tier it's built for).
 [install]
 copy = [
   { from = "AmiSSL/Libs/AmigaOS3/amisslmaster.library", to = "SYS:Libs/" },
-  { from = "AmiSSL/Libs/AmigaOS3/AmiSSL/68020-40/amissl_v#?.library", to = "SYS:Libs/AmiSSL/" },
+  { from = "AmiSSL/Libs/AmigaOS3/AmiSSL/68020-40/amissl_v#?.library", to = "SYS:Libs/AmiSSL/", variants = [ { path = "AmiSSL/Libs/AmigaOS3/AmiSSL/68060/amissl_v#?.library", cpu = ">= 68060" } ] },
   { from = "AmiSSL/Certs/#?", to = "SYS:Devs/AmiSSL/Certs/" },
 ]
 assigns = [
