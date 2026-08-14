@@ -27,16 +27,17 @@ def build_tree(plan: BuildPlan, cache_root: Path, assets_root: Path | None = Non
 
     for pkg in (plan.base_package, *plan.packages):
         tree, parent_key = _apply_one(
-            tree, parent_key, pkg, cache_root, assets_root, http_get, use_cache, allow_hooks)
+            tree, parent_key, pkg, plan.machine, cache_root, assets_root, http_get, use_cache,
+            allow_hooks)
 
     return tree
 
 
-def _apply_one(tree: Tree, parent_key: str | None, pkg: ResolvedPackage,
+def _apply_one(tree: Tree, parent_key: str | None, pkg: ResolvedPackage, machine: dict,
                cache_root: Path, assets_root: Path | None, http_get: fetch.HttpGet,
                use_cache: bool, allow_hooks: bool) -> tuple[Tree, str]:
     key = layer.compute_layer_key(
-        parent_key, pkg.recipe_sha256, pkg.version, pkg.options, _archive_sha256(pkg))
+        parent_key, pkg.recipe_sha256, pkg.version, pkg.options, _archive_sha256(pkg), machine)
     if use_cache:
         cached = layer.load_layer_cache(key, cache_root)
         if cached is not None:
@@ -51,7 +52,7 @@ def _apply_one(tree: Tree, parent_key: str | None, pkg: ResolvedPackage,
         archive_tree = extract.extract_multiple(archive_paths, archive_names)
     else:
         archive_tree = Tree()
-    tree = layer.apply_layer(tree, pkg.name, install, archive_tree, pkg.options)
+    tree = layer.apply_layer(tree, pkg.name, install, archive_tree, pkg.options, machine)
 
     hook = recipe_doc.get("hook")
     if hook:

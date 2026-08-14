@@ -35,7 +35,7 @@ sha256      = { "5.20" = "000000000000000000000000000000000000000000000000000000
 
 [install]
 copy = [
-  { from = "AmiSSL/Libs/#?",  to = "SYS:Libs/", cpu-variant = true },
+  { from = "AmiSSL/Libs/#?",  to = "SYS:Libs/" },
   { from = "AmiSSL/Certs/#?", to = "SYS:Devs/AmiSSL/Certs/" },
 ]
 
@@ -194,8 +194,33 @@ expresses exactly that.
   collide into).
 
   Optional keys:
-  - `cpu-variant = true` — select the 000/020/040/060 binary variant
-    matching the machine block from archives that ship them.
+  - `variants` — an array of candidate archive paths, in priority order,
+    for archives that ship separate CPU/FPU-tier sibling files (e.g. a
+    generic `foo` plus a faster `foo.040`). Each entry is `{ path, cpu,
+    fpu, mmu }`: `path` is an exact archive-relative file (not a
+    wildcard pattern), and `cpu`/`fpu`/`mmu` are a predicate — same
+    shape as `[requires]` — at least one of which must be given. The
+    builder walks `variants` in order and uses the first entry whose
+    predicate is satisfied by the manifest's `machine` block **and**
+    whose `path` exists in this archive, falling back to `from` if none
+    match. Whichever wins is always installed at the destination `to`
+    would have given the `from` fallback (the unsuffixed name), so a
+    manifest's package list never has to know which sibling got picked:
+
+    ```toml
+    { from = "lha_68k", to = "SYS:C/LhA",
+      variants = [
+        { path = "lha_68040", cpu = ">= 68040" },
+        { path = "lha_68020", cpu = ">= 68020" },
+      ] }
+    ```
+
+    List the more specific predicate first when two variants could both
+    match the same machine (e.g. a `cpu = ">= 68020", fpu = true` entry
+    before a plain `cpu = ">= 68020"` one) — there's no separate axis-
+    priority rule, just array order. Requires exactly one match from
+    `from` itself (the fallback); an entry whose `from` is a directory
+    wildcard matching several files can't use `variants`.
   - `when = "<option> = <value>"` — apply only when the manifest's option
     answer matches (see `[options]`).
 - `envarc` — array of `{ name, content }`: files created under `ENVARC:`.

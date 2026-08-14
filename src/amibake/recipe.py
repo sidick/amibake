@@ -26,7 +26,9 @@ PACKAGE_KEYS = {"name", "versions", "depends", "conflicts", "provides", "strateg
 REQUIRES_KEYS = {"os", "kickstart", "cpu", "fpu", "mmu", "emulator", "per-version"}
 SOURCE_KINDS = {"aminet", "github", "url", "assets"}
 INSTALL_KEYS = {"copy", "envarc", "user-startup", "assigns", "files"}
-COPY_KEYS = {"from", "to", "cpu-variant", "when"}
+COPY_KEYS = {"from", "to", "variants", "when"}
+VARIANT_KEYS = {"path", "cpu", "fpu", "mmu"}
+VARIANT_PREDICATE_KEYS = {"cpu", "fpu", "mmu"}
 OPTION_TYPES = {"enum", "bool", "string"}
 STRATEGIES = {"extract", "installer"}
 
@@ -349,6 +351,35 @@ def _check_sha256_map(c: Checker, table: dict, where: str, versions: list[str],
                     "use `shasum -a 256 <archive>` on the downloaded file")
 
 
+def _check_variants(c: Checker, variants: list, where: str) -> None:
+    """`[install].copy[i].variants` — CPU/FPU/MMU sibling-file selection,
+    see docs/recipe-contract.md. Each entry names one candidate archive
+    path plus a predicate (a subset of [requires]'s shape); the builder
+    picks the first whose predicate matches machine.* and whose path
+    exists in the archive, falling back to the entry's own `from` when
+    none do."""
+    for i, variant in enumerate(variants):
+        label = f"{where}.variants[{i}]"
+        if not isinstance(variant, dict):
+            c.error(label, "variants entries must be tables",
+                    'e.g. { path = "Lib/foo.040", cpu = ">= 68040" }')
+            continue
+        c.unknown_keys(variant, VARIANT_KEYS, label)
+        c.typed(variant, "path", str, label, required=True)
+        cpu = c.typed(variant, "cpu", str, label)
+        if cpu is not None:
+            try:
+                parse_constraint(cpu)
+            except ValueError as e:
+                c.error(f"{label}.cpu", str(e), 'e.g. ">= 68020" or "= 68000"')
+        c.typed(variant, "fpu", bool, label)
+        c.typed(variant, "mmu", bool, label)
+        if not (VARIANT_PREDICATE_KEYS & variant.keys()):
+            c.error(label, "variant has no predicate (cpu/fpu/mmu)",
+                    "a variant with no predicate would always win over every "
+                    "later entry — name what machine condition selects it")
+
+
 def _check_install(c: Checker, install: dict) -> None:
     c.unknown_keys(install, INSTALL_KEYS, "[install]")
 
@@ -366,11 +397,13 @@ def _check_install(c: Checker, install: dict) -> None:
             c.error(f"{label}.to", f"destination {to!r} is not an Amiga path",
                     "destinations are absolute Amiga paths like SYS:Libs/ or "
                     "ENVARC:")
-        c.typed(entry, "cpu-variant", bool, label)
         when = c.typed(entry, "when", str, label)
         if when is not None and not _WHEN_RE.match(when):
             c.error(f"{label}.when", f"bad condition {when!r}",
                     'conditions are "<option> = <value>", e.g. "card = uaegfx"')
+        variants = c.typed(entry, "variants", list, label)
+        if variants is not None:
+            _check_variants(c, variants, label)
 
     for i, entry in enumerate(c.typed(install, "envarc", list, "[install]", default=[])):
         label = f"[install].envarc[{i}]"

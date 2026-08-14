@@ -135,6 +135,92 @@ class TestWhenConditions:
         assert not apply_layer(Tree(), "p", install, _archive(), {"debug": False}).exists("SYS:A")
 
 
+class TestCopyVariants:
+    """The real formula: `util/arc/lha.run` ships lha_68k/lha_68020/
+    lha_68040 side by side (recipes/lha) — the concrete case
+    docs/recipe-contract.md's `variants` mechanism was designed for."""
+
+    def _archive(self):
+        archive = Tree()
+        archive.put("lha_68k", b"generic")
+        archive.put("lha_68020", b"020-build")
+        archive.put("lha_68040", b"040-build")
+        return archive
+
+    def _install(self):
+        return {"copy": [{
+            "from": "lha_68k", "to": "SYS:C/LhA",
+            "variants": [
+                {"path": "lha_68040", "cpu": ">= 68040"},
+                {"path": "lha_68020", "cpu": ">= 68020"},
+            ],
+        }]}
+
+    def test_no_machine_uses_fallback(self):
+        tree = apply_layer(Tree(), "lha", self._install(), self._archive())
+        assert tree.get("SYS:C/LhA").data == b"generic"
+
+    def test_low_cpu_uses_fallback(self):
+        tree = apply_layer(Tree(), "lha", self._install(), self._archive(),
+                            machine={"cpu": "68000"})
+        assert tree.get("SYS:C/LhA").data == b"generic"
+
+    def test_matching_tier_picks_variant(self):
+        tree = apply_layer(Tree(), "lha", self._install(), self._archive(),
+                            machine={"cpu": "68020"})
+        assert tree.get("SYS:C/LhA").data == b"020-build"
+
+    def test_highest_matching_tier_wins_by_list_order(self):
+        tree = apply_layer(Tree(), "lha", self._install(), self._archive(),
+                            machine={"cpu": "68040"})
+        assert tree.get("SYS:C/LhA").data == b"040-build"
+
+    def test_higher_cpu_than_any_variant_falls_through_to_highest_satisfied(self):
+        # 68060 satisfies both ">= 68040" and ">= 68020" predicates; the
+        # first satisfied entry in list order wins (68040 listed first).
+        tree = apply_layer(Tree(), "lha", self._install(), self._archive(),
+                            machine={"cpu": "68060"})
+        assert tree.get("SYS:C/LhA").data == b"040-build"
+
+    def test_destination_is_always_the_fallback_name(self):
+        """Whichever sibling wins, it lands at `to`'s own name — a
+        manifest never has to know which variant got picked (PNG_dt's
+        real Installer does the same: unsuffixed name either way)."""
+        tree = apply_layer(Tree(), "lha", self._install(), self._archive(),
+                            machine={"cpu": "68020"})
+        assert set(tree.paths()) == {"SYS:C/LhA"}
+
+    def test_variant_path_missing_from_archive_falls_back(self):
+        archive = Tree()
+        archive.put("lha_68k", b"generic")  # no lha_68020/lha_68040 in this archive
+        tree = apply_layer(Tree(), "lha", self._install(), archive,
+                            machine={"cpu": "68040"})
+        assert tree.get("SYS:C/LhA").data == b"generic"
+
+    def test_fpu_predicate(self):
+        install = {"copy": [{
+            "from": "lha_68k", "to": "SYS:C/LhA",
+            "variants": [{"path": "lha_68020", "cpu": ">= 68020", "fpu": True}],
+        }]}
+        archive = self._archive()
+        no_fpu = apply_layer(Tree(), "lha", install, archive, machine={"cpu": "68020"})
+        assert no_fpu.get("SYS:C/LhA").data == b"generic"
+        with_fpu = apply_layer(Tree(), "lha", install, archive,
+                                machine={"cpu": "68020", "fpu": True})
+        assert with_fpu.get("SYS:C/LhA").data == b"020-build"
+
+    def test_variants_with_multiple_fallback_matches_is_an_error(self):
+        archive = Tree()
+        archive.put("Lib/foo", b"a")
+        archive.put("Lib/bar", b"b")
+        install = {"copy": [{
+            "from": "Lib/#?", "to": "SYS:Libs/",
+            "variants": [{"path": "Lib/foo.040", "cpu": ">= 68040"}],
+        }]}
+        with pytest.raises(LayerError, match="only support a single fallback match"):
+            apply_layer(Tree(), "lha", install, archive, machine={"cpu": "68040"})
+
+
 class TestLayerCache:
     def test_round_trips_files_and_metadata(self, tmp_path):
         tree = Tree()
@@ -159,6 +245,8 @@ class TestLayerCache:
         assert compute_layer_key(
             None, "recipe-sha", "1.0", {"card": "uaegfx"}, "archive-sha") != base
         assert compute_layer_key(None, "recipe-sha", "1.0", {}, "other-archive-sha") != base
+        assert compute_layer_key(
+            None, "recipe-sha", "1.0", {}, "archive-sha", {"cpu": "68040"}) != base
 
     def test_key_is_deterministic(self):
         a = compute_layer_key("p", "r", "1.0", {"x": 1, "y": 2}, "a")

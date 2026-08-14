@@ -12,10 +12,11 @@
 #   lha_68k  lha_68020  lha_68040  LhA.guide  lha_68k.readme
 #
 # This is the first real archive seen shipping per-CPU builds side by
-# side — the concrete example PLAN.md's deferred cpu-variants design was
-# waiting for. Until that lands, the generic 68000 build (lha_68k, runs
-# on every CPU) is installed as C:LhA, matching how the SFX and every
-# LhA distribution before it install by hand.
+# side — the concrete example the `variants` design (docs/recipe-
+# contract.md) was waiting for. machine.cpu picks lha_68040/lha_68020
+# when it qualifies; the generic lha_68k build (runs on every CPU) is
+# the fallback otherwise, installed either way as C:LhA — same
+# unsuffixed name the real SFX/every LhA distribution installs under.
 #
 # The readme states no OS/Kickstart floor and classic LhA runs on 1.2+,
 # so no [requires] block is asserted.
@@ -36,9 +37,13 @@ sha256      = { "2.15" = "76bae515264fcc3e1c69058ff03a4bcb096152a732cf19fdb03cce
 
 [install]
 copy = [
-  # Generic 68000 build, renamed to its conventional command name.
-  # (lha_68020/lha_68040 are deliberately not installed — see header.)
-  { from = "lha_68k",   to = "SYS:C/LhA" },
+  # Generic 68000 build is the fallback; a manifest targeting an
+  # 68020+/68040+ machine gets the matching sibling instead, both
+  # installed under the same conventional command name.
+  { from = "lha_68k",   to = "SYS:C/LhA", variants = [
+      { path = "lha_68040", cpu = ">= 68040" },
+      { path = "lha_68020", cpu = ">= 68020" },
+    ] },
   { from = "LhA.guide", to = "SYS:Help/" },
 ]
 

@@ -24,7 +24,7 @@ sha256 = {{ "5.20" = "{SHA}", "5.18" = "{SHA}" }}
 
 [install]
 copy = [
-  {{ from = "AmiSSL/Libs/#?", to = "SYS:Libs/", cpu-variant = true }},
+  {{ from = "AmiSSL/Libs/#?", to = "SYS:Libs/" }},
 ]
 envarc = [{{ name = "AmiSSL/opts", content = "x" }}]
 user-startup = [{{ order = 50, lines = ["Assign AmiSSL: SYS:Devs/AmiSSL"] }}]
@@ -101,6 +101,14 @@ INVALID = [
     (_minimal() + '\n[install]\ncopy = [{ from = "a", to = "Libs" }]\n', "copy[0].to"),
     (_minimal() + '\n[install]\ncopy = [{ from = "a", to = "SYS:Libs/", when = "???" }]\n',
      "copy[0].when"),
+    (_minimal() + '\n[install]\ncopy = [{ from = "a", to = "SYS:C/A", '
+     'variants = [{ cpu = ">= 68020" }] }]\n', "variants[0].path"),
+    (_minimal() + '\n[install]\ncopy = [{ from = "a", to = "SYS:C/A", '
+     'variants = [{ path = "a.020", cpu = "not a constraint" }] }]\n', "variants[0].cpu"),
+    (_minimal() + '\n[install]\ncopy = [{ from = "a", to = "SYS:C/A", '
+     'variants = [{ path = "a.020" }] }]\n', "variants[0]"),
+    (_minimal() + '\n[install]\ncopy = [{ from = "a", to = "SYS:C/A", '
+     'variants = [{ path = "a.020", cpu = ">= 68020", odd = 1 }] }]\n', "variants[0].odd"),
     (_minimal() + '\n[install]\nuser-startup = [{ order = true, lines = [] }]\n',
      "user-startup[0].order"),
     (_minimal() + '\n[options.card]\nvalues = ["a"]\n', "type"),
@@ -121,6 +129,17 @@ def test_invalid_recipes(write, text, field):
         f"no problem mentioning {field!r} in {[p.field for p in problems]}")
     for p in problems:
         assert p.remedy, "every error carries a remedy"
+
+
+def test_valid_copy_variants(write):
+    text = _minimal() + (
+        '\n[install]\ncopy = [{ from = "a", to = "SYS:C/A", variants = ['
+        '{ path = "a.040", cpu = ">= 68040" },'
+        '{ path = "a.020fpu", cpu = ">= 68020", fpu = true },'
+        '{ path = "a.mmu", mmu = true },'
+        '] }]\n'
+    )
+    assert validate_recipe(write(text, name="recipe.toml", subdir="pkg")) == []
 
 
 def test_no_op_provider_needs_no_source(write):

@@ -1,13 +1,45 @@
-"""Machine-block helpers shared by the config emitters.
+"""Machine-block helpers shared by the config emitters, resolver, and
+layer applier.
 
 The manifest's `machine.ram` is a string (`"chip:2M,fast:8M"`) — valid
 syntax is checked by `manifest.py`'s `_RAM_SPEC_RE`, but nothing turns it
-into bytes a config emitter can act on. That's this module's job.
+into bytes a config emitter can act on. That's most of this module's job;
+`CPU_ORDER`/`cpu_satisfies` also live here so resolver.py's
+`[requires].cpu` check and layer.py's `variants` predicate matching (see
+`docs/recipe-contract.md`'s `[install].copy` variants) share one
+ordering, rather than two copies drifting apart.
 """
 
 from __future__ import annotations
 
+from .versionspec import Constraint
+
+CPU_ORDER = ["68000", "68010", "68020", "68030", "68040", "68060"]
+
 _UNITS = {"K": 1024, "M": 1024**2, "G": 1024**3}
+
+
+def cpu_satisfies(cpu: str, constraints: list[Constraint]) -> bool:
+    """Does machine.cpu `cpu` (e.g. "68030") satisfy every constraint in
+    `constraints` (parsed from a "[requires].cpu"/variant "cpu" string
+    like ">= 68020")? Raises ValueError via CPU_ORDER.index if `cpu` or a
+    constraint target isn't a recognized CPU family — callers decide how
+    to treat that (resolver.py: pass the check, since there's nothing
+    more it can say)."""
+    idx = CPU_ORDER.index(cpu)
+    for op, target in constraints:
+        target_idx = CPU_ORDER.index(target)
+        if op == "=" and idx != target_idx:
+            return False
+        if op == ">=" and idx < target_idx:
+            return False
+        if op == "<=" and idx > target_idx:
+            return False
+        if op == ">" and idx <= target_idx:
+            return False
+        if op == "<" and idx >= target_idx:
+            return False
+    return True
 
 
 def parse_ram_spec(spec: str) -> dict[str, int]:

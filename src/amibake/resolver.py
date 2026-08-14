@@ -16,10 +16,9 @@ from pathlib import Path
 
 from ._validate import load_toml
 from .errors import Problem
+from .machine import cpu_satisfies
 from .plan import BaseInfo, BuildPlan, ResolvedPackage
 from .versionspec import Constraint, max_satisfying, parse_constraint, parse_package_spec, satisfies
-
-CPU_ORDER = ["68000", "68010", "68020", "68030", "68040", "68060"]
 
 
 @dataclass(frozen=True)
@@ -317,7 +316,7 @@ def _validate_requires(problems: list[Problem], manifest_file: str, label: str,
     if cpu_constraint and machine_cpu:
         constraints = parse_constraint(cpu_constraint)
         try:
-            ok = _cpu_satisfies(machine_cpu, constraints)
+            ok = cpu_satisfies(machine_cpu, constraints)
         except ValueError:
             ok = True  # unrecognized CPU family: nothing more we can check here
         if not ok:
@@ -348,23 +347,6 @@ def _validate_requires(problems: list[Problem], manifest_file: str, label: str,
             f"the manifest's emit list is {emit}",
             f"add one of {', '.join(req_emulators)} to emit, or drop this "
             f"package"))
-
-
-def _cpu_satisfies(cpu: str, constraints: list[Constraint]) -> bool:
-    idx = CPU_ORDER.index(cpu)
-    for op, target in constraints:
-        target_idx = CPU_ORDER.index(target)
-        if op == "=" and idx != target_idx:
-            return False
-        if op == ">=" and idx < target_idx:
-            return False
-        if op == "<=" and idx > target_idx:
-            return False
-        if op == ">" and idx <= target_idx:
-            return False
-        if op == "<" and idx >= target_idx:
-            return False
-    return True
 
 
 def _validate_options(problems: list[Problem], manifest_file: str, label: str,

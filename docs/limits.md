@@ -90,15 +90,23 @@ reading the real installer carefully.
 ## CPU/FPU archive variants
 
 Some real archives ship more than one binary per library, suffixed by
-target CPU (`layout.gadget` vs `layout.gadget.020`, seen in
-`recipes/classact`'s real ClassAct archive). `[install].copy` accepts
-`cpu-variant = true` on a copy entry, but selection isn't implemented
-yet — every match is copied, so recipes work around it today by
-pattern-excluding the variant suffix directly (`Classes/gadgets/#?.gadget`
-naturally excludes `#?.gadget.020`) or, where the real Install script
-encodes a variant-selection convention worth confirming first
-(AmiSSL), by copying only the generic binary until that convention is
-verified against a real example. See `src/amibake/layer.py`'s own
+target CPU. `[install].copy`'s `variants` (see
+`docs/recipe-contract.md`) handles the case confirmed against a real
+archive: a generic fallback file plus sibling CPU/FPU-tier files
+alongside it, one archive-relative path per candidate (`recipes/lha`,
+built against the real `util/arc/lha.run`, which ships `lha_68k` /
+`lha_68020` / `lha_68040` side by side).
+
+Not yet handled by `variants`: a whole **subdirectory** swap rather
+than sibling files — real AmiSSL ships
+`AmiSSL/Libs/AmigaOS3/AmiSSL/68020-40/amissl_v#?.library` next to a
+`68060/` sibling *directory*, not a same-directory suffixed file, so
+`recipes/amissl` still hardcodes the 68020-40 pin with a comment
+pointing here rather than using `variants`. `recipes/classact`'s real
+archive (`layout.gadget` vs `layout.gadget.020`) is the same-directory
+shape `variants` does cover, but its recipe still pattern-excludes the
+suffix (`Classes/gadgets/#?.gadget`) rather than selecting it — not yet
+revisited to use `variants` instead. See `src/amibake/layer.py`'s own
 module docstring; tracked in `PLAN.md`.
 
 ## Per-version `[install]`
