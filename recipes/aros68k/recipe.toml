@@ -24,7 +24,7 @@
 
 [package]
 name     = "aros68k"
-versions = ["20260813"]
+versions = ["20260814"]
 strategy = "extract"
 
 [base]
@@ -45,7 +45,7 @@ dos-type   = "ffs-intl-longname"
 [source.url]
 url      = "https://sourceforge.net/projects/aros/files/nightly2/{version}/Binaries/AROS-{version}-amiga-m68k-boot-iso.zip/download"
 filename = "AROS-{version}-amiga-m68k-boot-iso.zip"
-sha256   = { "20260813" = "b25ce025fe2d30ed2c9c4dd4bce4acf7d95cd0d46eaf19e27b7ba5e707582882" }
+sha256   = { "20260814" = "dcd80e76de846575864d07493667e67628996f8cd907fd7a4717024e4d09a43a" }
 
 [install]
 copy = [
