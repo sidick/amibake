@@ -1,0 +1,86 @@
+# MMULibs 3.2.2 (bundled inside AmigaOS-3.2-full.lha's own MMULibs.adf)
+# — the CPU support libraries (680x0.library + the matching
+# 68030/68040/68060.library) real AmigaOS 3.2 needs on a 68030+ system
+# to stop `CPU CHECKINSTALL` (run every boot by the base's own
+# Startup-Sequence — see Workbench3.2.adf/S/Startup-Sequence's
+# `SetPatch QUIET` / `CPU CHECKINSTALL` lines) from nagging at boot.
+#
+# recipes/os3.2.2's own header comment previously excluded MMULibs.adf
+# entirely on the theory that it's "CPU-board-specific accelerator
+# support", reachable only via the real Install script's separate
+# "Install CPU Support Libraries" menu branch — true for the
+# interactive install path, but incomplete: `assets/hyperion/
+# AmigaOS-3.2-full.lha`'s own `FAQs/CPU-FAQ.readme` (OS 3.2 Beta Team,
+# v1.3) is explicit that *some* CPU library is needed on real 68030+
+# hardware regardless of which one:
+#
+#   "There will be a point in the Amiga OS 3.2 installation where a
+#    CPU library will be mentioned for host systems with a 68030,
+#    68040, or 68060 [...] address the nags placed in the system
+#    startup."
+#   "Do I need a CPU library for my 68040-based Amiga? A: Yes."
+#   "Do I need a CPU library for my 68020-based Amiga? A: Mostly the
+#    answer is No [...] there is no need for a library on 68020
+#    systems" (no MMU on stock 68020 boards like the A1200)
+#
+# and, as the FAQ's own generic (no specific OEM board) fallback:
+#
+#   "Use the MuLibs package. Place 680x0.library and 68030.library in
+#    LIBS: and reboot."
+#
+# This recipe ships exactly that generic pair — nothing else from
+# MMULibs.adf (no mmu.library, no MuTools/MuForce/MuGuardianAngel; see
+# PACKAGE_IDEAS.md's "dev/debug trio" entry for those as a separate,
+# bigger concern, deliberately out of scope here). A manifest pairing
+# `os3.2.2` with `machine.cpu = "68030"` or higher (e.g. manifests/
+# os32-p96-amissl.toml) should add this package or keep hitting the
+# real startup nag on every boot.
+#
+# Not a `variants` case like lha's/AHI's own CPU-tier siblings: those
+# all install under one fixed, CPU-generic destination name regardless
+# of which sibling wins. Here the destination name *is* the signal —
+# `CPU CHECKINSTALL`/the base Install script both probe for a specific
+# `Libs/<detected-cpu>.library` (`Libs/68030.library`, `Libs/
+# 68040.library`, ...), so a 68040 system with a file merely
+# *containing* 68040-suited code but named `68030.library` would still
+# nag. Simplest correct fix, and the one this recipe takes: ship all
+# three real CPU-tier libraries (680x0.library is the shared,
+# CPU-generic dispatcher every tier needs) under their own real names
+# unconditionally — inert extra files for the two tiers a given boot
+# doesn't hit, a few KB each, and correct regardless of which exact
+# 68030+ tier `machine.cpu` ends up declaring.
+
+[package]
+name        = "mmulibs"
+versions    = ["3.2.2"]
+depends     = []
+conflicts   = []
+provides    = []
+
+[requires]
+# FAQ: 68020 and below never need a CPU library (no MMU on stock
+# 68020 boards); 68030 is the real floor where `CPU CHECKINSTALL`
+# starts nagging.
+cpu         = ">= 68030"
+
+[source.assets]
+# Same real asset os3.2.2 already pins — MMULibs.adf is bundled inside
+# it, not a separate download.
+path   = "hyperion/AmigaOS-3.2-full.lha"
+sha256 = { "3.2.2" = "67f531e86ed27e79f645d8fd746199ec5b28bc40a4f197e9197c4eb1a2dd8479" }
+
+[install]
+copy = [
+  { from = "MMULibs.adf/Libs/680x0.library", to = "SYS:Libs/680x0.library" },
+  { from = "MMULibs.adf/Libs/68030.library", to = "SYS:Libs/68030.library" },
+  { from = "MMULibs.adf/Libs/68040.library", to = "SYS:Libs/68040.library" },
+  { from = "MMULibs.adf/Libs/68060.library", to = "SYS:Libs/68060.library" },
+]
+
+[verify]
+exists = [
+  "SYS:Libs/680x0.library",
+  "SYS:Libs/68030.library",
+  "SYS:Libs/68040.library",
+  "SYS:Libs/68060.library",
+]

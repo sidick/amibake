@@ -1,0 +1,134 @@
+# AHI 4.18 (driver/audio/ahiusr_4.18.lha) — the retargetable audio
+# system (ahi.device + AUDIO: handler + prefs editor) that most
+# audio-capable Amiga software depends on. See PACKAGE_IDEAS.md's
+# "Others" entry.
+#
+# Derived by downloading the real archive from Aminet and reading it
+# directly with this project's own lhafile-based extractor, then
+# reading the real `AHI/Install AHI` Installer script (Installer-
+# language, $VER 4.15/4.16) inside it and translating its default,
+# non-interactive (@user-level 0 / novice) path per docs/limits.md's
+# guidance. Two askchoice calls (GUI toolkit, icon style) are *not*
+# gated behind a `(= @user-level 0)` check in the real script — same
+# translation rule reqtools already established for such cases: use
+# the ask's own `(default ...)` clause, since that's what an
+# unattended/novice run effectively picks.
+#
+# Real default-path translation, read directly from the script:
+#   - #parts defaults to system+prefs+audio+userdoc (all four — the
+#     script's own `(exists "User")` gate is true, since this is the
+#     "ahiusr" end-user archive; developer files live in the separate
+#     "ahidev" archive this recipe doesn't fetch, and its own
+#     `(exists "Developer")` gate is false here, so a-developer/
+#     d-developer are correctly never installed)
+#   - GUI toolkit for the prefs binary: BGUI (`#gui_bgui`, the ask's
+#     own default) — this recipe depends on `bgui` (recipes/bgui) so
+#     the shipped prefs editor actually has a bgui.library to run
+#     against; ahi.device/AUDIO:/the drivers don't need it themselves,
+#     only the *prefs GUI* does.
+#   - icon style: plain 4-colour (`#icon_std`, the ask's own default —
+#     the MagicWB-icon branch only fires if a real `MagicWB` env var
+#     is set, never true for a fresh build)
+#   - AUDIO: DOS driver activation ask is gated on `@user-level >= 1`
+#     (novice skips it) — default `#dosdevpath` stays
+#     "Devs:DOSDrivers", i.e. mounted at boot
+#   - locale catalogs: the default-selection loop only turns a
+#     language on if `LOCALE:Languages/<lang>.language` already exists
+#     on the *target* at install time — never true for a fresh build,
+#     so (like reqtools' own translation) no catalogs are installed by
+#     default
+#   - drivers: `#default` starts at `#filesave` (always on) plus
+#     `#paula` (gated on "not a Draco", i.e. always true on a real
+#     Amiga); every other driver (Concierto/Delfina/MaestroPro/Melody/
+#     Melody1200/Prelude/Toccata/Wavetools) only defaults on if its
+#     *own* hardware library/device already exists on the target —
+#     never true for a fresh build. So the true default-path install
+#     is Paula (onboard/emulated sound) + Filesave (record/render to
+#     file) only.
+#   - CPU-tier binary suffix (`#ver68k`): "" (68020-68040) unless the
+#     real script's own `(database "cpu")` check finds 68000/68010
+#     (-> ".000") or 68060 (-> ".060") — translated directly onto this
+#     project's `variants` mechanism below, keyed off `machine.cpu`
+#     instead of a live target query. Only ahi.device/paula.audio/
+#     filesave.audio actually ship `.000` siblings in this archive (no
+#     `.060` driver siblings exist — the real script's own P_INSTDRIVER
+#     procedure falls back to the plain driver file whenever a
+#     CPU-suffixed one is absent, which this recipe's `variants`
+#     fallback-to-`from` behaviour reproduces for free).
+#   - the script's very last install step runs `AddAudioModes REMOVE`
+#     to (re)build the audio-mode ID database in ENV: from the copied
+#     AudioModes/ description files — real, but "run a program at
+#     install time to populate an ENV: database" isn't expressible in
+#     [install] (docs/limits.md). Since ENV: is RAM-based and reset
+#     every boot, this recipe instead runs the same command from
+#     S:User-Startup so the database exists after every real boot, not
+#     just once at build time.
+#
+# Guide destination follows this project's own established convention
+# (reqtools/lha) of a static `SYS:Help/`, not the real script's
+# `Help:`-assign-if-present-else-`SYS:Prefs/` fallback logic — flagged
+# as a guess there already, same guess repeated here for consistency.
+
+[package]
+name        = "ahi"
+versions    = ["4.18"]
+depends     = ["bgui"]
+conflicts   = []
+provides    = ["ahi"]
+
+[requires]
+# SPECIAL REQUIREMENTS in ahiusr.readme: "AmigaOS release 2." /
+# Architecture "m68k-amigaos >= 2.0.4" — expressed as the equivalent
+# Kickstart floor (37), same convention segtracker/reqtools use.
+# 68020+ is only "strongly recommended", not required — the archive
+# ships a working (if degraded) 68000 ahi.device.000 sibling, so no
+# [requires].cpu floor.
+kickstart   = ">= 37"
+
+[source.aminet]
+# Versioned filename (not Aminet's rolling-unversioned pattern), so
+# {version} substitution isn't needed even though sha256 still keys by
+# version per the recipe-contract convention.
+url         = "driver/audio/ahiusr_4.18.lha"
+sha256      = { "4.18" = "eed8202c5f2b5e6ee71b7aa47cd43040e27b05beb92234e2c11f105d415bd029" }
+
+[install]
+copy = [
+  # --- ahi.device + AddAudioModes (#system) ---
+  { from = "AHI/User/Devs/ahi.device", to = "SYS:Devs/ahi.device", variants = [
+      { path = "AHI/User/Devs/ahi.device.060", cpu = ">= 68060" },
+      { path = "AHI/User/Devs/ahi.device.000", cpu = "< 68020" },
+    ] },
+  { from = "AHI/User/C/AddAudioModes", to = "SYS:C/" },
+
+  # --- drivers (#drivers default: Filesave + Paula) ---
+  { from = "AHI/User/Devs/AHI/filesave.audio", to = "SYS:Devs/AHI/filesave.audio", variants = [
+      { path = "AHI/User/Devs/AHI/filesave.audio.000", cpu = "< 68020" },
+    ] },
+  { from = "AHI/User/Devs/AHI/paula.audio", to = "SYS:Devs/AHI/paula.audio", variants = [
+      { path = "AHI/User/Devs/AHI/paula.audio.000", cpu = "< 68020" },
+    ] },
+  { from = "AHI/User/Devs/AudioModes/FILESAVE", to = "SYS:Devs/AudioModes/" },
+  { from = "AHI/User/Devs/AudioModes/PAULA",    to = "SYS:Devs/AudioModes/" },
+
+  # --- prefs program (#prefs, BGUI variant — see header comment) ---
+  { from = "AHI/User/Prefs/AHI_BGUI", to = "SYS:Prefs/AHI" },
+  { from = "AHI/User/Prefs/AHI.info", to = "SYS:Prefs/AHI.info" },
+
+  # --- AUDIO: handler (#audio) ---
+  { from = "AHI/User/L/AHI-Handler",                to = "SYS:L/" },
+  { from = "AHI/User/Devs/DOSDrivers/AUDIO",        to = "SYS:Devs/DOSDrivers/AUDIO" },
+  { from = "AHI/User/Devs/DOSDrivers/AUDIO.info",   to = "SYS:Devs/DOSDrivers/AUDIO.info" },
+
+  # --- user documentation (#userdoc) ---
+  { from = "AHI/User/Help/ahi.guide", to = "SYS:Help/" },
+]
+user-startup = [{ order = 60, lines = ["C:AddAudioModes REMOVE"] }]
+
+[verify]
+exists = [
+  "SYS:Devs/ahi.device",
+  "SYS:C/AddAudioModes",
+  "SYS:Devs/DOSDrivers/AUDIO",
+  "SYS:L/AHI-Handler",
+]

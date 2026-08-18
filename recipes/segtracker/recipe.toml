@@ -1,0 +1,59 @@
+# SegTracker 47.6 (dev/debug/SegTracker.lha) — a global segment-list
+# tracking utility from Thomas Richter (current maintainer) / Michael
+# Sinz (original author). Installs a public "SegTracker" exec semaphore
+# that maps a runtime address back to the library/device/program (and,
+# with LOADSYMBOLS, source file/line) it belongs to — useful alongside
+# Copperline/Amiberry boot verification when a build crashes instead of
+# booting cleanly. See PACKAGE_IDEAS.md's "dev/debug trio" entry.
+#
+# Derived by downloading the real archive from Aminet and listing/
+# reading it directly with this project's own lhafile-based extractor
+# (real internal paths and the full SegTracker.readme text below are
+# taken from that read, not guessed). The archive is flat — a single
+# generic 68000+ binary, no per-CPU sibling files like lha's — plus a
+# .doc, a .readme, and three Workbench .info icons for double-click
+# launch, which this recipe skips (same convention lha/reqtools use:
+# ship the command and its manual, not click-icon chrome).
+#
+# SegTracker.readme states "Requires: AmigaOS 2.04 or better" /
+# "Architecture: m68k-amigaos >= 2.0.4" — expressed here as the
+# equivalent Kickstart floor (37) rather than an "os = 2.04" constraint,
+# matching reqtools' precedent of using kickstart directly when that's
+# what the real requirement is pinned to.
+#
+# No installer script ships in the archive at all (unlike ReqTools) —
+# SegTracker.doc documents it as a plain Shell/Workbench command with
+# no install step of its own. To actually be tracking segments across a
+# boot (the whole point of pairing this with crash-triage tooling),
+# this recipe starts it from S:User-Startup; the doc doesn't say
+# whether it stays resident or installs its semaphore and exits, but
+# either way a plain (non-`run`) startup line is correct: it never
+# blocks waiting on Shell input, and the semaphore it registers
+# survives independently of whether the launching process persists.
+
+[package]
+name        = "segtracker"
+versions    = ["47.6"]
+depends     = []
+conflicts   = []
+provides    = []
+
+[requires]
+kickstart   = ">= 37"
+
+[source.aminet]
+# Single version only, so {version} substitution isn't needed in the URL
+# (see docs/recipe-contract.md's [source.aminet] caveat about Aminet's
+# rolling unversioned filenames — SegTracker.lha is exactly that case).
+url         = "dev/debug/SegTracker.lha"
+sha256      = { "47.6" = "4e6b5037d0de9443e2bc713ca683bd70bbd5edcc8a7642ca26c32f609cd643c7" }
+
+[install]
+copy = [
+  { from = "SegTracker",     to = "SYS:C/" },
+  { from = "SegTracker.doc", to = "SYS:Help/" },
+]
+user-startup = [{ order = 20, lines = ["C:SegTracker"] }]
+
+[verify]
+exists = ["SYS:C/SegTracker"]

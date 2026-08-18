@@ -103,11 +103,20 @@
 #   - GlowIcons3.2.adf — real, but excluded by the script's own default
 #     (`askbool ... (default 0)`, confirmed directly) unless the user
 #     opts in; a cosmetic icon theme, not core functionality.
-#   - MMULibs.adf — real, but not part of the main Workbench-install
-#     path at all: the script's own top-level menu branches to it as a
-#     wholly separate standalone installer ("MMU-Library installation"
-#     — CPU-board-specific accelerator support), never reached by the
-#     default full-install path this recipe translates.
+#   - MMULibs.adf — real, and not just "CPU-board-specific accelerator
+#     support" as this comment previously claimed: `assets/hyperion/
+#     AmigaOS-3.2-full.lha`'s own `FAQs/CPU-FAQ.readme` confirms a
+#     68030+ *machine block* (real or emulated, no 3rd-party board
+#     needed) hits the base's own `CPU CHECKINSTALL` boot-time nag
+#     (Workbench3.2.adf/S/Startup-Sequence) without one. Still
+#     excluded from this base's own [install] — the script's top-level
+#     menu branches to it as a wholly separate standalone installer,
+#     never reached by the default full-install path this recipe
+#     translates — but now shipped as its own opt-in `recipes/mmulibs`
+#     package (`[requires] cpu = ">= 68030"`) rather than left as a
+#     silent gap. A manifest pairing this base with `machine.cpu =
+#     "68030"` or higher should add it (see manifests/
+#     os32-p96-amissl.toml).
 #   - Storage3.2.adf's DefIcons/, Presets/Pointers/, Env-Archive prefs
 #     files, and its own per-driver .info icons pattern — real, but
 #     cosmetic Prefs-appearance defaults, not functional content.

@@ -1,0 +1,75 @@
+# BGUI 41.11 (dev/gui/bgui.lha) — the BOOPSI-based GUI toolkit
+# (bgui.library + its external gadget libraries) that AHI's own prefs
+# editor is built against; added alongside recipes/ahi to close the
+# "known gap" its own header comment flagged (a BGUI-backed prefs
+# binary with no bgui.library recipe to back it).
+#
+# Derived by downloading the real archive from Aminet and reading it
+# directly with this project's own lhafile-based extractor. Unlike
+# ReqTools/AHI, this archive ships **no** Installer script at all —
+# just a one-line `MakeAssign` shell script (`Assign LIBS: libs ADD`)
+# and a LICENSE file. bgui.readme (Aminet's own, external to the
+# archive) states the real install procedure directly: "copying the
+# appropriate library version to your LIBS: directory and placing
+# gadget libraries in LIBS:gadgets" — translated here as a plain
+# `[install].copy`, `strategy` isn't even needed since there's no
+# installer path to choose between.
+#
+# Two library builds ship side by side, same "CPU-tier sibling files"
+# shape as lha/AHI:
+#   - `bgui.library`   — bgui.readme: "standard version ... MC68000
+#     processors and Amiga OS 2"
+#   - `bgui.library_e` — bgui.readme: "enhanced library version
+#     optimized for MC68020+ processors running Amiga OS 3 or later"
+# translated onto this project's `variants` mechanism, both installed
+# under the one real library name (`SYS:Libs/bgui.library`) so nothing
+# depending on it needs to know which build got picked.
+#
+# The five external gadget libraries (bar/layoutgroup/palette/
+# popbutton/treeview, `libs/gadgets/bgui_#?.gadget`) are unconditional
+# — bgui.readme doesn't gate them on CPU/OS at all, and BGUI programs
+# resolve them by fixed name from `LIBS:gadgets/` regardless of which
+# main library build is active.
+#
+# `bgui\BGUI` (the archive's own top-level, non-`libs/` binary) is the
+# bundled preferences configuration utility — installed to `SYS:Prefs/`
+# per this project's established convention for prefs-editor placement
+# (see reqtools' `ReqTools` recipe). Examples/, their C source, and
+# LICENSE are deliberately excluded — dev/demo content, not part of
+# "install the library", same convention AHI's own recipe used to skip
+# ahidev-only content.
+
+[package]
+name        = "bgui"
+versions    = ["41.11"]
+depends     = []
+conflicts   = []
+provides    = ["bgui"]
+
+[requires]
+# bgui.readme's standard build floor ("MC68000 ... Amiga OS 2") is the
+# binding constraint since it's this recipe's own fallback; the
+# enhanced build's higher floor is expressed purely through its
+# `variants` predicate below, not a recipe-wide [requires].
+kickstart   = ">= 37"
+
+[source.aminet]
+url         = "dev/gui/bgui.lha"
+sha256      = { "41.11" = "e3b906a3e7dfaf1bd6631fe6b1192eefd091041de8de8bf8ebd92150b3aa2f12" }
+
+[install]
+copy = [
+  { from = "bgui/libs/bgui.library", to = "SYS:Libs/bgui.library", variants = [
+      { path = "bgui/libs/bgui.library_e", cpu = ">= 68020" },
+    ] },
+  { from = "bgui/libs/gadgets/#?", to = "SYS:Libs/gadgets/" },
+  { from = "bgui/BGUI",            to = "SYS:Prefs/BGUI" },
+  { from = "bgui/BGUI.info",       to = "SYS:Prefs/BGUI.info" },
+]
+
+[verify]
+exists = [
+  "SYS:Libs/bgui.library",
+  "SYS:Libs/gadgets/bgui_bar.gadget",
+  "SYS:Prefs/BGUI",
+]

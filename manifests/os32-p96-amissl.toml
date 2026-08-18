@@ -9,6 +9,10 @@ packages = [
   { name = "picasso96-3", version = ">= 3.2", card = "uaegfx" },
   "amissl = 5.27",
   "classact = 3.3",
+  # 68030 machine block — without this, the base's own Startup-Sequence
+  # (`CPU CHECKINSTALL`) nags every boot for a missing CPU support
+  # library (see recipes/mmulibs).
+  "mmulibs",
 ]
 output   = ["hdf"]
 emit     = ["copperline", "amiberry"]
