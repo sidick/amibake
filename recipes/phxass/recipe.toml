@@ -1,0 +1,59 @@
+# PhxAss 4.39 (dev/asm/PhxAss439.lha) — Frank Wille's highly optimizing
+# 680x0/6888x-FPU/68851-MMU macro assembler; one of the two or three
+# assemblers most classic Amiga 68k asm source in the wild actually
+# targets. See PACKAGE_IDEAS.md's "Dev utilities and libraries" entry.
+#
+# Derived by downloading the real archive from Aminet and reading it
+# directly with this project's own lhafile-based extractor. No
+# Installer script at all — `PhxAss.guide`'s own "Starting PhxAss"
+# node states the real install directly:
+#
+#   "PhxAss can be used from Shell only. You should copy it to "C:" or
+#    define a path or link."
+#
+# translated here as a plain `[install].copy`. Ships both binaries the
+# archive bundles — `PhxAss` and `GigaPhxAss` (identical assembler,
+# just without PhxAss's 65535-source-line limit, per the readme: "Quite
+# useful for assembling huge Reassembler outputs") — since both are
+# real, separately-useful commands, not CPU/FPU tier siblings of each
+# other (no `variants` shape here).
+#
+# Deliberately excluded: `Locale/` catalogs (same "no catalogs by
+# default, English is built in" convention every other recipe here
+# with a locale/ directory already follows — there's no Installer
+# script here to translate a real default-selection from, so this is
+# this project's own established guess, not a translated script
+# default); `MacroPackages/` (PhxMacros.i/MaxonAsm.i compatibility
+# macro packages) and `Examples/` (demo `.asm` sources) — optional
+# bundled extras, not part of the assembler itself, same "bundled
+# extras excluded" convention muforce/bgui already established for
+# their own archives.
+
+[package]
+name        = "phxass"
+versions    = ["4.39"]
+depends     = []
+conflicts   = []
+provides    = ["phxass"]
+
+[requires]
+# PhxAss439.readme: "Requires: OS2.04" / "It requires OS2.04 (V37) and
+# 1 MB RAM as minimum." No cpu floor — 68000 mode is explicitly
+# supported ("Support for Motorola's old and new operand style (even
+# in 68000 mode)"), and 68881/68851 support is opportunistic, not
+# required.
+kickstart   = ">= 37"
+
+[source.aminet]
+url         = "dev/asm/PhxAss439.lha"
+sha256      = { "4.39" = "4c9e45a5b0fb96b9c0828e195382ba025d31bdb12e012dc4ac94987edfd1ecd5" }
+
+[install]
+copy = [
+  { from = "PhxAss/Bin/PhxAss",     to = "SYS:C/" },
+  { from = "PhxAss/Bin/GigaPhxAss", to = "SYS:C/" },
+  { from = "PhxAss/PhxAss.guide",   to = "SYS:Help/" },
+]
+
+[verify]
+exists = ["SYS:C/PhxAss", "SYS:C/GigaPhxAss"]
