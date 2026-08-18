@@ -57,14 +57,18 @@ locations from search, not confirmed by download the way this
 project's contract expects before a real recipe lands — verify before
 writing `[source.*]` entries, same as every recipe above did.
 
-- **MUI (Magic User Interface) 3.8** — `dev/mui/mui38dev.lha`
-  (developer archive) / `util/libs/mui38usr.lha` (end-user runtime).
-  The GUI toolkit most real Amiga software actually uses — far more
-  prevalent in the wild than BGUI (`recipes/bgui`), which AHI alone
-  needed. Worth its own recipe once licensing terms are confirmed:
-  historically shareware/registration-gated for some features even
-  though the runtime library itself is freely redistributable — needs
-  checking directly, not assumed, before writing a recipe.
+- **MUI (Magic User Interface) 3.8** — shipped as `recipes/mui`
+  (Aminet `util/libs/mui38usr.lha`, real checksum verified). The GUI
+  toolkit most real Amiga software actually uses — far more prevalent
+  in the wild than BGUI (`recipes/bgui`), which AHI alone needed.
+  Unlike every other recipe here, ships the *entire* archive verbatim
+  (Demos/Icons/Locale/etc. included) rather than a curated subset —
+  MUI's own license requires redistributing the complete original
+  package, not a trimmed one. Libraries/catalogs are also spliced into
+  the standard `SYS:Libs/`/`LOCALE:Catalogs/` search paths (a
+  deliberate duplication) since this schema's `assigns` can't express
+  the real Install script's own additive `assign add LIBS: MUI:Libs`
+  chain.
 - **ixemul.library 48.x** — `util/libs/ixemul-48.0.lha`, plus
   per-CPU builds (e.g. `util/libs/ixemul48.2-060.lha`, same "variants"
   shape as lha/ahi/bgui). The BSD/NetBSD-style Unix-emulation runtime

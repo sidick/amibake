@@ -1,0 +1,108 @@
+# MUI (Magic User Interface) 3.8 (util/libs/mui38usr.lha) — Stefan
+# Stuntz's BOOPSI-based GUI toolkit; the toolkit most real Amiga
+# software actually uses, far more prevalent in the wild than BGUI
+# (recipes/bgui, which only AHI's own recipe needed). See
+# PACKAGE_IDEAS.md's "Dev utilities and libraries" entry.
+#
+# Derived by downloading the real archive from Aminet and reading it
+# directly with this project's own lhafile-based extractor, then
+# reading the real `MUI/Install-MUI` Installer script inside it.
+#
+# UNLIKE every other recipe here, this one ships the *entire* archive
+# verbatim rather than a curated subset (no Demos/Icons/Locale/etc.
+# trimming the way muforce/bgui/xpk skip their own bundled extras).
+# That's not a style choice — it's MUI's own license
+# (`Docs/English/MUI.guide`, node `POL_LICENSE`), which is materially
+# stricter than every other freeware/BSD/THOR license shipped so far:
+#
+#   "You may copy and distribute verbatim copies of the program's
+#    executable code and documentation as you receive it [...] Except
+#    when otherwise stated in this documentation, you may not copy
+#    and/or distribute this program without the accompanying
+#    documentation and other additional files that came with the
+#    original."
+#
+# So `[install].copy` ships the complete real tree (all 396 files —
+# Libs, Locale/Catalogs for every bundled language, Docs in all three
+# languages, Demos, Icons, Images, Patterns, Presets, Rexx, Goodies)
+# under `SYS:MUI/`, mirroring the real Install script's own
+# `destination` drawer, *plus* an `assigns` entry so `MUI:` resolves
+# the same way the real script's own `assign MUI: <destination>` line
+# does.
+#
+# Functionally, though, MUI-based programs find `muimaster.library`
+# (and friends) the ordinary way — `OpenLibrary()` searching `LIBS:`
+# — and this project's `assigns` mechanism only renders a plain
+# single-target `Assign NAME: path` (see docs/recipe-contract.md), not
+# the real script's own *additive* `assign add LIBS: MUI:Libs` /
+# `assign add LOCALE: MUI:Locale` chain (replacing `LIBS:`/`LOCALE:`
+# outright with just `MUI:Libs`/`MUI:Locale` would break every other
+# library/catalog lookup on the whole system). So the libraries and
+# catalogs are *also* copied straight into the standard `SYS:Libs/`
+# and `LOCALE:Catalogs/` search paths — a deliberate duplication (the
+# same bytes exist under both `SYS:MUI/` and the standard system
+# dirs), the only way to satisfy both "ship the complete original
+# package" and "make it actually work" given this schema's assigns
+# are non-additive. `SYS:Libs/mui/` (MUI's own custom-class
+# subdirectory, e.g. `Listtree.mcc`) falls out of the same recursive
+# `MUI/Libs/#?` copy for free, same "nested structure preserved, not
+# flattened" behaviour AmiSSL's own recipe relies on.
+#
+# The `MUI` (preferences editor) and `PSI` (public-screen-manager
+# preferences tool) binaries are likewise both left in place under
+# `SYS:MUI/` *and* additionally copied to `SYS:Prefs/`, this project's
+# usual prefs-program convention (reqtools/ahi/bgui) — neither needs
+# to auto-run at boot; the real script doesn't add either to
+# `WBStartup`/`S:User-Startup`, only the assign block.
+#
+# `MUI.guide` (English) gets one more explicit copy to `SYS:Help/`,
+# this project's established guide-destination convention, on top of
+# already being present under `SYS:MUI/Docs/English/` as part of the
+# wholesale copy.
+
+[package]
+name        = "mui"
+versions    = ["3.8"]
+depends     = []
+conflicts   = []
+provides    = ["mui"]
+
+[requires]
+# MUI.guide, node INTRO_SYSREQ: "MUI requires version 2.0 of the Amiga
+# operating system or higher. Kickstart 1.3 is *not* supported."
+kickstart   = ">= 37"
+
+[source.aminet]
+url         = "util/libs/mui38usr.lha"
+sha256      = { "3.8" = "f3acb2fe98f74c025daf10ae7df92d08abe787332124963771e2c21a869cca5b" }
+
+[install]
+copy = [
+  # The complete original package, verbatim, under one drawer — see
+  # header comment on MUI's own stricter-than-usual license.
+  { from = "MUI/#?", to = "SYS:MUI/" },
+
+  # Also spliced into the standard system search paths so MUI-based
+  # programs' OpenLibrary()/OpenCatalog() calls actually resolve —
+  # this schema's `assigns` can't express the real script's own
+  # *additive* LIBS:/LOCALE: assign chain (see header comment).
+  { from = "MUI/Libs/#?",           to = "SYS:Libs/" },
+  { from = "MUI/Locale/Catalogs/#?", to = "LOCALE:Catalogs/" },
+
+  # Prefs programs, also reachable via the normal command Path.
+  { from = "MUI/MUI",      to = "SYS:Prefs/MUI" },
+  { from = "MUI/MUI.info", to = "SYS:Prefs/MUI.info" },
+  { from = "MUI/PSI",      to = "SYS:Prefs/PSI" },
+  { from = "MUI/PSI.info", to = "SYS:Prefs/PSI.info" },
+
+  { from = "MUI/Docs/English/MUI.guide", to = "SYS:Help/MUI.guide" },
+]
+assigns = [{ name = "MUI", path = "SYS:MUI" }]
+
+[verify]
+exists = [
+  "SYS:Libs/muimaster.library",
+  "SYS:Libs/mui/Listtree.mcc",
+  "SYS:MUI/Libs/muimaster.library",
+  "SYS:Prefs/MUI",
+]
