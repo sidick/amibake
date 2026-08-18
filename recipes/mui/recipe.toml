@@ -64,7 +64,7 @@
 name        = "mui"
 versions    = ["3.8"]
 depends     = []
-conflicts   = []
+conflicts   = ["mui5"]
 provides    = ["mui"]
 
 [requires]

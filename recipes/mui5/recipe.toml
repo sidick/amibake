@@ -1,0 +1,129 @@
+# MUI (Magic User Interface) 5.0 (github.com/amiga-mui/muidev, release
+# MUI-5.0-20210831, `MUI-5.0-20210831-os3.lha`) — the actively-
+# maintained successor to Stefan Stuntz's original MUI 3.8
+# (recipes/mui), developed "with full permission by the original
+# author" per the archive's own `ReadMe.AmigaOS3`. Package named
+# "mui5" (not "mui") since it installs alongside/instead of the 3.8
+# line and the two `conflicts` with each other — same library names,
+# same `SYS:MUI/` destination, genuinely can't coexist.
+#
+# Sourced from the GitHub release rather than Aminet: this is the
+# project's own actively-maintained release channel (dated snapshot
+# tags going back to 3.8), same "prefer the real primary channel"
+# reasoning recipes/whdload already used the other direction (Aminet
+# stale vs. upstream current) and recipes/amipilot used for a project
+# whose own primary channel is GitHub.
+#
+# Derived by downloading the real `-os3.lha` asset (there are also
+# `-os3-contrib.lha`/`-os3-debug.lha` siblings — extra/debug-symbol
+# builds, out of scope here) and reading it directly with this
+# project's own lhafile-based extractor (an `lhd`-format archive with
+# real directory entries, same shape as recipes/amipilot's own
+# archive — extract.py already filters those out correctly), then
+# reading the real `MUI/Install-MUI` Installer script inside it.
+#
+# Same "ship the complete archive, not a curated subset" approach
+# recipes/mui already established for 3.8, for the same reason: MUI
+# is still shareware requiring a purchased keyfile (`ReadMe.AmigaOS3`:
+# "MUI still requires a valid keyfile like its old 3.8 version...
+# personalized with your name and address and may not be redistributed
+# under any circumstances" — the *keyfile* specifically, never bundled
+# here, only the demo-mode library/tools). No standalone top-level
+# LICENSE/redistribution-terms file ships in *this* archive the way
+# 3.8's own bundled `MUI.guide` had a `POL_LICENSE` node — but given
+# this is the same author's shareware product line continued by new
+# maintainers under his explicit permission (not a relicense to a more
+# permissive terms), the same cautious "ship it whole" approach applies
+# absent evidence the terms loosened.
+#
+# CPU floor: `ReadMe.AmigaOS3` states outright "a fully 68020 optimized
+# version" and the real binaries' own `$VER` strings confirm it
+# (`muimaster.library`: "...[AmigaOS3/mc68020]...") — genuinely a
+# 68020+ build this time, unlike 3.8. Note this contradicts the
+# archive's own bundled `Docs/English/MUI.guide` (INTRO_SYSREQ node
+# still says "MUI does not require a special processor... a 'base'
+# 68000 based machine could be a tad slow") — that guide is stale,
+# carried over unrevised from the 3.8 docs bundle (identical wording
+# to 3.8's own guide), not updated for this release. The build-specific
+# `ReadMe.AmigaOS3` and the binaries' own embedded target tag are the
+# real oracle here, not the stale bundled guide.
+#
+# Structural changes from 3.8, confirmed directly: the old per-purpose
+# libraries (muiconfig.library, muigfx.library, muihelp.library,
+# muilocale.library, muilowlevel.library, muipop.library,
+# muirexx.library, muiscreen.library, muispecial.library) are gone,
+# folded into a single, much larger `muimaster.library`; new bundled
+# dependency libraries appear instead (btree/bzip2/codesets/guigfx/
+# muiasl/render/z.library) that `muimaster.library` itself now needs.
+# `Libs/mui/` (the custom-class subdirectory) still exists and has
+# grown to 70+ classes. Same splice-into-standard-search-paths
+# reasoning as 3.8 applies (this schema's `assigns` can't express the
+# real script's own additive `assign add LIBS: MUI:Libs` /
+# `assign add LOCALE: MUI:Locale` chain) — libraries and catalogs are
+# copied into `SYS:Libs/`/`LOCALE:Catalogs/` in addition to living
+# under the complete `SYS:MUI/` tree.
+#
+# New in this release's Install script: `PatchASL` (patches ASL file/
+# font requesters to use MUI-style ones instead) — the real script's
+# own `askbool` for this defaults to "yes" (`(default 1)`), so wired
+# into `S:User-Startup` as `run <>nil: MUI:PatchASL`, same
+# "recommended-and-defaulted-on" translation convention this project
+# already applies elsewhere (reqtools' RTPatch, ahi's AddAudioModes).
+#
+# The separate top-level `SDK/` tree (an example external MCC class,
+# `SDK/MUI/ExtClasses/MCC_Tron/`) is real but developer-only — out of
+# scope, same convention as every other recipe's own dev-extras
+# exclusion. The `MUI/Docs/English/MUI.guide` copy is one more explicit
+# copy to `SYS:Help/`, this project's established guide-destination
+# convention, on top of already being present under `SYS:MUI/Docs/`.
+
+[package]
+name        = "mui5"
+versions    = ["5.0"]
+depends     = []
+conflicts   = ["mui"]
+provides    = ["mui"]
+
+[requires]
+# See header comment: ReadMe.AmigaOS3 + the real binaries' own $VER
+# target tag ("[AmigaOS3/mc68020]") confirm a genuine 68020+ build,
+# unlike 3.8. Kickstart floor unchanged from 3.8 (MUI.guide,
+# INTRO_SYSREQ: "MUI requires version 2.0 of the Amiga operating
+# system or higher").
+kickstart   = ">= 37"
+cpu         = ">= 68020"
+
+[source.github]
+repo   = "amiga-mui/muidev"
+tag    = "MUI-{version}-20210831"
+asset  = "MUI-{version}-20210831-os3.lha"
+sha256 = { "5.0" = "8a869a037db465828dbe42fa7854114121280ed2691afa61fe53a25bf427a847" }
+
+[install]
+copy = [
+  # The complete original os3 package, verbatim, under one drawer —
+  # see header comment on MUI's own continued shareware terms.
+  { from = "MUI/#?", to = "SYS:MUI/" },
+
+  # Also spliced into the standard system search paths — see header
+  # comment on this schema's non-additive `assigns`.
+  { from = "MUI/Libs/#?",            to = "SYS:Libs/" },
+  { from = "MUI/Locale/Catalogs/#?", to = "LOCALE:Catalogs/" },
+
+  # Prefs programs, also reachable via the normal command Path.
+  { from = "MUI/MUI",      to = "SYS:Prefs/MUI" },
+  { from = "MUI/MUI.info", to = "SYS:Prefs/MUI.info" },
+  { from = "MUI/PSI",      to = "SYS:Prefs/PSI" },
+
+  { from = "MUI/Docs/English/MUI.guide", to = "SYS:Help/MUI.guide" },
+]
+assigns      = [{ name = "MUI", path = "SYS:MUI" }]
+user-startup = [{ order = 10, lines = ["run <>nil: MUI:PatchASL"] }]
+
+[verify]
+exists = [
+  "SYS:Libs/muimaster.library",
+  "SYS:Libs/mui/Listtree.mcc",
+  "SYS:MUI/Libs/muimaster.library",
+  "SYS:Prefs/MUI",
+]

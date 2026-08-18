@@ -69,6 +69,17 @@ writing `[source.*]` entries, same as every recipe above did.
   deliberate duplication) since this schema's `assigns` can't express
   the real Install script's own additive `assign add LIBS: MUI:Libs`
   chain.
+- **MUI 5.0** — shipped as `recipes/mui5` (GitHub `amiga-mui/muidev`
+  release `MUI-5.0-20210831`, real checksum verified, `os3` build).
+  The actively-maintained successor to MUI 3.8, same "ship the
+  complete archive" approach for the same shareware-keyfile reasoning.
+  Genuinely `cpu >= 68020` this time (confirmed via the real binaries'
+  own `$VER` target tag), unlike 3.8 — its bundled `MUI.guide` is stale
+  3.8-era text claiming otherwise, not to be trusted over the
+  build-specific `ReadMe.AmigaOS3` and the binaries themselves.
+  `conflicts = ["mui"]` / `provides = ["mui"]` (and `recipes/mui` now
+  reciprocally `conflicts = ["mui5"]`) — same library names, same
+  `SYS:MUI/` destination, genuinely can't coexist in one build.
 - **ixemul.library 48.x** — `util/libs/ixemul-48.0.lha`, plus
   per-CPU builds (e.g. `util/libs/ixemul48.2-060.lha`, same "variants"
   shape as lha/ahi/bgui). The BSD/NetBSD-style Unix-emulation runtime
