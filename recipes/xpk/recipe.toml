@@ -1,0 +1,130 @@
+# XPK 5.2a (util/pack/xpk_User.lha) — the packer-library interfacing
+# standard: xpkmaster.library plus 16 compressor sub-libraries
+# (CBR0/DLTA/DUKE/FAST/FRLE/HUFF/IMPL/NONE/NUKE/RLEN/SHRI/SMPL/HFMN/
+# MASH/RAKE/SQSH) and command-line tools. Complements XFD Master
+# (recipes/xfdmaster, decrunching-only) rather than overlapping it.
+# Package named "xpk" (not "xpk_User", the archive's own name) —
+# "User" just marks this as the end-user edition of the wider XPK
+# distribution (xpk_Develop/xpk_Crypt/xpk_Source are separate,
+# unshipped archives; see below).
+#
+# Derived by downloading the real archive from Aminet and reading it
+# directly with this project's own lhafile-based extractor, then
+# reading the real `xpk_User/Install` Installer script (Installer-
+# language, $VER 1.25) inside it and translating its default,
+# non-interactive path per docs/limits.md's guidance:
+#   - top-level `#o` askoptions defaults to bit 0 only (`#WHAT_USER`)
+#     — `P_install_develop`/`P_install_crypt`/`P_install_source` never
+#     run by default, and their own source directories
+#     (`/xpk_Develop/`, `/xpk_Crypt/`, `/xpk_Source/`) don't exist in
+#     this "User" archive anyway (those are separate Aminet uploads)
+#   - xpkmaster.library: real script picks `Libs_1.3/` vs `Libs/`
+#     keyed on Kickstart version (`#OS_version < 37`) — a genuine
+#     Kickstart-1.3-compatible build exists, but this project's
+#     `variants` mechanism only predicates on cpu/fpu/mmu (see
+#     docs/recipe-contract.md), not kickstart/os, and the destination
+#     name is fixed (`LIBS:xpkmaster.library`) so both builds can't be
+#     shipped side by side the way MMULibs' distinctly-named CPU
+#     libraries were (recipes/mmulibs). This recipe ships only the
+#     modern `Libs/` build and floors `[requires]` at Kickstart 37
+#     accordingly — a real, undocumented-until-now gap versus pairing
+#     XPK with the `wb1.3` base, same class of limit already tracked
+#     for CPU/FPU-only `variants` predicates.
+#   - all 16 compressor sub-libraries: the real `askoptions` for
+#     `#WHAT_LIBS` defaults to `4294967295` (every bit set) — every
+#     one installs by default, to `LIBS:compressors/`
+#   - HFMN/MASH/RAKE/SQSH ship 68020+-optimized sibling builds under
+#     `Libs_68020+/compressors/`; the real script's own separate
+#     askbool for these (`#WHAT_PROCESSOR`) defaults to `0` (plain
+#     build) regardless of the target's actual CPU — but this project
+#     has already established a more accurate translation for exactly
+#     this shape (a same-named CPU-tier sibling file) via `variants`
+#     keyed on `machine.cpu` (see lha/ahi/bgui), used here instead of
+#     the ask's own literal (human-declined-by-default) answer.
+#   - command-line tools: `#WHAT_STUFF`'s `copyfiles` names a fixed
+#     `(choices ...)` list gated only by a single `(confirm)`
+#     proceed-or-not (default proceed) — not an interactive multi-
+#     select — so every listed tool installs. The list itself branches
+#     on Kickstart (`xPack`/`xBench` on 37+, legacy `xPK` below it);
+#     this recipe's own Kickstart-37 floor (above) makes the modern
+#     branch the only reachable one.
+#   - preferences program (`XpkMasterPrefs`, its `SYS:Prefs` binary,
+#     `ENVARC:xpkmaster.prefs`, and the startup line that auto-runs
+#     it): real script's own `#WHAT_PREFS` askbool defaults to `0`
+#     (No) — not installed by default, so not translated here.
+#   - locale catalogs: `#catalog` defaults to `16`, one past every
+#     real choice index (`0`-`15`), i.e. "none of the above" (English,
+#     built in) — same "no catalogs by default" translation reqtools/
+#     ahi already established.
+#   - `XpkMaster.guide`: real script's own destination is
+#     `@default-dest` (wherever the script itself was run from,
+#     ambiguous for a declarative rebuild); this recipe uses this
+#     project's established static `SYS:Help/` guess instead, same
+#     convention as reqtools/lha/ahi/xfdmaster.
+
+[package]
+name        = "xpk"
+versions    = ["5.2a"]
+depends     = []
+conflicts   = []
+provides    = ["xpk"]
+
+[requires]
+# See header comment: the real script's own Kickstart-1.3-compatible
+# xpkmaster.library build isn't shipped, so this recipe floors at the
+# modern build's real Kickstart branch point (`#OS_version >= 37`).
+kickstart   = ">= 37"
+
+[source.aminet]
+url         = "util/pack/xpk_User.lha"
+sha256      = { "5.2a" = "ec48c2820e45e64e1c1970592f06dc32c64546a6c7d545b39c79b469012879f3" }
+
+[install]
+copy = [
+  { from = "xpk_User/Libs/xpkmaster.library", to = "SYS:Libs/xpkmaster.library" },
+
+  # --- compressor sub-libraries (#WHAT_LIBS default: all 16) ---
+  { from = "xpk_User/Libs/compressors/xpkCBR0.library", to = "SYS:Libs/compressors/xpkCBR0.library" },
+  { from = "xpk_User/Libs/compressors/xpkDLTA.library", to = "SYS:Libs/compressors/xpkDLTA.library" },
+  { from = "xpk_User/Libs/compressors/xpkDUKE.library", to = "SYS:Libs/compressors/xpkDUKE.library" },
+  { from = "xpk_User/Libs/compressors/xpkFAST.library", to = "SYS:Libs/compressors/xpkFAST.library" },
+  { from = "xpk_User/Libs/compressors/xpkFRLE.library", to = "SYS:Libs/compressors/xpkFRLE.library" },
+  { from = "xpk_User/Libs/compressors/xpkHUFF.library", to = "SYS:Libs/compressors/xpkHUFF.library" },
+  { from = "xpk_User/Libs/compressors/xpkIMPL.library", to = "SYS:Libs/compressors/xpkIMPL.library" },
+  { from = "xpk_User/Libs/compressors/xpkNONE.library", to = "SYS:Libs/compressors/xpkNONE.library" },
+  { from = "xpk_User/Libs/compressors/xpkNUKE.library", to = "SYS:Libs/compressors/xpkNUKE.library" },
+  { from = "xpk_User/Libs/compressors/xpkRLEN.library", to = "SYS:Libs/compressors/xpkRLEN.library" },
+  { from = "xpk_User/Libs/compressors/xpkSHRI.library", to = "SYS:Libs/compressors/xpkSHRI.library" },
+  { from = "xpk_User/Libs/compressors/xpkSMPL.library", to = "SYS:Libs/compressors/xpkSMPL.library" },
+  { from = "xpk_User/Libs/compressors/xpkHFMN.library", to = "SYS:Libs/compressors/xpkHFMN.library", variants = [
+      { path = "xpk_User/Libs_68020+/compressors/xpkHFMN.library", cpu = ">= 68020" },
+    ] },
+  { from = "xpk_User/Libs/compressors/xpkMASH.library", to = "SYS:Libs/compressors/xpkMASH.library", variants = [
+      { path = "xpk_User/Libs_68020+/compressors/xpkMASH.library", cpu = ">= 68020" },
+    ] },
+  { from = "xpk_User/Libs/compressors/xpkRAKE.library", to = "SYS:Libs/compressors/xpkRAKE.library", variants = [
+      { path = "xpk_User/Libs_68020+/compressors/xpkRAKE.library", cpu = ">= 68020" },
+    ] },
+  { from = "xpk_User/Libs/compressors/xpkSQSH.library", to = "SYS:Libs/compressors/xpkSQSH.library", variants = [
+      { path = "xpk_User/Libs_68020+/compressors/xpkSQSH.library", cpu = ">= 68020" },
+    ] },
+
+  # --- command-line tools (#WHAT_STUFF, Kickstart 37+ set) ---
+  { from = "xpk_User/C/xDir",     to = "SYS:C/" },
+  { from = "xpk_User/C/xQuery",   to = "SYS:C/" },
+  { from = "xpk_User/C/xType",    to = "SYS:C/" },
+  { from = "xpk_User/C/xPack",    to = "SYS:C/" },
+  { from = "xpk_User/C/xBench",   to = "SYS:C/" },
+  { from = "xpk_User/C/xLoadSeg", to = "SYS:C/" },
+  { from = "xpk_User/C/xScan",    to = "SYS:C/" },
+  { from = "xpk_User/C/xUp",      to = "SYS:C/" },
+
+  { from = "xpk_User/XpkMaster.guide", to = "SYS:Help/" },
+]
+
+[verify]
+exists = [
+  "SYS:Libs/xpkmaster.library",
+  "SYS:Libs/compressors/xpkNONE.library",
+  "SYS:C/xPack",
+]

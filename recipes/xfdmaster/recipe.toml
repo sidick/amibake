@@ -1,0 +1,70 @@
+# XFD Master 1.38 (util/pack/xfdmaster.lha) — single-file decrunching:
+# xfdmaster.library plus a set of external "slave" decruncher modules
+# (one per known Amiga packing format) and command-line utilities.
+# Complements XPK (recipes/xpk, packing) rather than overlapping it —
+# XFD only unpacks.
+#
+# Derived by downloading the real archive from Aminet and reading it
+# directly with this project's own lhafile-based extractor, then
+# reading the real `xfd_User/Install` Installer script (Installer-
+# language, $VER 1.1) inside it and translating its default,
+# non-interactive path. Unlike ReqTools/AHI/XPK, this script has no
+# `@user-level`/`askoptions` branching at all — every step is a plain
+# `copylib`/`copyfiles`/`startup` call, each with a `(confirm)` gate
+# that only asks proceed-or-not (default: proceed), so "translate the
+# default path" here just means "run every step":
+#   - xfdmaster.library -> LIBS: (`copylib`)
+#   - every external slave under `Libs/xfd/` -> `LIBS:xfd/`
+#     (`copyfiles ... (all)`) — the script's own `(delete ...)` of
+#     legacy/superseded slave names only matters on an upgrade over an
+#     existing installation, never reachable on this project's clean
+#     per-build tree, so it's not translated
+#   - all 8 command-line utilities (HackProPack, xfdDecrunch,
+#     xfdDecrunchAddr, xfdLibInfo, xfdList, xfdPatch, xfdScan,
+#     xfdUnlink) -> `C:`
+#   - documentation -> the real script's own default is
+#     `HELP:English` (a per-language subdirectory); this recipe uses
+#     this project's established static `SYS:Help/` guess instead
+#     (same convention as reqtools/lha/ahi/xpk), since there's no
+#     per-language axis here to translate faithfully anyway
+#   - `(startup "xfdPatch" ...)` — adds `xfdPatch >NIL:` to
+#     `S:User-Startup`; the script's own help text calls this
+#     "recommended, as some old decrunch headers will not work
+#     correctly under newer OS releases", so this recipe includes it
+#     unconditionally, same "recommended-and-defaulted-on" precedent
+#     reqtools' RTPatch and ahi's AddAudioModes user-startup entries
+#     already established.
+#
+# Developer files (autodocs, source, `xfdmaster.doc` for library
+# writers) aren't in this "User" archive at all — the script's own
+# final message says so explicitly ("the developer files have not
+# been installed").
+
+[package]
+name        = "xfdmaster"
+versions    = ["1.38"]
+depends     = []
+conflicts   = []
+provides    = ["xfdmaster"]
+
+[requires]
+# xfdmaster.readme: "It works with Kickstart V33+" (1.2+) — no OS3.0
+# floor despite some third-party listings claiming otherwise; genuinely
+# this permissive per the real readme text.
+kickstart   = ">= 33"
+
+[source.aminet]
+url         = "util/pack/xfdmaster.lha"
+sha256      = { "1.38" = "4147a2b29a7d007ab5b5a5f855c2a8095c6a9d9cadcb4f238d86cd8ca1424d62" }
+
+[install]
+copy = [
+  { from = "xfd_User/Libs/xfdmaster.library", to = "SYS:Libs/" },
+  { from = "xfd_User/Libs/xfd/#?",            to = "SYS:Libs/xfd/" },
+  { from = "xfd_User/C/#?",                   to = "SYS:C/" },
+  { from = "xfd_User/Docs/#?",                to = "SYS:Help/" },
+]
+user-startup = [{ order = 20, lines = ["xfdPatch >NIL:"] }]
+
+[verify]
+exists = ["SYS:Libs/xfdmaster.library", "SYS:C/xfdPatch"]

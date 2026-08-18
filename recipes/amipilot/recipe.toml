@@ -1,0 +1,64 @@
+# AmiPilot 1.1 (github.com/sidick/amipilot, release v1.1) —
+# object-level AmigaOS GUI automation: AmiInspect (a standalone Shell
+# command that walks a window's gadget tree by role/label/ID/state)
+# and AmiPilotServer (a commodity adding a real click/type/drag action
+# engine, driven from ARexx locally or a host Python client over
+# serial/TCP). Useful test-harness material alongside this project's
+# own Copperline/Amiberry boot verification — see PACKAGE_IDEAS.md.
+#
+# Sourced from the GitHub release, not Aminet, even though the same
+# v1.1 archive is also mirrored there (`amipilot.readme`'s own header
+# says "Distribution: Aminet", util/misc) — GitHub is upstream's
+# primary, versioned release channel (tagged releases going back to
+# v0.1), matching this project's own stated preference
+# (docs/recipe-contract.md: "Prefer [source.github] when the upstream
+# project publishes tagged releases").
+#
+# Derived by downloading the real v1.1 release asset with `gh release
+# download` and reading it directly with this project's own
+# lhafile-based extractor — a flat `lhd`-format archive (a single
+# `amipilot/` directory), no Installer script at all. The bundled
+# `amipilot.readme`'s own "Installation" section states the real
+# install directly: "Copy AmiInspect and/or AmiPilotServer to C: (or
+# anywhere on your command Path). No reboot, no configuration." —
+# translated here as a plain `[install].copy`.
+#
+# LICENSE is deliberately excluded (informational only, same
+# convention every other recipe here uses — see e.g. bgui's own
+# LICENSE exclusion). amipilot.guide (AmigaGuide/MultiView
+# documentation, same source as the online docs at
+# sidick.github.io/amipilot) is shipped to SYS:Help/, this project's
+# established guide-destination convention (reqtools/lha/ahi).
+
+[package]
+name        = "amipilot"
+versions    = ["1.1"]
+depends     = []
+conflicts   = []
+provides    = ["amipilot"]
+
+[requires]
+# amipilot.readme: "AmigaOS 2.04 (V37) or later. Plain 68000, no FPU -
+# nothing here does float work or needs anything newer than a stock
+# CPU." rexxsyslib.library is needed only to run AmiPilotServer's
+# ARexx port specifically (AmiInspect needs neither it nor
+# gadtools.library at all, and gadtools.library's own absence degrades
+# gracefully) — not a package-wide floor this schema's [requires] can
+# express per-binary, so left undeclared rather than over-constrained.
+kickstart   = ">= 37"
+
+[source.github]
+repo   = "sidick/amipilot"
+tag    = "v{version}"
+asset  = "amipilot.lha"
+sha256 = { "1.1" = "6c55aeca0268465cb0ff8bb4b3bec3237c4221b0de869c59070ff3b648c16ff8" }
+
+[install]
+copy = [
+  { from = "amipilot/AmiInspect",     to = "SYS:C/" },
+  { from = "amipilot/AmiPilotServer", to = "SYS:C/" },
+  { from = "amipilot/amipilot.guide", to = "SYS:Help/" },
+]
+
+[verify]
+exists = ["SYS:C/AmiInspect", "SYS:C/AmiPilotServer"]
