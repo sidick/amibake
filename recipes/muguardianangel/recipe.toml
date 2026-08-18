@@ -1,0 +1,67 @@
+# MuGuardianAngel 40.52 (dev/debug/MuGuardianAngel.lha) — access-
+# protects *non-allocated* memory too (a superset of the classic
+# MungWall/WipeOut/Guardian Angel tools): where MuForce (recipes/
+# muforce) catches a stray access into memory that's off-limits,
+# MuGuardianAngel also catches one that landed in memory nobody
+# allocated at all. See PACKAGE_IDEAS.md's "dev/debug trio" entry.
+#
+# Derived by downloading the real archive from Aminet and reading it
+# directly with this project's own lhafile-based extractor. No
+# Installer script and, unlike MuForce, no "Quick installation notes"
+# either — `MuGuardianAngel.readme` says outright "There are no quick
+# installation notes. This tool requires some care" and points at the
+# bundled `MuGuardianAngel.guide` instead, which spells out the real
+# steps directly:
+#
+#   "- First, install the "mmu.library" [...] It's contained in this
+#      archive.
+#    - Install "MuForce" first. It is required by MuGuardianAngel.
+#    - Copy "MuGuardianAngel" wherever you want.
+#    [...] Detach MuGuardianAngel *after* MuForce, and possibly after
+#    SegTracker. Just start it like:
+#    run >NIL: <NIL: MuGuardianAngel"
+#
+# translated as: `depends = ["muforce"]` (which already installs this
+# same archive's own bundled mmu.library/disassembler.library — this
+# recipe doesn't re-copy them, avoiding a duplicate/conflicting layer
+# write), MuGuardianAngel itself to `SYS:C/` (this project's usual
+# command destination, since "wherever you want" doesn't pin one), and
+# the guide's own startup line wired into `S:User-Startup` at
+# `order = 40` — after muforce's own `order = 30` fragment (itself
+# after segtracker's `order = 20`), matching the guide's own
+# ordering.
+#
+# The bundled `Contributions/` (PatchWork, Sashimi, BPPCFix, an older
+# SegTracker) and `Fixes/` (ConsoleFix, FixCybAccess, PatchRAM, spatch
+# — third-party ROM-bug patches the guide separately documents
+# case-by-case) are deliberately out of scope, same "bundled extras,
+# not part of the tool itself" convention recipes/muforce already
+# established for its own Contributions/.
+
+[package]
+name        = "muguardianangel"
+versions    = ["40.52"]
+depends     = ["muforce"]
+conflicts   = []
+provides    = []
+
+[requires]
+# MuGuardianAngel.readme: "Requires: Os 2.04, a 68020/68851, 68030,
+# 68040 or 68060 with a working MMU" — same floor as muforce, which
+# this package can't run without anyway.
+kickstart   = ">= 37"
+cpu         = ">= 68020"
+mmu         = true
+
+[source.aminet]
+url         = "dev/debug/MuGuardianAngel.lha"
+sha256      = { "40.52" = "a69d866605ae524d41eb69434e984e6441cbac5f187f0d6101219528c6857e79" }
+
+[install]
+copy = [
+  { from = "MuGuardianAngel/MuTools/MuGuardianAngel", to = "SYS:C/" },
+]
+user-startup = [{ order = 40, lines = ["run >NIL: <NIL: MuGuardianAngel"] }]
+
+[verify]
+exists = ["SYS:C/MuGuardianAngel"]
