@@ -1,0 +1,69 @@
+# MuForce 47.1 (dev/debug/MuForce.lha) — the mmu.library-aware
+# successor to Mike Sinz's classic "Enforcer": access-protects memory
+# regions that shouldn't be touched to catch "lost pointer" bugs (a
+# stray write through a bad pointer) the instant they happen, instead
+# of however far downstream they eventually crash something. See
+# PACKAGE_IDEAS.md's "dev/debug trio" entry — pairs with
+# recipes/segtracker (crash-address-to-module mapping) and
+# recipes/muguardianangel (its own required companion, depends on
+# this recipe) for a real classic-debugging toolkit.
+#
+# Derived by downloading the real archive from Aminet and reading it
+# directly with this project's own lhafile-based extractor. No
+# Installer script — `MuForce.readme`'s own "Quick installation
+# notes" section states the real install directly:
+#
+#   "- Copy LIBS/mmu.library to LIBS:
+#    - Copy LIBS/disassembler.library to LIBS:
+#    - Keep MuForce and its guide whereever you want."
+#
+# translated here as a plain `[install].copy` (MuForce itself to
+# `SYS:C/`, this project's usual command destination, since "wherever
+# you want" doesn't pin one). `MuForce.guide` itself documents the
+# real startup line directly (detach *after* SetPatch, and after
+# SegTracker if present):
+#
+#   "run >NIL: <NIL: MuForce"
+#
+# — wired into `S:User-Startup` at `order = 30`, after segtracker's
+# own `order = 20` fragment, matching that ordering guidance.
+#
+# This archive's own `Libs/68040.library`, `Libs/68060.library`, and
+# `Libs/680x0.library` are deliberately NOT installed here — they
+# duplicate recipes/mmulibs' own (differently-sourced, real
+# AmigaOS-3.2 in-box) copies of the same real files, and MuForce's own
+# quick-install notes don't call for them (only mmu.library +
+# disassembler.library). The bundled `Contributions/` (PatchWork,
+# Sashimi, BPPCFix, an older SegTracker) are optional third-party
+# bonus tools, not part of MuForce itself — skipped, same as every
+# other recipe here excluding bundled extras (see e.g. recipes/bgui
+# excluding its own archive's Examples/).
+
+[package]
+name        = "muforce"
+versions    = ["47.1"]
+depends     = []
+conflicts   = []
+provides    = ["muforce"]
+
+[requires]
+# MuForce.readme: "Requires: Os 2.04, a 68020/68851, 68030, 68040 or
+# 68060 with a working MMU."
+kickstart   = ">= 37"
+cpu         = ">= 68020"
+mmu         = true
+
+[source.aminet]
+url         = "dev/debug/MuForce.lha"
+sha256      = { "47.1" = "70cbaaa9b1fe06cc5e592c89f8e3c0d597b105f205152b29ddfd406d49703b74" }
+
+[install]
+copy = [
+  { from = "MuForce/Libs/mmu.library",          to = "SYS:Libs/" },
+  { from = "MuForce/Libs/disassembler.library", to = "SYS:Libs/" },
+  { from = "MuForce/MuTools/MuForce",           to = "SYS:C/" },
+]
+user-startup = [{ order = 30, lines = ["run >NIL: <NIL: MuForce"] }]
+
+[verify]
+exists = ["SYS:Libs/mmu.library", "SYS:Libs/disassembler.library", "SYS:C/MuForce"]
