@@ -1,0 +1,87 @@
+# WHDLoad 20.0 (whdload.de USR package) — the standard hard-disk
+# install/loader for Amiga games and demos originally floppy-only,
+# patching them to run without their copy-protection/floppy-swap
+# requirements. Ships the loader itself plus DIC/Patcher/RawDIC/WArc,
+# the supporting tools real WHDLoad installs (the per-game/demo
+# packages themselves, not shipped here) expect on the target system.
+#
+# Sourced from whdload.de directly (`[source.url]`), not Aminet:
+# Aminet's own `dev/misc/WHDLoad_usr.lha` is version 16.8 from 2007 —
+# whdload.de (the author's own site, confirmed via the real binary's
+# `$VER: WHDLoad 20.0 [build 7051] (27.03.2026)` string) is the
+# current, actively-maintained upstream, same "prefer the real primary
+# channel over a stale mirror" reasoning `[source.aminet]`'s own
+# rolling-unversioned-filename caveat already covers for other
+# recipes, just pointing the other direction here (Aminet is the
+# stale one, not the redistribution-only one).
+#
+# Derived by downloading the real archive and reading it directly with
+# this project's own lhafile-based extractor (lh6-compressed — this
+# project's extract.py/lhafile handle it fine), then reading the real
+# `WHDLoad/Install` Installer script (Installer-language, no $VER,
+# undated) inside it and translating its default, non-interactive path:
+#   - mode detection (`(exists "C/InstallBB")`) picks "usr" here, since
+#     this archive has no `C/InstallBB` at all (that's the separate DEV
+#     package) — the whole `#mode = "dev"` branch (includes/autodocs
+#     destinations) never applies
+#   - every file under `C/` (DIC, Patcher, RawDIC, WArc, WHDLoad,
+#     WHDLoad.VFS, WHDLoadCD32) installs via `P_install`, which only
+#     ever asks (and only then, could skip) at `@user-level == 2`
+#     (expert) — novice/average always take `#choice = 1` (install).
+#     The real script's own destination is an interactively-asked
+#     `askdir`, defaulting to `"C:"` ("Recommend is \"C:\"."` in the
+#     prompt text) — translated to `SYS:C/`.
+#   - `WHDLoad.prefs`/`WHDLoad-Startup`/`WHDLoad-Cleanup`: real script's
+#     `P_InstallPrefs` only takes its "compare checksums, maybe suffix
+#     `.default`" branch when the destination already exists — never
+#     true on this project's clean per-build tree, so the plain-copy
+#     `else` branch (`S/<name>` -> `S:<name>`) is what actually runs
+#   - documentation: real script's own `askdir` for `#str_destdocs`
+#     defaults to literally `"Help:"`, with `WHDLoad` tacked on as its
+#     own subdirectory — for once a literal match (not a guess) for
+#     this project's own established `SYS:Help/` guide-destination
+#     convention, so `SYS:Help/WHDLoad/` here is the real default path,
+#     not an approximation. Copies the entire real `Docs/` tree
+#     (`(all)`, 548 files — English plus every bundled translation),
+#     same as the real script's own unconditional default.
+#
+# Per-game/demo WHDLoad install packages themselves (whdload.de's own
+# huge demo/game/magazine archive) are a wholly separate, much larger
+# concern — not attempted here.
+
+[package]
+name        = "whdload"
+versions    = ["20.0"]
+depends     = []
+conflicts   = []
+provides    = ["whdload"]
+
+[requires]
+# WHDLoad/Docs/en/need.html ("Requirements ... to run installed
+# programs"): "CPU 68000 [...] Kickstart 2.0 (version 37) [...] a
+# minimum of 1.0 MiB RAM". No cpu floor beyond plain 68000.
+kickstart   = ">= 37"
+
+[source.url]
+url    = "https://whdload.de/whdload/WHDLoad_usr.lha"
+sha256 = { "20.0" = "093333953737528d79c1eda7d21a16a0aa298698722624e7cfb31f588a0a156d" }
+
+[install]
+copy = [
+  { from = "WHDLoad/C/DIC",         to = "SYS:C/" },
+  { from = "WHDLoad/C/Patcher",     to = "SYS:C/" },
+  { from = "WHDLoad/C/RawDIC",      to = "SYS:C/" },
+  { from = "WHDLoad/C/WArc",        to = "SYS:C/" },
+  { from = "WHDLoad/C/WHDLoad",     to = "SYS:C/" },
+  { from = "WHDLoad/C/WHDLoad.VFS", to = "SYS:C/" },
+  { from = "WHDLoad/C/WHDLoadCD32", to = "SYS:C/" },
+
+  { from = "WHDLoad/S/WHDLoad.prefs",    to = "SYS:S/" },
+  { from = "WHDLoad/S/WHDLoad-Startup",  to = "SYS:S/" },
+  { from = "WHDLoad/S/WHDLoad-Cleanup",  to = "SYS:S/" },
+
+  { from = "WHDLoad/Docs/#?", to = "SYS:Help/WHDLoad/" },
+]
+
+[verify]
+exists = ["SYS:C/WHDLoad", "SYS:S/WHDLoad.prefs"]
