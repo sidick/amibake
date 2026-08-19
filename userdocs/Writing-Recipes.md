@@ -94,6 +94,32 @@ exists      = ["SYS:Libs/amisslmaster.library"]
    `[hook]` escape hatch, for the rare case that needs arbitrary Python)
    before reaching for something ad hoc.
 
+## Contributing it back
+
+AmiBake's recipe library lives in this repository (`recipes/`), so a
+new or fixed recipe is a normal pull request:
+
+1. Fork the repo, and add your recipe under `recipes/<name>/recipe.toml`
+   (or edit an existing one).
+2. Run the same checks CI runs before opening the PR:
+   ```sh
+   .venv/bin/amibake lint recipes manifests
+   python tools/ci_recipe_smoke.py   # if your recipe is network-fetchable
+   ```
+3. Open a PR. CI runs `amibake lint` and the smoke build automatically
+   — a network-fetchable recipe (Aminet/GitHub/URL source) gets a real
+   build-and-`[verify]` regression test with no extra configuration on
+   your part; a `[source.assets]`-only recipe (proprietary media) is
+   linted but can't be build-tested in CI, so say in the PR description
+   what you *did* verify it against locally.
+4. Say plainly in the PR what's confirmed vs. assumed — which archive
+   you actually downloaded and inspected, whether you built and booted
+   it, and what (if anything) is still unverified. Several existing
+   recipes carry exactly this kind of honest caveat in their own header
+   comment (e.g. `recipes/picasso96-3`'s "nobody here has a licensed
+   archive to test against") rather than a false claim of a real check
+   that didn't happen — do the same.
+
 ## Where to go next
 
 - [`docs/recipe-contract.md`](https://github.com/sidick/amibake/blob/main/docs/recipe-contract.md) — the full field-by-field contract.
