@@ -663,6 +663,30 @@ reasoning), not repeated as unmet here.
   archiving a release-day manifest+lockfile pair and a scheduled CI job
   that rebuilds and byte-compares against the local cache.
 
+**First real external adoption, 2026-08-19 (informal, ahead of the
+`amibake-action`/CI-wiring work above):** sibling project volamos
+(a Rust runtime for classic AmigaOS m68k CLI binaries) started
+consuming an AmiBake build's `dir` output directly as its own
+real-world test corpus, without any AmiBake-side change — confirming
+`os3.1.4`'s output is already useful to a real consuming project, not
+just self-consistent. Per volamos's own `docs/plan.md`: `amibake build
+manifests/os314.toml --assets assets` (against volamos's own supplied
+Hyperion media) produces `os314/C/`, the real 51 Hyperion `C:` binaries
+plus one `.uaem` sidecar per file — exactly the format volamos's own
+`.uaem` reader was independently validated against — and volamos ran
+its own binary (`List`) against that corpus for real, plus cross-
+checked it against `vamos` and a real Kickstart 3.1 ROM under
+Copperline (a three-way comparison harness, `tools/compare_three_way.py`
+in that repo). Two consequences worth noting here: this is still local
+/manual use of an AmiBake build (not the `amibake-action` this
+milestone still needs to build, and not something either project's CI
+runs, since it needs the same proprietary Hyperion media neither repo
+commits) — genuinely informal adoption, not the milestone's own exit
+criterion met early. It's a real signal the `dir` output format and
+`.uaem` sidecar convention are solid enough for another project to
+build directly on without any coordination beyond reading the output,
+which is exactly what M3's `.uaem` design was aiming for.
+
 ### M10 (optional, only if a base demands it) — `strategy = installer`
 
 AmiPilot driving the genuine Installer under Copperline. Deferred exactly
