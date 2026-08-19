@@ -16,3 +16,6 @@ assets/
 
 # amibake build's default layer/archive cache root.
 .amibake-cache/
+
+# MkDocs local build output (mkdocs.yml + .github/workflows/docs.yml).
+site/

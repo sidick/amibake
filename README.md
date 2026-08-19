@@ -24,6 +24,15 @@ output boots interactively under both Copperline and Amiberry. See
 
 ## Documentation
 
+**User documentation:** [sidick.github.io/amibake](https://sidick.github.io/amibake/)
+(installation, CLI reference, manifest format, recipe library) is a
+full [MkDocs Material](https://squidfunk.github.io/mkdocs-material/)
+site built from [`userdocs/`](userdocs/) — or run `mkdocs serve`
+locally (see
+[`userdocs/Building-from-Source.md`](userdocs/Building-from-Source.md)).
+
+The exact schema contract the codebase itself is tested against:
+
 - [docs/manifest.md](docs/manifest.md) — the manifest format
 - [docs/recipe-contract.md](docs/recipe-contract.md) — the recipe contract:
   everything needed to add support for a package, without reading builder

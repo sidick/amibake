@@ -1,0 +1,62 @@
+# User documentation site (MkDocs Material), published per release via
+# mike to GitHub Pages, following the same convention as sibling projects
+# (amisnap, volamos): userdocs/ is the single source of truth for
+# task-oriented user docs. The existing docs/ directory (manifest.md,
+# recipe-contract.md, limits.md) stays where it is — it's the exact
+# contract the codebase itself references in comments and error messages
+# (see CLAUDE.md) — and userdocs/ pages link out to it for the full
+# tables/spec rather than duplicating it.
+
+site_name: AmiBake
+site_description: A Dockerfile for Amiga setups — manifest-driven test setups, ready to boot
+site_url: https://sidick.github.io/amibake/
+repo_url: https://github.com/sidick/amibake
+repo_name: sidick/amibake
+edit_uri: edit/main/userdocs/
+copyright: AmiBake — a manifest-driven Amiga test-setup builder. MIT.
+
+docs_dir: userdocs
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.footer
+    - content.action.edit
+    - content.code.copy
+
+extra:
+  version:
+    provider: mike
+
+markdown_extensions:
+  - toc:
+      permalink: true
+  - admonition
+  - pymdownx.superfences
+
+nav:
+  - Home: index.md
+  - Getting going:
+      - Installation: Installation.md
+      - Getting Started: Getting-Started.md
+  - Using AmiBake:
+      - CLI Reference: CLI-Reference.md
+      - Manifest Format: Manifest-Format.md
+      - Recipe Library: Recipes.md
+      - Writing a Recipe: Writing-Recipes.md
+      - Emulator Configs: Emulator-Configs.md
+  - Help:
+      - Building from Source: Building-from-Source.md
+      - Changelog: Changelog.md

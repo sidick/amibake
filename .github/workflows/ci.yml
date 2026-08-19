@@ -25,3 +25,16 @@ jobs:
         run: amibake lint recipes manifests
       - name: Recipe smoke build (build + [verify] against aros68k)
         run: python tools/ci_recipe_smoke.py
+
+  docs-build:
+    name: Docs site (strict build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install docs toolchain
+        run: pip install -r tools/docs-requirements.txt
+      - name: Strict MkDocs build
+        run: mkdocs build --strict
