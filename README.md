@@ -11,8 +11,16 @@ packages = ["picasso96-3 >= 3.2", "amissl = 5.27", "classact = 3.3"]
 emit     = ["copperline", "amiberry"]
 ```
 
-**Status: early development.** `amibake lint` (manifest and recipe
-validation) works; resolve/build arrive per [PLAN.md](PLAN.md).
+**Status:** `lint`, `resolve`, and `build` all work end-to-end. Bases
+include AROS 68k, Workbench 1.3, AmigaOS 3.1.4, and AmigaOS 3.2.2 (the
+last two need your own licensed install media under `assets/`, which is
+never committed — see [docs/limits.md](docs/limits.md)); AROS builds
+from freely-available nightlies, so it's the base CI exercises directly.
+Package recipes cover AmiSSL, Picasso96, ClassAct, MUI (3.8 and 5.0),
+BGUI, ReqTools, xfdMaster, XPK, and more under `recipes/`. Emitted
+output boots interactively under both Copperline and Amiberry. See
+[PLAN.md](PLAN.md) for milestone-by-milestone status and what's next
+(a CI action for consuming projects).
 
 ## Documentation
 
@@ -32,3 +40,7 @@ python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
 .venv/bin/ruff check .
 .venv/bin/amibake lint recipes manifests
 ```
+
+## License
+
+[MIT](LICENSE)

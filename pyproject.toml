@@ -7,6 +7,7 @@ name = "amibake"
 version = "0.1.0.dev0"
 description = "Manifest-driven Amiga test setup builder"
 readme = "README.md"
+license = "MIT"
 requires-python = ">=3.11"
 # .lha extraction uses lhafile (pure Python) rather than shelling out to
 # the lhasa/lha CLI — see extract.py's module docstring for why. amitools
