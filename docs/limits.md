@@ -133,6 +133,16 @@ multiple real partitions (a separate work/swap partition, for
 instance) isn't supported — later milestone, see `emit/hdf.py`'s own
 module docstring.
 
+Also worth knowing here: both the writer and any amitools-based
+checker share amitools' bugs (`emit/hdf.py` already documents one). If
+an emitted RDB is ever disputed — amitools and an emulator disagree,
+or both accept an image real hardware rejects — AmiPart's Linux CLI
+(<https://github.com/ChuckyGang/AmiPart>, `amipart INFO out.hdf`) is
+an independent C RDB parser useful as a third opinion. Debug tool
+only, not a dependency: its Linux build can't format filesystems, and
+booting the image under Copperline/Amiberry stays the real end-to-end
+oracle.
+
 ## Emulator config: `dir` output only
 
 The M6 config emitters (`emit/copperline.py`, `emit/uae.py`) can only
