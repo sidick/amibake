@@ -23,6 +23,7 @@ import re
 import tarfile
 from pathlib import Path
 
+from .icon import IconError, set_tool_types
 from .machine import cpu_satisfies
 from .tree import AmigaMeta, Tree
 from .versionspec import parse_constraint
@@ -212,6 +213,26 @@ def apply_layer(base: Tree, package_name: str, install: dict, archive: Tree,
         if when is not None and not _when_matches(when, options):
             continue
         tree.put(entry["to"], entry["content"].encode("latin-1"))
+
+    # After copy/files: a tool type is set on an icon one of those just
+    # put in the tree (the real Installer's own order — `copylib` the
+    # icon, then `tooltype` it).
+    for entry in install.get("tooltypes") or []:
+        when = entry.get("when")
+        if when is not None and not _when_matches(when, options):
+            continue
+        path = entry["path"]
+        if not tree.exists(path):
+            raise LayerError(
+                f"{package_name}: [install].tooltypes names {path!r}, which no "
+                f"earlier copy/files entry put in the tree — an icon has to be "
+                f"installed before its tool types can be set")
+        icon = tree.get(path)
+        try:
+            patched = set_tool_types(icon.data, entry["set"])
+        except IconError as e:
+            raise LayerError(f"{package_name}: {path}: {e}") from e
+        tree.put(path, patched, icon.meta)
 
     for entry in install.get("user-startup") or []:
         tree.add_user_startup(entry["order"], package_name, list(entry["lines"]))

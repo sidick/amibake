@@ -36,24 +36,15 @@ its own comments, naming what was read to derive it:
   flagged as unverified against the actual 3.6.3 release in the
   recipe's own comments.
 - `recipes/picasso96-2` / `recipes/picasso96-3` — the real
-  `InstallPicasso96` script's own board install is three steps, and
-  only two are expressible. The `.card` and its matching `.chip` are
-  ordinary copies (the script's `P_InstallCard`/`P_InstallChip`
-  procedures, whose card→chip pairing the recipes reproduce line for
-  line). The third is not: `P_InstallCard` also copies
-  `Devs/Monitors/Picasso96` to `DEVS:Monitors/<BoardName>` and then
-  **sets tooltypes on the copied icon** — `BoardType` (which board this
-  monitor entry drives) and `SettingsFile`. `[install]` has no
-  icon/tooltype-editing primitive, and the monitor program reads
-  `BoardType` to know what it is driving, so a copy without tooltypes
-  would install a monitor entry that looks present and does nothing.
-  Both recipes leave it out entirely rather than half-done, and say so
-  in their own comments. The consequence is real and worth knowing: a
-  build taking either recipe gets the RTG libraries and a board driver,
-  but not the `DEVS:Monitors` entry that offers the board's screenmodes
-  at boot. Fixing it properly means either a tooltype primitive in
-  `[install]` or an `envarc`-style literal-content `.info` writer —
-  neither exists yet, and no recipe but these two has ever needed one.
+  `InstallPicasso96` script's board install is three steps: the `.card`,
+  its matching `.chip`, and a `DEVS:Monitors/<BoardName>` entry whose
+  **icon tool types** say which board the copied monitor program drives.
+  The third was the schema's own gap for a while — it is now
+  `[install].tooltypes` (see `docs/recipe-contract.md` and
+  `src/amibake/icon.py`), so all three are expressible and both recipes
+  do all three. What is still *not* expressible, and did not need to be:
+  reading a tool type back out to make a later decision. Every real
+  script that sets one only writes.
 - `recipes/os3.1.4` — the first base built this way (`aros68k`/`wb1.3`
   are plain-copy floppy sets with no real Installer at all): the real
   152KB `Install/Install` Installer-language script was read directly

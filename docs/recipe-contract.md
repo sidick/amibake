@@ -254,6 +254,33 @@ expresses exactly that.
   recipe must ship one (`files` is the tool for that).
 - `assigns` — array of `{ name, path }`: assigns added at boot, e.g.
   `{ name = "AmiSSL", path = "SYS:Devs/AmiSSL" }`.
+- `tooltypes` — array of `{ path, set }` (plus an optional `when`, same
+  rule as `copy`'s): tool types set on an installed Amiga `.info` icon,
+  the declarative form of a real Installer's `(tooltype (settooltype
+  "BoardType" "Graffity"))`.
+
+  ```toml
+  tooltypes = [
+    { path = "SYS:Devs/Monitors/Graffity.info", set = { BoardType = "Graffity" } },
+  ]
+  ```
+
+  `path` names the icon by its *destination* path — an earlier `copy` or
+  `files` entry must already have put it in the tree, or the build fails
+  naming the recipe. Applied after all copies, the real installer's own
+  order. A name already present is replaced in place (matched
+  case-insensitively, as `FindToolType` matches); new names are appended
+  in sorted order, so the output stays deterministic. Values are always
+  strings. A commented-out tool type is written the way a real Installer
+  script writes one, with the parentheses as part of the name and value:
+  `{ "(DisplayChain" = "Yes)" }`.
+
+  This exists because some packages are configured *entirely* through a
+  copied file's icon — P96 installs one generic monitor program under
+  each board's name and tells the copy which board it is with a
+  `BoardType` tool type, which the program reads back at boot. The icon
+  it ships carries an empty tool-type array, so copying it verbatim is
+  worse than shipping no icon at all.
 
 ## `[verify]` — post-install checks
 

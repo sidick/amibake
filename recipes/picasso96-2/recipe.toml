@@ -31,16 +31,9 @@
 # card is on. Its files are real and confirmed present in this archive:
 # `Graffity.card` plus the `CirrusGD542X.chip` the script pairs with it.
 #
-# Known incomplete for every real card, `graffity` included (not a new
-# gap, but now a documented one — see docs/limits.md): the real script's
-# P_InstallCard also copies `Devs/Monitors/Picasso96` to
-# `DEVS:Monitors/<BoardName>` and then sets `BoardType`/`SettingsFile`
-# tooltypes on the copied icon. The copy is expressible here; the
-# tooltypes are not (`[install]` has no icon-editing primitive), and the
-# monitor program reads `BoardType` to know which card it is driving —
-# so shipping the file with no tooltypes would be a monitor entry that
-# looks installed and does nothing. Left out entirely rather than
-# half-done, deliberately.
+# The `DEVS:Monitors/<BoardName>` entry each card needs is installed too,
+# tool types and all — see the [install].tooltypes block below, and
+# `src/amibake/icon.py` for the .info editing that makes it possible.
 
 [package]
 name     = "picasso96-2"
@@ -83,9 +76,49 @@ copy = [
   { from = "Picasso96Install/Libs/Picasso96/CirrusGD542X.chip", to = "SYS:Libs/Picasso96/", when = "card = graffity" },
   { from = "Picasso96Install/Libs/Picasso96/CirrusGD5446.chip", to = "SYS:Libs/Picasso96/", when = "card = picasso-iv" },
   { from = "Picasso96Install/Libs/Picasso96/S3ViRGE.chip", to = "SYS:Libs/Picasso96/", when = "card = cybervision64-3d" },
+
+  # --- DEVS:Monitors entries (P_InstallCard's second half) ---
+  # One generic monitor program, copied under each board's own name —
+  # `(copylib (source "devs/monitors/Picasso96") (dest #_monitorpath)
+  # (newname #_boardname) (infos))`. It is what offers the board's
+  # screenmodes at boot; without it the RTG libraries are installed and
+  # nothing ever creates a display mode. The copy brings the icon too
+  # (`(infos)`), because the program reads its configuration back out of
+  # the icon's tool types — see [install].tooltypes below.
+  { from = "Picasso96Install/Devs/Monitors/Picasso96", to = "SYS:Devs/Monitors/uaegfx", when = "card = uaegfx" },
+  { from = "Picasso96Install/Devs/Monitors/Picasso96.info", to = "SYS:Devs/Monitors/uaegfx.info", when = "card = uaegfx" },
+  { from = "Picasso96Install/Devs/Monitors/Picasso96", to = "SYS:Devs/Monitors/PicassoIV", when = "card = picasso-iv" },
+  { from = "Picasso96Install/Devs/Monitors/Picasso96.info", to = "SYS:Devs/Monitors/PicassoIV.info", when = "card = picasso-iv" },
+  { from = "Picasso96Install/Devs/Monitors/Picasso96", to = "SYS:Devs/Monitors/CVision3D", when = "card = cybervision64-3d" },
+  { from = "Picasso96Install/Devs/Monitors/Picasso96.info", to = "SYS:Devs/Monitors/CVision3D.info", when = "card = cybervision64-3d" },
+  { from = "Picasso96Install/Devs/Monitors/Picasso96", to = "SYS:Devs/Monitors/Graffity", when = "card = graffity" },
+  { from = "Picasso96Install/Devs/Monitors/Picasso96.info", to = "SYS:Devs/Monitors/Graffity.info", when = "card = graffity" },
 ]
 assigns = [
   { name = "Picasso96", path = "SYS:Libs/Picasso96" },
+]
+
+# The other half of the real script's P_InstallCard: the icon it copies
+# ships with an *empty* tool-type array (confirmed by parsing the real
+# file), and the monitor program reads `BoardType` back from it to know
+# which board it is driving. So copying the icon verbatim is not a
+# half-measure, it is worse than shipping no icon at all — the program
+# finds an icon, finds no BoardType in it, and gives up, where a missing
+# icon at least makes it fall back to guessing. Hence [install].tooltypes,
+# which sets them the same way `(settooltype "BoardType" #_boardname)`
+# does.
+#
+# BoardType is the only mandatory one (Picasso96_english.guide: "BoardType:
+# mandatory, selects the type of the board"). The script also sets
+# SettingsFile and five optional display tweaks, all of which the guide
+# gives defaults for; SettingsFile defaults to `DEVS:Picasso96Settings`
+# and the rest to system behaviour, so this recipe sets only what is
+# mandatory and leaves the tuning to whoever has the real monitor.
+tooltypes = [
+  { path = "SYS:Devs/Monitors/uaegfx.info", set = { BoardType = "uaegfx" }, when = "card = uaegfx" },
+  { path = "SYS:Devs/Monitors/PicassoIV.info", set = { BoardType = "PicassoIV" }, when = "card = picasso-iv" },
+  { path = "SYS:Devs/Monitors/CVision3D.info", set = { BoardType = "CVision3D" }, when = "card = cybervision64-3d" },
+  { path = "SYS:Devs/Monitors/Graffity.info", set = { BoardType = "Graffity" }, when = "card = graffity" },
 ]
 
 [options.card]

@@ -25,7 +25,7 @@ DOS_TYPES = {
 PACKAGE_KEYS = {"name", "versions", "depends", "conflicts", "provides", "strategy"}
 REQUIRES_KEYS = {"os", "kickstart", "cpu", "fpu", "mmu", "emulator", "per-version"}
 SOURCE_KINDS = {"aminet", "github", "url", "assets"}
-INSTALL_KEYS = {"copy", "envarc", "user-startup", "assigns", "files"}
+INSTALL_KEYS = {"copy", "envarc", "user-startup", "assigns", "files", "tooltypes"}
 COPY_KEYS = {"from", "to", "variants", "when"}
 VARIANT_KEYS = {"path", "cpu", "fpu", "mmu"}
 VARIANT_PREDICATE_KEYS = {"cpu", "fpu", "mmu"}
@@ -414,6 +414,38 @@ def _check_install(c: Checker, install: dict) -> None:
         c.unknown_keys(entry, {"name", "content"}, label)
         c.typed(entry, "name", str, label, required=True)
         c.typed(entry, "content", str, label, required=True)
+
+    for i, entry in enumerate(c.typed(install, "tooltypes", list, "[install]", default=[])):
+        label = f"[install].tooltypes[{i}]"
+        if not isinstance(entry, dict):
+            c.error(label, "tooltypes entries must be tables",
+                    'e.g. { path = "SYS:Devs/Monitors/Graffity.info", '
+                    'set = { BoardType = "Graffity" } }')
+            continue
+        c.unknown_keys(entry, {"path", "set", "when"}, label)
+        path = c.typed(entry, "path", str, label, required=True)
+        if path is not None and ":" not in path:
+            c.error(f"{label}.path", f"{path!r} is not an Amiga path",
+                    "name the installed icon by its destination path, e.g. "
+                    '"SYS:Devs/Monitors/Graffity.info"')
+        elif path is not None and not path.lower().endswith(".info"):
+            c.error(f"{label}.path", f"{path!r} is not an icon",
+                    "tool types live in an Amiga .info file — name that, not "
+                    "the file it belongs to")
+        values = c.typed(entry, "set", dict, label, required=True)
+        for name, value in (values or {}).items():
+            if not isinstance(value, str):
+                c.error(f"{label}.set.{name}", "tool type values must be strings",
+                        'quote it — e.g. BoardType = "Graffity" (a tool type is '
+                        "text on the Amiga side whatever it looks like)")
+            elif "=" in name:
+                c.error(f"{label}.set.{name}", "tool type names can't contain '='",
+                        "the name is the part before the '=' — write "
+                        '{ BoardType = "Graffity" }, not { "BoardType=Graffity" = "" }')
+        when = c.typed(entry, "when", str, label)
+        if when is not None and not _WHEN_RE.match(when):
+            c.error(f"{label}.when", f"bad condition {when!r}",
+                    'conditions are "<option> = <value>", e.g. "card = uaegfx"')
 
     for i, entry in enumerate(
             c.typed(install, "user-startup", list, "[install]", default=[])):

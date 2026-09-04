@@ -29,8 +29,9 @@
 # `Graffity.card` and the `CirrusGD542X.chip` the installer pairs with
 # it, and 3.x is the same architecture. Whether a 3.6.3 archive still
 # ships a Graffity driver at all is unverified, same caveat as every
-# other filename here. The `DEVS:Monitors/<BoardName>` + tooltypes gap
-# picasso96-2's header describes applies identically to this recipe.
+# other filename here. The `DEVS:Monitors/<BoardName>` entries and their
+# BoardType tool types are installed here the same way picasso96-2 does
+# them.
 
 [package]
 name     = "picasso96-3"
@@ -76,9 +77,40 @@ copy = [
   { from = "Picasso96Install/Libs/Picasso96/CirrusGD542X.chip", to = "SYS:Libs/Picasso96/", when = "card = graffity" },
   { from = "Picasso96Install/Libs/Picasso96/CirrusGD5446.chip", to = "SYS:Libs/Picasso96/", when = "card = picasso-iv" },
   { from = "Picasso96Install/Libs/Picasso96/S3ViRGE.chip", to = "SYS:Libs/Picasso96/", when = "card = cybervision64-3d" },
+
+  # --- DEVS:Monitors entries (P_InstallCard's second half) ---
+  # The generic monitor program copied under each board's own name, with
+  # its icon; the entry is what offers the board's screenmodes at boot.
+  # See recipes/picasso96-2, where this is grounded against the real
+  # script and a real archive — the same caveat as every other path in
+  # this recipe applies to whether 3.6.3 still lays them out this way,
+  # and `zz9000`'s board name in particular is a guess on a guess (its
+  # .card filename here was already one).
+  { from = "Picasso96Install/Devs/Monitors/Picasso96", to = "SYS:Devs/Monitors/uaegfx", when = "card = uaegfx" },
+  { from = "Picasso96Install/Devs/Monitors/Picasso96.info", to = "SYS:Devs/Monitors/uaegfx.info", when = "card = uaegfx" },
+  { from = "Picasso96Install/Devs/Monitors/Picasso96", to = "SYS:Devs/Monitors/PicassoIV", when = "card = picasso-iv" },
+  { from = "Picasso96Install/Devs/Monitors/Picasso96.info", to = "SYS:Devs/Monitors/PicassoIV.info", when = "card = picasso-iv" },
+  { from = "Picasso96Install/Devs/Monitors/Picasso96", to = "SYS:Devs/Monitors/CVision3D", when = "card = cybervision64-3d" },
+  { from = "Picasso96Install/Devs/Monitors/Picasso96.info", to = "SYS:Devs/Monitors/CVision3D.info", when = "card = cybervision64-3d" },
+  { from = "Picasso96Install/Devs/Monitors/Picasso96", to = "SYS:Devs/Monitors/zz9000", when = "card = zz9000" },
+  { from = "Picasso96Install/Devs/Monitors/Picasso96.info", to = "SYS:Devs/Monitors/zz9000.info", when = "card = zz9000" },
+  { from = "Picasso96Install/Devs/Monitors/Picasso96", to = "SYS:Devs/Monitors/Graffity", when = "card = graffity" },
+  { from = "Picasso96Install/Devs/Monitors/Picasso96.info", to = "SYS:Devs/Monitors/Graffity.info", when = "card = graffity" },
 ]
 assigns = [
   { name = "Picasso96", path = "SYS:Libs/Picasso96" },
+]
+
+# BoardType is what tells the copied monitor program which board it is
+# driving, and the icon ships with an empty tool-type array — see
+# recipes/picasso96-2's own comment for the full reasoning and the
+# evidence behind it.
+tooltypes = [
+  { path = "SYS:Devs/Monitors/uaegfx.info", set = { BoardType = "uaegfx" }, when = "card = uaegfx" },
+  { path = "SYS:Devs/Monitors/PicassoIV.info", set = { BoardType = "PicassoIV" }, when = "card = picasso-iv" },
+  { path = "SYS:Devs/Monitors/CVision3D.info", set = { BoardType = "CVision3D" }, when = "card = cybervision64-3d" },
+  { path = "SYS:Devs/Monitors/zz9000.info", set = { BoardType = "zz9000" }, when = "card = zz9000" },
+  { path = "SYS:Devs/Monitors/Graffity.info", set = { BoardType = "Graffity" }, when = "card = graffity" },
 ]
 
 [options.card]

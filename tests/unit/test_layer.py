@@ -1,5 +1,6 @@
 import pytest
 
+from amibake.icon import read_tool_types
 from amibake.layer import (
     LayerError,
     apply_layer,
@@ -8,6 +9,19 @@ from amibake.layer import (
     save_layer_cache,
 )
 from amibake.tree import AmigaMeta, Tree
+
+
+def _blank_icon():
+    """The shape of the real P96 monitor icon: a valid DiskObject with an
+    image, a DefaultTool, and no tool types at all."""
+    import struct
+    header = bytearray(78)
+    struct.pack_into(">HH", header, 0, 0xE310, 1)
+    struct.pack_into(">I", header, 22, 0x1234)   # GadgetRender
+    header[48] = 3
+    image = bytearray(20)
+    struct.pack_into(">hhh", image, 4, 2, 1, 1)
+    return bytes(header) + bytes(image) + b"\0\0"
 
 
 def _archive():
@@ -284,3 +298,54 @@ class TestLayerCache:
         a = compute_layer_key("p", "r", "1.0", {"x": 1, "y": 2}, "a")
         b = compute_layer_key("p", "r", "1.0", {"y": 2, "x": 1}, "a")
         assert a == b
+
+
+def test_tooltypes_sets_a_tool_type_on_an_installed_icon():
+    archive = Tree()
+    archive.put("Picasso96Install/Devs/Monitors/Picasso96.info", _blank_icon())
+    install = {
+        "copy": [{"from": "Picasso96Install/Devs/Monitors/Picasso96.info",
+                  "to": "SYS:Devs/Monitors/Graffity.info"}],
+        "tooltypes": [{"path": "SYS:Devs/Monitors/Graffity.info",
+                       "set": {"BoardType": "Graffity"}}],
+    }
+    tree = apply_layer(Tree(), "picasso96-2", install, archive)
+
+    assert read_tool_types(tree.get("SYS:Devs/Monitors/Graffity.info").data) == [
+        "BoardType=Graffity"]
+
+
+def test_tooltypes_honours_when_like_copy_does():
+    archive = Tree()
+    archive.put("icon.info", _blank_icon())
+    install = {
+        "copy": [{"from": "icon.info", "to": "SYS:Devs/Monitors/Graffity.info"}],
+        "tooltypes": [
+            {"path": "SYS:Devs/Monitors/Graffity.info",
+             "set": {"BoardType": "Graffity"}, "when": "card = graffity"},
+            {"path": "SYS:Devs/Monitors/Graffity.info",
+             "set": {"BoardType": "PicassoIV"}, "when": "card = picasso-iv"},
+        ],
+    }
+    tree = apply_layer(Tree(), "picasso96-2", install, archive, options={"card": "graffity"})
+
+    assert read_tool_types(tree.get("SYS:Devs/Monitors/Graffity.info").data) == [
+        "BoardType=Graffity"]
+
+
+def test_tooltypes_on_a_file_nothing_installed_is_a_named_error():
+    install = {"tooltypes": [{"path": "SYS:Devs/Monitors/Ghost.info",
+                              "set": {"BoardType": "Ghost"}}]}
+    with pytest.raises(LayerError, match="no earlier copy/files entry"):
+        apply_layer(Tree(), "picasso96-2", install, Tree())
+
+
+def test_tooltypes_on_something_that_is_not_an_icon_is_a_named_error():
+    archive = Tree()
+    archive.put("notanicon.info", b"\x89PNG\r\n\x1a\n" + b"\0" * 80)
+    install = {
+        "copy": [{"from": "notanicon.info", "to": "SYS:Devs/Monitors/X.info"}],
+        "tooltypes": [{"path": "SYS:Devs/Monitors/X.info", "set": {"BoardType": "X"}}],
+    }
+    with pytest.raises(LayerError, match="not an Amiga .info file"):
+        apply_layer(Tree(), "picasso96-2", install, archive)
