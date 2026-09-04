@@ -38,14 +38,19 @@ PLAN.md — just a holding pen so ideas aren't lost between sessions.
   real checksum verified). The BOOPSI GUI toolkit AHI's prefs editor
   needs; bgui.library (68000/OS2 vs 68020+/OS3 `variants`), its five
   gadget libraries, and its own prefs utility.
-- **MMULibs (CPU support libraries)** — shipped as `recipes/mmulibs`,
-  sourced from the same `assets/hyperion/AmigaOS-3.2-full.lha` os3.2.2
-  already pins (MMULibs.adf is bundled inside it). Narrow scope: just
-  680x0.library + 68030/68040/68060.library, enough to stop the base's
-  own `CPU CHECKINSTALL` boot nag on a 68030+ machine block. mmu.library
-  and the MuTools themselves ship separately, from their own upstream
-  Aminet leaves — see recipes/muforce and recipes/muguardianangel
-  above.
+- **MMULibs (MMU/CPU support libraries)** — shipped as `recipes/
+  mmulibs`, sourced from the same `assets/hyperion/AmigaOS-3.2-full.lha`
+  os3.2.2 already pins (MMULibs.adf is bundled inside it). Ships the
+  real base Install script's whole MMULibs branch: `Libs/` (mmu.library,
+  memory.library, disassembler.library, 680x0.library +
+  68020/68030/68040/68060.library, the `Libs/mmu/` board-init files),
+  `C/` (the MuTools — MuScan, MuFastRom, MuMapRom, MuProtectModules,
+  FPU, ...), their guides to `SYS:MuTools/`, and the generic
+  MMU-Configuration to `ENVARC:`. The CPU-tier libraries alone are what
+  stop the base's own `CPU CHECKINSTALL` boot nag on a 68030+ machine
+  block. recipes/muforce and recipes/muguardianangel above install
+  their own upstream Aminet copies of mmu.library/disassembler.library
+  and don't depend on this package's.
 
 ## Dev utilities and libraries (commonly used, not yet researched)
 

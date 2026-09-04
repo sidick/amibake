@@ -50,6 +50,21 @@ its own comments, naming what was read to derive it:
   `LoadModule` would be a real, different use case — hardware-board
   detection (which module variant to pick) would be the genuine
   `[install]`-can't-express limit there. See the recipe's own comments.
+- `recipes/mmulibs` — the real base `Install/Install`'s "MMU-Library
+  installation" branch, translated whole (everything on `MMULibs.adf`
+  except `Configs/` and `Locale/` verbatim into the target, the MMUlib
+  guides to `SYS:MuTools/`, one MMU configuration to `ENVARC:`). Its
+  one interactive decision is an `askchoice` for the accelerator
+  board's *manufacturer* — Other / GVP / Individual Computers (ACA) /
+  Phase 5 — selecting which of `Configs/MMU-Configuration{,.GVP,.ACA,
+  .P5}` is installed under the single name `MMU-Configuration`. The
+  machine block has no accelerator-vendor axis to answer that with
+  (`when` conditions need a real `[options]`/machine key to test), so
+  the recipe takes the script's own `(default 0)` = "Other" generic
+  config. Not fatal: the `Libs/mmu/` board-init files the vendor
+  configs invoke are all installed, so switching a built tree is a
+  one-file copy. A real vendor axis (a machine or `[options]` key)
+  would be the honest fix if a manifest ever needs one of the three.
 - `recipes/os3.2.2` — the first base needing more than one archive: real
   Hyperion point releases (3.2.1, 3.2.2, ...) are cumulative *update*
   packages applied over a base install, not standalone reinstalls.

@@ -1,9 +1,11 @@
-# MMULibs 3.2.2 (bundled inside AmigaOS-3.2-full.lha's own MMULibs.adf)
-# — the CPU support libraries (680x0.library + the matching
-# 68030/68040/68060.library) real AmigaOS 3.2 needs on a 68030+ system
-# to stop `CPU CHECKINSTALL` (run every boot by the base's own
+# MMULibs 46.21 (bundled inside AmigaOS-3.2-full.lha's own MMULibs.adf)
+# — THOR Software's MMU/CPU support package as AmigaOS 3.2 ships it:
+# mmu.library and its companions, the CPU-tier libraries (680x0.library
+# + 68020/68030/68040/68060.library) real AmigaOS 3.2 needs on a 68030+
+# system to stop `CPU CHECKINSTALL` (run every boot by the base's own
 # Startup-Sequence — see Workbench3.2.adf/S/Startup-Sequence's
-# `SetPatch QUIET` / `CPU CHECKINSTALL` lines) from nagging at boot.
+# `SetPatch QUIET` / `CPU CHECKINSTALL` lines) from nagging at boot, and
+# the MuTools that sit on top of them.
 #
 # recipes/os3.2.2's own header comment previously excluded MMULibs.adf
 # entirely on the theory that it's "CPU-board-specific accelerator
@@ -28,13 +30,49 @@
 #   "Use the MuLibs package. Place 680x0.library and 68030.library in
 #    LIBS: and reboot."
 #
-# This recipe ships exactly that generic pair — nothing else from
-# MMULibs.adf (no mmu.library, no MuTools/MuForce/MuGuardianAngel; see
-# PACKAGE_IDEAS.md's "dev/debug trio" entry for those as a separate,
-# bigger concern, deliberately out of scope here). A manifest pairing
-# `os3.2.2` with `machine.cpu = "68030"` or higher (e.g. manifests/
-# os32-p96-amissl.toml) should add this package or keep hitting the
-# real startup nag on every boot.
+# What this recipe installs is the real Install script's own MMULibs
+# branch, not just that minimal FAQ pair. `Install3.2.adf/Install/
+# Install`'s "MMU-Library installation" block is, verbatim:
+#
+#   (makedir (tackon target "Libs/MMU"))
+#   (copyfiles (source mmulibsPath) (dest target)
+#              (pattern "~(Configs|Locale)"))
+#   (makedir (tackon target "MuTools"))
+#   (UNCOMPRESS (tackon mmulibsPath "Locale/Help/MMULib")
+#               (tackon target "MuTools") "#?")
+#   (makedir (tackon target "Prefs/Env-Archive"))
+#   (copyfiles (source (tackon mmulibsPath
+#                       (cat "Configs/MMU-Configuration" manufactorID)))
+#              (dest (tackon target "Prefs/Env-Archive/"))
+#              (newname "MMU-Configuration"))
+#
+# i.e. everything on the disk except `Configs/` and `Locale/` copied
+# verbatim into the target volume (so `Libs/` — mmu.library,
+# memory.library, disassembler.library, the five CPU-tier libraries and
+# the `Libs/mmu/` board-init files — and `C/`, the MuTools themselves),
+# the MMUlib guides into `SYS:MuTools/`, and one MMU-Configuration into
+# `ENVARC:` (read at startup by mmu.library). The four copies below are
+# exactly those four steps.
+#
+# The one real choice the script makes that a declarative recipe can't:
+# it asks which accelerator manufacturer the machine has (Other / GVP /
+# Individual Computers ACA / Phase 5) and installs the matching
+# `Configs/MMU-Configuration{,.GVP,.ACA,.P5}` under the single name
+# `MMU-Configuration`. This recipe takes the script's own default
+# choice, `#ask-manufactor`'s `(default 0)` = "Other" — the unsuffixed
+# generic config — since AmiBake's machine block has no vendor-of-
+# accelerator-board option to switch on (a `when` condition needs a real
+# manifest option to test). Recorded in docs/limits.md. The three
+# vendor configs are the only files on the disk not installed; the
+# `Libs/mmu/` init files they'd invoke *are* installed, so switching is
+# a one-file copy on a built tree, not a rebuild.
+#
+# mmu.library, memory.library and disassembler.library here are the
+# AmigaOS-3.2-in-box (46.21) build of the same THOR package
+# recipes/muforce installs from its own upstream Aminet leaf. A manifest
+# taking both gets whichever the builder applies later; both are real
+# releases of the same library, and neither recipe depends on the
+# other's copy.
 #
 # Not a `variants` case like lha's/AHI's own CPU-tier siblings: those
 # all install under one fixed, CPU-generic destination name regardless
@@ -43,12 +81,10 @@
 # `Libs/<detected-cpu>.library` (`Libs/68030.library`, `Libs/
 # 68040.library`, ...), so a 68040 system with a file merely
 # *containing* 68040-suited code but named `68030.library` would still
-# nag. Simplest correct fix, and the one this recipe takes: ship all
-# three real CPU-tier libraries (680x0.library is the shared,
-# CPU-generic dispatcher every tier needs) under their own real names
-# unconditionally — inert extra files for the two tiers a given boot
-# doesn't hit, a few KB each, and correct regardless of which exact
-# 68030+ tier `machine.cpu` ends up declaring.
+# nag. The real script's own answer, and this recipe's: copy every
+# CPU-tier library under its own real name unconditionally — inert
+# extra files for the tiers a given boot doesn't hit, a few KB each, and
+# correct regardless of which exact 68030+ tier `machine.cpu` declares.
 
 [package]
 name        = "mmulibs"
@@ -60,7 +96,9 @@ provides    = []
 [requires]
 # FAQ: 68020 and below never need a CPU library (no MMU on stock
 # 68020 boards); 68030 is the real floor where `CPU CHECKINSTALL`
-# starts nagging.
+# starts nagging. Unchanged now that mmu.library ships here too: a
+# 68020+68851 board wanting mmu.library alone has recipes/muforce's
+# own copy of it, and the MuTools installed here all want an MMU.
 cpu         = ">= 68030"
 
 [source.assets]
@@ -71,10 +109,25 @@ sha256 = { "3.2.2" = "67f531e86ed27e79f645d8fd746199ec5b28bc40a4f197e9197c4eb1a2
 
 [install]
 copy = [
-  { from = "MMULibs.adf/Libs/680x0.library", to = "SYS:Libs/680x0.library" },
-  { from = "MMULibs.adf/Libs/68030.library", to = "SYS:Libs/68030.library" },
-  { from = "MMULibs.adf/Libs/68040.library", to = "SYS:Libs/68040.library" },
-  { from = "MMULibs.adf/Libs/68060.library", to = "SYS:Libs/68060.library" },
+  # `(copyfiles (source mmulibsPath) (dest target) (pattern "~(Configs|Locale)"))`
+  # — the disk's two payload drawers, verbatim. Libs/ brings
+  # mmu.library, memory.library, disassembler.library, 680x0.library +
+  # 68020/68030/68040/68060.library, and the Libs/mmu/ board-init files
+  # (ACAInit/GVPInit/P5Init) the vendor configs invoke; C/ brings the
+  # MuTools (FPU, MuFastChip, MuFastRom, MuFastZero, MuLockLib,
+  # MuMapRom, MuProtectModules, MuRedox, MuScan, MuSetCacheMode,
+  # OmniScsiPatch).
+  { from = "MMULibs.adf/Libs/#?", to = "SYS:Libs/" },
+  { from = "MMULibs.adf/C/#?",    to = "SYS:C/" },
+  # `(UNCOMPRESS ... "Locale/Help/MMULib" ... "MuTools" "#?")` — the
+  # MuTools' own AmigaGuide documentation, which is what makes the
+  # commands above usable. Already plain files on the disk (the real
+  # script's UNCOMPRESS is a no-op for uncompressed sources).
+  { from = "MMULibs.adf/Locale/Help/MMUlib/#?", to = "SYS:MuTools/" },
+  # The generic (manufacturer "Other") MMU configuration, read at
+  # startup by mmu.library. ENVARC: maps to SYS:Prefs/Env-Archive/,
+  # exactly where the script copies it, under the same unsuffixed name.
+  { from = "MMULibs.adf/Configs/MMU-Configuration", to = "ENVARC:MMU-Configuration" },
 ]
 
 [verify]
@@ -83,4 +136,11 @@ exists = [
   "SYS:Libs/68030.library",
   "SYS:Libs/68040.library",
   "SYS:Libs/68060.library",
+  "SYS:Libs/mmu.library",
+  "SYS:Libs/memory.library",
+  "SYS:Libs/disassembler.library",
+  "SYS:Libs/mmu/P5Init",
+  "SYS:C/MuScan",
+  "SYS:MuTools/MMU.guide",
+  "ENVARC:MMU-Configuration",
 ]
