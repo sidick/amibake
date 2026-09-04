@@ -14,7 +14,7 @@ richer assign story.
 from __future__ import annotations
 
 # volume prefix (upper-case) -> physical prefix on the system partition
-_PHYSICAL_MAP = {
+PHYSICAL_MAP = {
     "ENVARC": "Prefs/Env-Archive",
     "S": "S",
 }
@@ -30,7 +30,7 @@ def to_physical_path(amiga_path: str) -> str:
     volume = volume.upper()
     if volume == SYSTEM_VOLUME:
         return rest
-    physical_prefix = _PHYSICAL_MAP.get(volume)
+    physical_prefix = PHYSICAL_MAP.get(volume)
     if physical_prefix is not None:
         return f"{physical_prefix}/{rest}" if rest else physical_prefix
     # Unmapped volume: fall back to a top-level directory named after it.

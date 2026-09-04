@@ -125,3 +125,37 @@ def test_materialize_leaves_startup_sequence_alone_with_nothing_to_source():
     tree.put("S:Startup-Sequence", b"C:SetPatch >NIL:\n")
     materialized = tree.materialize()
     assert materialized.get("S:Startup-Sequence").data == b"C:SetPatch >NIL:\n"
+
+
+def test_volume_alias_and_physical_path_are_one_entry():
+    """`S:X` and `SYS:S/X` are two spellings of one file. They used to be
+    two Tree entries that collapsed onto one physical path only at emit
+    time — where `dir` silently kept the last writer and `hdf` died with
+    amitools' "Name already exists"."""
+    t = Tree()
+    t.put("SYS:S/User-startup", b"from the base's own media\n")
+    t.put("S:User-Startup", b"rendered\n")
+
+    assert t.paths() == ["S:User-Startup"]
+    assert t.get("SYS:S/User-Startup").data == b"rendered\n"
+    assert t.exists("S:User-startup")
+
+
+def test_envarc_alias_folds_onto_its_physical_path_too():
+    t = Tree()
+    t.put("SYS:Prefs/Env-Archive/xpkmaster.prefs", b"old\n")
+    t.put("ENVARC:xpkmaster.prefs", b"new\n")
+
+    assert len(t.paths()) == 1
+    assert t.get("SYS:Prefs/Env-Archive/xpkmaster.prefs").data == b"new\n"
+
+
+def test_an_unmapped_volume_is_not_folded_onto_sys():
+    """to_physical_path()'s top-level-directory fallback for an unmapped
+    volume is a provisional guess (see paths.py); a guess must not
+    silently merge two files."""
+    t = Tree()
+    t.put("SYS:Work/thing", b"sys\n")
+    t.put("WORK:thing", b"other volume\n")
+
+    assert len(t.paths()) == 2

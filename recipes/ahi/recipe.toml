@@ -111,6 +111,12 @@ copy = [
   { from = "AHI/User/Devs/AudioModes/FILESAVE", to = "SYS:Devs/AudioModes/" },
   { from = "AHI/User/Devs/AudioModes/PAULA",    to = "SYS:Devs/AudioModes/" },
 
+  # --- Toccata driver (#drivers, opt-in — see [options.toccata]) ---
+  { from = "AHI/User/Devs/AHI/toccata.audio", to = "SYS:Devs/AHI/toccata.audio", when = "toccata = true", variants = [
+      { path = "AHI/User/Devs/AHI/toccata.audio.000", cpu = "< 68020" },
+    ] },
+  { from = "AHI/User/Devs/AudioModes/TOCCATA", to = "SYS:Devs/AudioModes/", when = "toccata = true" },
+
   # --- prefs program (#prefs, BGUI variant — see header comment) ---
   { from = "AHI/User/Prefs/AHI_BGUI", to = "SYS:Prefs/AHI" },
   { from = "AHI/User/Prefs/AHI.info", to = "SYS:Prefs/AHI.info" },
@@ -124,6 +130,28 @@ copy = [
   { from = "AHI/User/Help/ahi.guide", to = "SYS:Help/" },
 ]
 user-startup = [{ order = 60, lines = ["C:AddAudioModes REMOVE"] }]
+
+# The real script's own driver gating is "install driver X only if X's
+# hardware library is already on the target" (see the header comment's
+# #drivers note) — a live filesystem probe, which `[install]` can't
+# express and which would be false anyway on a fresh build, where
+# nothing is installed yet. `[options]` is the schema's answer for a
+# real installer question a manifest has to answer instead, so the
+# probe becomes an explicit opt-in: a manifest that also takes
+# recipes/toccata (toccata.library, the very library the real script
+# probes for) says `{ name = "ahi", toccata = true }` and gets the
+# driver plus its audio-mode description. Default false, matching the
+# real default path on a machine with no Toccata fitted.
+#
+# One option per driver rather than one `drivers = [...]` list because
+# the schema has no array-valued option type; the other seven drivers
+# (Concierto/Delfina/MaestroPro/Melody/Melody1200/Prelude/Wavetools)
+# stay unmodeled until a recipe exists for their own hardware library
+# the way recipes/toccata now does — an option that can only ever be
+# answered `false` is worse than no option.
+[options.toccata]
+type    = "bool"
+default = false
 
 [verify]
 exists = [

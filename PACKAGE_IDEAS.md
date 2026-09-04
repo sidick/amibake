@@ -38,6 +38,14 @@ PLAN.md — just a holding pen so ideas aren't lost between sessions.
   real checksum verified). The BOOPSI GUI toolkit AHI's prefs editor
   needs; bgui.library (68000/OS2 vs 68020+/OS3 `variants`), its five
   gadget libraries, and its own prefs utility.
+- **Toccata library** — shipped as `recipes/toccata` (Aminet `util/libs/
+  toclib12.lha`, real checksum verified). toccata.library 12.0, the
+  hardware library for MacroSystem's Toccata AD1848 Zorro II sound
+  board; installing it is what makes a fitted Toccata usable from AHI,
+  whose own installer only offers `toccata.audio` when this library is
+  already present. Pairs with `[options.toccata]` on `recipes/ahi` and
+  fits Copperline's emulated board through `[emulator-config.
+  copperline]`. See `manifests/os32-toccata-ahi.toml`.
 - **MMULibs (MMU/CPU support libraries)** — shipped as `recipes/
   mmulibs`, sourced from the same `assets/hyperion/AmigaOS-3.2-full.lha`
   os3.2.2 already pins (MMULibs.adf is bundled inside it). Ships the

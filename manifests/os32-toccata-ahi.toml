@@ -1,0 +1,34 @@
+# 16-bit sound on a 68030: AmigaOS 3.2.2 with AHI and a MacroSystem
+# Toccata board. The exemplar for how a hardware audio board is
+# expressed here, which takes two halves that have to agree:
+#
+#   - `toccata` installs the board's own hardware library
+#     (toccata.library, from Aminet's toclib12.lha) and, via its
+#     [emulator-config.copperline], fits the emulated board itself
+#     (`[toccata] enabled = true`) so the guest has hardware to find.
+#   - `ahi` with `toccata = true` installs AHI's own toccata.audio
+#     driver and its TOCCATA audio-mode description. AHI's real
+#     installer only offers that driver when toccata.library already
+#     exists on the target; nothing can probe for that at build time,
+#     so the manifest answers it explicitly (see recipes/ahi's own
+#     [options.toccata] comment).
+#
+# `mmulibs` is here for the same reason manifests/os32-p96-amissl.toml
+# has it: without a CPU support library this base's own
+# `CPU CHECKINSTALL` stops the boot dead on a 68030 with a "Press the
+# RETURN key to resume booting" nag (seen for real while verifying this
+# manifest, not assumed).
+#
+# `chipset = "aga"` because 2M of chip RAM needs an AGA Alice — an ECS
+# Agnus only reaches 1M, which Copperline rejects outright rather than
+# quietly truncating.
+
+base     = "os3.2.2"
+machine  = { cpu = "68030", fpu = true, ram = "chip:2M,fast:8M", chipset = "aga" }
+packages = [
+  "toccata",
+  "mmulibs",
+  { name = "ahi", toccata = true },
+]
+output   = ["hdf"]
+emit     = ["copperline"]

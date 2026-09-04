@@ -1,0 +1,79 @@
+# toccata.library 12.0 (util/libs/toclib12.lha) — the hardware library
+# for MacroSystem's Toccata, a Zorro II 16-bit sound board built around
+# an AD1848 codec. Every piece of Toccata-aware software talks to the
+# board through this library rather than the hardware directly,
+# including AHI's own `toccata.audio` driver — which is why installing
+# it is what turns a fitted Toccata into a usable AHI audio mode. See
+# `[options.toccata]` in recipes/ahi for the other half.
+#
+# Derived by downloading the real archive from Aminet and reading it
+# directly with this project's own lhafile-based extractor. No Installer
+# script; `Toccata_library.readme` states the whole install itself:
+#
+#   "Installation:
+#    Just copy the file "toccata.library" in your "LIBS:" drawer and
+#    reset your computer."
+#
+# translated as the single copy below. The archive's own readme/
+# liesmich (English/German, same 300-odd bytes of text as the Aminet
+# .readme, no manual) and their `.info` icons are skipped, the same
+# "bundled docs that duplicate the Aminet description" call the other
+# freeware recipes here make.
+#
+# Version identity comes from the binary itself — `toccata 12.0
+# (4.2.97)`, read out of the library's own version string, since
+# neither the archive nor the Aminet readme states a date. The
+# ".library" file is the only real payload in the archive (16100
+# bytes).
+#
+# Not shareware or crippled, but not free either: the readme is
+# explicit that "The Toccata-software is not Public Domain.
+# Toccata-Software is ©MS MacroSystem Computer GmbH" — it is
+# redistributable on Aminet as-is, which is what this recipe relies on,
+# the same footing as every other Aminet-sourced package here.
+
+[package]
+name        = "toccata"
+versions    = ["12.0"]
+depends     = []
+conflicts   = []
+provides    = []
+
+[requires]
+# No stated requirement anywhere in the archive. This floor is read off
+# the binary's own import list: it opens `utility.library`, which only
+# exists from V36, alongside dos/expansion/iffparse — so 2.0+, and V37
+# is this project's usual 2.0 floor. (It also references
+# `draco.resource`/`dracommu.library`, MacroSystem's own DraCo machine,
+# and degrades to the Amiga path when they are absent — the library
+# shipped for both.)
+kickstart   = ">= 37"
+
+[source.aminet]
+url         = "util/libs/toclib12.lha"
+sha256      = { "12.0" = "fc593429d1db57ac64dca04605318b9760e0e525c8ea578b164705a2e349a674" }
+
+[install]
+copy = [
+  { from = "Toccata_Library_V12.0/toccata.library", to = "SYS:Libs/" },
+]
+
+# Fit the emulated board, so a manifest that asks for the library also
+# gets hardware for it to find. Copperline emulates a real Toccata (an
+# AD1848 on the Zorro chain) and documents its stock, unmodified AHI
+# `toccata.audio` driver as the intended guest-side path — exactly this
+# recipe's pairing. Same contribute-config-only mechanism
+# recipes/bsdsocket-emulation uses.
+#
+# No amiberry/winuae counterpart here on purpose: WinUAE is understood
+# to emulate a Toccata too, but its config key isn't grounded against a
+# real working config the way `hostsocket.net` and the .uae memory keys
+# were, and Amiberry's support is unknown. Guessing a key would be
+# worse than leaving the board unfitted there — see docs/limits.md's
+# own honesty bar. A manifest emitting those can still add the right
+# directive by hand once someone confirms it.
+[emulator-config.copperline]
+"toccata.enabled" = true
+
+[verify]
+exists = ["SYS:Libs/toccata.library"]

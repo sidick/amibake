@@ -13,6 +13,8 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass, field
 
+from .paths import PHYSICAL_MAP, SYSTEM_VOLUME, to_physical_path
+
 
 @dataclass(frozen=True)
 class AmigaMeta:
@@ -53,8 +55,30 @@ class Tree:
         self.user_startup: list[UserStartupFragment] = []
         self.assigns: list[Assign] = []
 
+    # Volumes that are really a fixed directory on the system volume, so
+    # `S:User-Startup` and `SYS:S/User-Startup` are two spellings of one
+    # file, not two files. Keyed on the same map paths.py emits through,
+    # so the two can't drift apart. Only these — an unmapped volume gets
+    # to_physical_path()'s provisional top-level-directory fallback,
+    # which is a guess, and guesses shouldn't silently merge files.
+    _ALIAS_VOLUMES = frozenset(PHYSICAL_MAP) | {SYSTEM_VOLUME}
+
     @staticmethod
     def _key(path: str) -> str:
+        """Case-insensitive, and alias-insensitive for the volumes above.
+
+        Without the second half a recipe writing `SYS:S/User-startup`
+        (how a base installs it, copied from real media) and this class
+        writing `S:User-Startup` (materialize(), below) produce two Tree
+        entries that collapse onto one physical path at emit time — the
+        `dir` emitter silently kept whichever it wrote last, and the
+        `hdf` emitter died with amitools' "Name already exists" on the
+        second create. Found for real: os3.2.2 (whose media ships
+        `S/User-startup`) plus any package contributing a user-startup
+        fragment, e.g. recipes/ahi."""
+        volume, sep, _ = path.partition(":")
+        if sep and volume.upper() in Tree._ALIAS_VOLUMES:
+            return to_physical_path(path).lower()
         return path.lower()
 
     def put(self, path: str, data: bytes, meta: AmigaMeta | None = None) -> None:
@@ -129,11 +153,10 @@ class Tree:
     # using the physical "SYS:S/Startup-Sequence" path (same convention
     # as every other [install] destination); this class's own
     # materialize() writes S:User-Startup via the logical "S:"
-    # volume-alias form. paths.py's to_physical_path() already treats
-    # both as equivalent at emit time (S: -> physical S/), but at the
-    # Tree-key level (pre-emit) they're different keys — so a lookup
-    # here has to check both forms, not just one.
-    _STARTUP_SEQUENCE_KEYS = ("SYS:S/Startup-Sequence", "S:Startup-Sequence")
+    # volume-alias form. _key() now folds the two spellings onto one
+    # entry, so either lookup finds the same file — this constant stays
+    # only to name both forms at the call site.
+    _STARTUP_SEQUENCE_KEYS = ("SYS:S/Startup-Sequence",)
 
     def _ensure_startup_sequence_sources_user_startup(self) -> None:
         """`EXECUTE S:User-Startup` from Startup-Sequence is a 2.0+
