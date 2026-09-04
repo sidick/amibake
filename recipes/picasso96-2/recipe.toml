@@ -20,9 +20,27 @@
 # boards actually reachable from a manifest today (uaegfx is what
 # Copperline/Amiberry emulate; picasso-iv/cybervision64-3d are the real
 # board names already established by picasso96-3) — the real archive
-# ships a dozen more (Altais, Domino, Graffity, Merlin, oMniBus,
-# PicassoII, Piccolo, PiccoloSD64, Pixel64, RetinaBLT-Z3, Spectrum),
-# left unmodeled since no recipe or CI path can exercise real hardware.
+# ships a dozen more (Altais, Domino, Merlin, oMniBus, PicassoII,
+# Piccolo, PiccoloSD64, Pixel64, RetinaBLT-Z3, Spectrum), left
+# unmodeled since no recipe or CI path can exercise real hardware.
+#
+# `graffity` joins them by request: a real Zorro II board (Cirrus Logic
+# GD542x, AutoConfig manufacturer 2092 product 33/34 per the real
+# script's own `FindBoard 2092 33` probe), so nothing here can boot-test
+# it either — the same "declared, not exercised" footing every non-uaegfx
+# card is on. Its files are real and confirmed present in this archive:
+# `Graffity.card` plus the `CirrusGD542X.chip` the script pairs with it.
+#
+# Known incomplete for every real card, `graffity` included (not a new
+# gap, but now a documented one — see docs/limits.md): the real script's
+# P_InstallCard also copies `Devs/Monitors/Picasso96` to
+# `DEVS:Monitors/<BoardName>` and then sets `BoardType`/`SettingsFile`
+# tooltypes on the copied icon. The copy is expressible here; the
+# tooltypes are not (`[install]` has no icon-editing primitive), and the
+# monitor program reads `BoardType` to know which card it is driving —
+# so shipping the file with no tooltypes would be a monitor entry that
+# looks installed and does nothing. Left out entirely rather than
+# half-done, deliberately.
 
 [package]
 name     = "picasso96-2"
@@ -45,6 +63,26 @@ copy = [
   { from = "Picasso96Install/Libs/Picasso96/uaegfx.card", to = "SYS:Libs/Picasso96/", when = "card = uaegfx" },
   { from = "Picasso96Install/Libs/Picasso96/PicassoIV.card", to = "SYS:Libs/Picasso96/", when = "card = picasso-iv" },
   { from = "Picasso96Install/Libs/Picasso96/CVision3D.card", to = "SYS:Libs/Picasso96/", when = "card = cybervision64-3d" },
+  { from = "Picasso96Install/Libs/Picasso96/Graffity.card", to = "SYS:Libs/Picasso96/", when = "card = graffity" },
+
+  # Chip drivers. A `.card` is only the board-specific half — the bus
+  # decode, memory map and AutoConfig identity — and it loads a `.chip`
+  # for the graphics chip actually fitted on it; `Graffity.card` is 1236
+  # bytes precisely because CirrusGD542X.chip does the drawing. The real
+  # InstallPicasso96 script pairs them explicitly, and these three lines
+  # are its own mapping, verbatim:
+  #   (BITAND #_boards (+ #GraffityBit #PicassoIIBit #PiccoloBit
+  #                       #SpectrumBit))  (P_InstallChip "CirrusGD542X")
+  #   (BITAND #_boards (+ #InfernoBit #PicassoIVBit))
+  #                                       (P_InstallChip "CirrusGD5446")
+  #   (BITAND #_boards #CyberVision3DBit) (P_InstallChip "S3ViRGE")
+  # uaegfx needs none: it is the emulator's own RTG, not a real board.
+  # (The picasso-iv/cybervision64-3d chips were missing here before
+  # Graffity was added — their .card alone could never have driven
+  # anything. Same bug, fixed in the same pass.)
+  { from = "Picasso96Install/Libs/Picasso96/CirrusGD542X.chip", to = "SYS:Libs/Picasso96/", when = "card = graffity" },
+  { from = "Picasso96Install/Libs/Picasso96/CirrusGD5446.chip", to = "SYS:Libs/Picasso96/", when = "card = picasso-iv" },
+  { from = "Picasso96Install/Libs/Picasso96/S3ViRGE.chip", to = "SYS:Libs/Picasso96/", when = "card = cybervision64-3d" },
 ]
 assigns = [
   { name = "Picasso96", path = "SYS:Libs/Picasso96" },
@@ -52,7 +90,7 @@ assigns = [
 
 [options.card]
 type     = "enum"
-values   = ["uaegfx", "picasso-iv", "cybervision64-3d"]
+values   = ["uaegfx", "picasso-iv", "cybervision64-3d", "graffity"]
 required = true
 
 # uaegfx is UAE-family emulator-internal RTG, not a real board driver —

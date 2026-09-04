@@ -22,6 +22,15 @@
 # filenames for the current 3.6.3 release should be checked against
 # the real licensed archive once available; this is the one recipe in
 # the library nobody here could test-build end-to-end.
+#
+# `graffity` (Cirrus Logic GD542x Zorro II board) is modeled here to
+# keep the two recipes' option sets aligned, on exactly the evidence
+# recipes/picasso96-2 has for it — that recipe's real 2.0 archive ships
+# `Graffity.card` and the `CirrusGD542X.chip` the installer pairs with
+# it, and 3.x is the same architecture. Whether a 3.6.3 archive still
+# ships a Graffity driver at all is unverified, same caveat as every
+# other filename here. The `DEVS:Monitors/<BoardName>` + tooltypes gap
+# picasso96-2's header describes applies identically to this recipe.
 
 [package]
 name     = "picasso96-3"
@@ -44,6 +53,29 @@ copy = [
   { from = "Picasso96Install/Libs/Picasso96/PicassoIV.card", to = "SYS:Libs/Picasso96/", when = "card = picasso-iv" },
   { from = "Picasso96Install/Libs/Picasso96/CVision3D.card", to = "SYS:Libs/Picasso96/", when = "card = cybervision64-3d" },
   { from = "Picasso96Install/Libs/Picasso96/zz9000.card", to = "SYS:Libs/Picasso96/", when = "card = zz9000" },
+  { from = "Picasso96Install/Libs/Picasso96/Graffity.card", to = "SYS:Libs/Picasso96/", when = "card = graffity" },
+
+  # Chip drivers. A `.card` is only the board-specific half — the bus
+  # decode, memory map and AutoConfig identity — and it loads a `.chip`
+  # for the graphics chip actually fitted on it; `Graffity.card` is 1236
+  # bytes precisely because CirrusGD542X.chip does the drawing. The real
+  # InstallPicasso96 script pairs them explicitly, and these three lines
+  # are its own mapping, verbatim:
+  #   (BITAND #_boards (+ #GraffityBit #PicassoIIBit #PiccoloBit
+  #                       #SpectrumBit))  (P_InstallChip "CirrusGD542X")
+  #   (BITAND #_boards (+ #InfernoBit #PicassoIVBit))
+  #                                       (P_InstallChip "CirrusGD5446")
+  #   (BITAND #_boards #CyberVision3DBit) (P_InstallChip "S3ViRGE")
+  # uaegfx needs none: it is the emulator's own RTG, not a real board.
+  # (The picasso-iv/cybervision64-3d chips were missing here before
+  # Graffity was added — their .card alone could never have driven
+  # anything. Same bug, fixed in the same pass.) zz9000 gets none for
+  # the same reason as the card list above: its real file layout is
+  # unverified here, and inventing a .chip name for it would be a guess
+  # on top of a guess.
+  { from = "Picasso96Install/Libs/Picasso96/CirrusGD542X.chip", to = "SYS:Libs/Picasso96/", when = "card = graffity" },
+  { from = "Picasso96Install/Libs/Picasso96/CirrusGD5446.chip", to = "SYS:Libs/Picasso96/", when = "card = picasso-iv" },
+  { from = "Picasso96Install/Libs/Picasso96/S3ViRGE.chip", to = "SYS:Libs/Picasso96/", when = "card = cybervision64-3d" },
 ]
 assigns = [
   { name = "Picasso96", path = "SYS:Libs/Picasso96" },
@@ -51,7 +83,7 @@ assigns = [
 
 [options.card]
 type     = "enum"
-values   = ["uaegfx", "picasso-iv", "cybervision64-3d", "zz9000"]
+values   = ["uaegfx", "picasso-iv", "cybervision64-3d", "zz9000", "graffity"]
 required = true
 
 # uaegfx is UAE-family emulator-internal RTG, not a real board driver —
