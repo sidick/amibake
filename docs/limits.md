@@ -163,12 +163,36 @@ oracle.
 The M6 config emitters (`emit/copperline.py`, `emit/uae.py`) can only
 mount a `dir` build output as the bootable volume — Copperline via
 `[[filesys]]` HOSTFS, Amiberry/WinUAE via `filesystem2=`. Neither
-attempts a real hardfile/RDB boot (Copperline's `[ide]` needs an
-IDE-equipped machine profile — A600/A1200/A4000/A3000-SCSI, not a
-plain A500 — that AmiBake's `machine` block has no way to select; UAE's
-`uaehf0`/hardfile2 path wasn't grounded against a real example yet
-either). A manifest with `emit` set needs `dir` in `output` or the
-emitter fails with a named error.
+attempts a real hardfile/RDB boot. **This is AmiBake's limit, not the
+emulators'**, and worth stating that way: the emitter's own error used
+to read "no IDE/hard-disk-controller modeling yet", which another
+project took as a claim that Copperline can't do it. It can, by two
+routes, both checked against the real emulator (0.18.0):
+
+- `[ide]` — the real Gayle (A600/A1200) or A4000 IDE port. Needs a
+  machine that has one (`[machine] profile = "A600"`/`"A1200"`/
+  `"A4000"`; the A3000 has motherboard SCSI instead, and an A500 has
+  Fat Gary, no Gayle at all). Without a profile Copperline refuses:
+  *"[ide] images need a machine with an IDE port"*. AmiBake never emits
+  `[machine] profile`, so this is the error anyone adding `[ide]` to an
+  emitted config by hand will hit — a missing AmiBake feature (no
+  machine-profile axis in the `machine` block), read as a missing
+  emulator one.
+- `[lide]` — Copperline's built-in lide.device-compatible Zorro II
+  board (RIPPLE/RIDE/AT-Bus 2008), which needs **no** machine profile,
+  works on any model, autoboots under any Kickstart including 1.3, and
+  bundles its own ROM. The natural route for an hdf-booting emitter
+  here, precisely because it asks nothing of a `machine` block that has
+  no profile concept. Config shape changed in 0.18: named `drive0`..
+  `drive3` keys, one per (channel, master/slave) slot, replacing the
+  positional `drives = [...]` array (still read, but it can't express
+  an empty slot).
+
+UAE's own `uaehf0`/hardfile2 path is a separate gap: not grounded
+against a real example yet.
+
+A manifest with `emit` set needs `dir` in `output` or the emitter fails
+with a named error.
 
 The ROM-path convention (`assets/roms/kickstart-{[base].kickstart-
 version}.rom`) is keyed only by revision number, but real hardware

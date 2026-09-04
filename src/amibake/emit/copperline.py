@@ -24,15 +24,39 @@ def write_copperline_config(plan: BuildPlan, path: Path, rom_path: Path,
     """Write a `copperline.toml`. Mounts `dir_output_path` as a bootable
     HOSTFS volume (`[[filesys]]` with `bootpri = 6`) — the mechanism M5's
     own boot verification used and confirmed works, on any machine
-    profile, without needing to model a real 1.3-era hard-disk
-    controller the way `[ide]` would. Raises if no `dir` output exists
-    to mount: there's no other bootable-volume path implemented yet."""
+    profile, without this emitter having to pick a hard-disk controller
+    for the guest. Raises if no `dir` output exists to mount: **this
+    emitter** has no other bootable-volume path implemented yet.
+
+    To be clear about whose limit that is, since this docstring's own
+    earlier wording ("no IDE/hard-disk-controller modeling yet") was
+    read at least once as a statement about the emulator: Copperline
+    itself boots hardfiles perfectly well, by two routes.
+
+    - `[ide]` — the real Gayle (A600/A1200) or A4000 IDE port. Needs a
+      machine with one: `[machine] profile = "A600"` / `"A1200"` /
+      `"A4000"`, else Copperline refuses with *"[ide] images need a
+      machine with an IDE port"*. AmiBake never emits `[machine]
+      profile` at all (see the sections built below), so an `[ide]`
+      block added by hand to an emitted config always lands on the
+      default profile and hits exactly that error.
+    - `[lide]` — Copperline's built-in lide.device-compatible Zorro II
+      board, which needs **no** machine profile and autoboots under any
+      Kickstart including 1.3, ROM bundled with the emulator. This is
+      the route an hdf-booting emitter should take, since AmiBake's
+      `machine` block has no profile concept to satisfy `[ide]` with.
+      Note the 0.18 config change: named `drive0`..`drive3` keys, one
+      per (channel, master/slave) slot; the older positional
+      `drives = [...]` array is still read but can't express a gap.
+
+    Both grounded against the real emulator (0.18.0), not the docs
+    alone. See `docs/limits.md`."""
     if dir_output_path is None:
         raise EmitError(
             "the copperline emitter needs a 'dir' build output to mount as a "
-            "bootable volume (no IDE/hard-disk-controller modeling yet, so hdf "
-            "images can't be booted directly) — add 'dir' to the manifest's "
-            "output list")
+            "bootable volume (this emitter can't boot an hdf yet — Copperline "
+            "itself can, via [ide] or [lide]; see this function's docstring) "
+            "— add 'dir' to the manifest's output list")
 
     machine = plan.machine
     root_overrides, table_overrides = _split_dotted_overrides(emulator_config)
