@@ -183,6 +183,51 @@ copy = [
   { from = "AmigaOS-3.2-full.lha/Storage3.2.adf/Printers/#?",       to = "SYS:Devs/Printers/" },
   { from = "AmigaOS-3.2-full.lha/Storage3.2.adf/Keymaps/#?",        to = "SYS:Devs/Keymaps/" },
   { from = "AmigaOS-3.2-full.lha/Backdrops3.2.adf/#?",              to = "SYS:Prefs/Presets/Backdrops/" },
+  # The hard-drive Startup-Sequence, replacing the floppy one the
+  # whole-disk Workbench3.2.adf copy above installs. This is what the
+  # real script does for a hard-disk install, verbatim:
+  #   (copyfiles (source "T:Update/Startup-HardDrive")
+  #              (dest (tackon target "S")) (newname "Startup-Sequence"))
+  # Not cosmetic. `Startup-Sequence_LD` is written for a *floppy* boot
+  # and does floppy-only things on a machine that has no floppy — most
+  # visibly `AddBuffers >NIL: DF0: 15`, unconditional, where the
+  # hard-drive variant guards the same line behind `Assign >nil: EXISTS
+  # DF0:` / `If not warn`. It also drops the LD disk's `Assign L:
+  # Extras3.2:L DEFER` / `Assign FONTS:` fallbacks (both for a
+  # multi-floppy set, meaningless on a single volume that has its own
+  # L: and Fonts:) and the Monitors `List`/`Execute T:M` dance, and
+  # adds the real CPU CHECKINSTALL return-code handling (rc 30 ->
+  # `Execute S:Startup-failsafe`), `LoadMonDrvs`, and the ROM-downgrade
+  # `LoadModule` block. Every command it needs is already installed by
+  # the copies above (C:LoadMonDrvs, C:LoadModule, S:Startup-failsafe —
+  # checked in a real build, not assumed).
+  #
+  # Deliberately the *base* disk's 47.14, not the newer copies each
+  # update ships (Update3.2.1.adf's 47.16, Update3.2.2.adf's 47.19),
+  # even though the real update scripts install those and this recipe
+  # otherwise layers the update chain faithfully. Tried 47.19 first and
+  # booted it: it stops dead at a shell with `LoadModule failed
+  # returncode 10` (rc 10 >= the default FailAt, so the script aborts
+  # before ever reaching LoadWB). Its opening block is a ROM-downgrade
+  # ladder the older 47.14 doesn't have —
+  #   Version strap version 47 >NIL:
+  #   If Warn
+  #     LoadModule DOWNGRADE L:Ram-Handler L:Shell-Seg L:System-Startup
+  #                Libs:dos.library ... >NIL:
+  # — and every module it names lives on the per-machine Modules disks
+  # this base deliberately excludes (see the exclusions comment above:
+  # they exist to patch an *older* ROM up to 3.2 behaviour, and are
+  # redundant against the matching current ROM this base pairs with).
+  # Installing them to satisfy the ladder would mean shipping
+  # ROM-downgrade modules to a machine whose ROM needs no downgrading,
+  # which is the very thing that exclusion decided against. 47.14's own
+  # opening is a single `If Warn / LoadModule L:System-Startup
+  # ROMUPDATE` that a current ROM skips outright, so it boots clean —
+  # and it carries the same guarded AddBuffers and the same HD-shaped
+  # body as 47.19. If the Modules disks are ever shipped (the recipe's
+  # own follow-up gap), revisit this: the newer scripts become correct
+  # at that point.
+  { from = "AmigaOS-3.2-full.lha/Install3.2.adf/Update/Startup-HardDrive", to = "SYS:S/Startup-Sequence" },
 
   # --- 3.2.1 update (AmigaOS-3.2.1.lha) --- per-directory rather than
   # a whole-disk copy: the real disk's own top-level "DEVS"/"LIBS" are
