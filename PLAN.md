@@ -456,7 +456,17 @@ recipe (previously only a resolver test fixture, never shipped).
   recipe. `dir` output only for both emitters (Copperline `[[filesys]]`
   HOSTFS with `bootpri = 6`; Amiberry/WinUAE `filesystem2=rw,DH0:...`)
   — no hardfile/RDB/board-profile modeling yet, a clear named error if
-  only `hdf` output was requested.
+  only `hdf` output was requested. **Superseded for Copperline
+  (2026-09-04)**: it now prefers an `hdf` output, attached to `[lide]`,
+  Copperline's built-in lide.device Zorro II board — no `[machine]
+  profile` needed (which is what blocks `[ide]`, and what AmiBake's
+  machine block can't supply), autoboots under any Kickstart. Booting
+  the real RDB image also surfaced a real `emit/hdf.py` bug: amitools'
+  `add_partition` defaults `flags=0`, so every hdf AmiBake had ever
+  written lacked PBFB_BOOTABLE and Kickstart's strap skipped it.
+  Verified both ways — `manifests/os322.toml`'s hdf boots to Workbench
+  through `[lide]`, and the same image with the flag cleared again
+  stops at the insert-disk screen. Amiberry/WinUAE stay `dir`-only.
 - New convention: a Kickstart ROM at `assets/roms/kickstart-{[base].
   kickstart-version}.rom`, under the same `--assets` root recipes
   already use — M4 and M5 both pointed an emulator at a ROM by hand

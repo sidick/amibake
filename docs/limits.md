@@ -158,41 +158,48 @@ only, not a dependency: its Linux build can't format filesystems, and
 booting the image under Copperline/Amiberry stays the real end-to-end
 oracle.
 
-## Emulator config: `dir` output only
+## Emulator config: hardfile boot on Copperline only
 
-The M6 config emitters (`emit/copperline.py`, `emit/uae.py`) can only
-mount a `dir` build output as the bootable volume — Copperline via
-`[[filesys]]` HOSTFS, Amiberry/WinUAE via `filesystem2=`. Neither
-attempts a real hardfile/RDB boot. **This is AmiBake's limit, not the
-emulators'**, and worth stating that way: the emitter's own error used
-to read "no IDE/hard-disk-controller modeling yet", which another
-project took as a claim that Copperline can't do it. It can, by two
-routes, both checked against the real emulator (0.18.0):
+`emit/copperline.py` boots either output: an `hdf` attached to
+`[lide]` (preferred — it boots the real RDB artifact), or a `dir` as a
+`[[filesys]]` HOSTFS volume. `emit/uae.py` (Amiberry/WinUAE) still
+mounts a `dir` only, via `filesystem2=`; its own `uaehf0`/`hardfile2`
+path isn't grounded against a real example yet, so a manifest emitting
+`amiberry`/`winuae` needs `dir` in `output` regardless of what
+Copperline would accept. A manifest with `emit` set and nothing
+bootable in `output` fails with a named error.
 
-- `[ide]` — the real Gayle (A600/A1200) or A4000 IDE port. Needs a
-  machine that has one (`[machine] profile = "A600"`/`"A1200"`/
-  `"A4000"`; the A3000 has motherboard SCSI instead, and an A500 has
-  Fat Gary, no Gayle at all). Without a profile Copperline refuses:
-  *"[ide] images need a machine with an IDE port"*. AmiBake never emits
-  `[machine] profile`, so this is the error anyone adding `[ide]` to an
-  emitted config by hand will hit — a missing AmiBake feature (no
-  machine-profile axis in the `machine` block), read as a missing
-  emulator one.
-- `[lide]` — Copperline's built-in lide.device-compatible Zorro II
-  board (RIPPLE/RIDE/AT-Bus 2008), which needs **no** machine profile,
-  works on any model, autoboots under any Kickstart including 1.3, and
-  bundles its own ROM. The natural route for an hdf-booting emitter
-  here, precisely because it asks nothing of a `machine` block that has
-  no profile concept. Config shape changed in 0.18: named `drive0`..
-  `drive3` keys, one per (channel, master/slave) slot, replacing the
-  positional `drives = [...]` array (still read, but it can't express
-  an empty slot).
+**`[ide]` is the road not taken, and not because Copperline can't.**
+Worth spelling out, because this emitter's own error used to read "no
+IDE/hard-disk-controller modeling yet" and another project read that as
+a claim about the emulator. Both Copperline routes work; they differ in
+what they ask of the config (checked against 0.18.0):
 
-UAE's own `uaehf0`/hardfile2 path is a separate gap: not grounded
-against a real example yet.
+- `[ide]` is the real Gayle (A600/A1200) or A4000 IDE port, and needs a
+  machine that *has* one: `[machine] profile = "A600"`/`"A1200"`/
+  `"A4000"` (the A3000 has motherboard SCSI instead; an A500 carries
+  Fat Gary, no Gayle at all). Without it Copperline refuses —
+  *"[ide] images need a machine with an IDE port"*. AmiBake's `machine`
+  block has no profile axis to derive one from, so that error is
+  AmiBake's gap showing, not the emulator's.
+- `[lide]` is Copperline's built-in lide.device-compatible Zorro II
+  board (RIPPLE by default, also RIDE/AT-Bus 2008): no machine profile
+  needed, any model, autoboots under any Kickstart including 1.3, own
+  bundled ROM. Hence the choice here. Its config shape changed in 0.18:
+  named `drive0`..`drive3` keys, one per (channel, master/slave) slot,
+  replacing the positional `drives = [...]` array (still read, but it
+  can't express an empty slot).
 
-A manifest with `emit` set needs `dir` in `output` or the emitter fails
-with a named error.
+The remaining real limit is authenticity, not capability: a build whose
+`machine` block says A1200 boots off a Zorro II IDE board no A1200 ever
+had, instead of the Gayle port it does have. Fine for verifying that a
+build boots; wrong if the thing under test is the machine's own
+controller. A machine-profile axis is what would fix that, and would
+unlock `[ide]` at the same time.
+
+Both emitters mount exactly one volume even when both outputs exist —
+they share a volume name, and two identically-named volumes give the
+guest ambiguous assigns.
 
 The ROM-path convention (`assets/roms/kickstart-{[base].kickstart-
 version}.rom`) is keyed only by revision number, but real hardware

@@ -20,73 +20,91 @@ class EmitError(Exception):
 
 
 def write_copperline_config(plan: BuildPlan, path: Path, rom_path: Path,
-                            dir_output_path: Path | None, emulator_config: dict) -> None:
-    """Write a `copperline.toml`. Mounts `dir_output_path` as a bootable
-    HOSTFS volume (`[[filesys]]` with `bootpri = 6`) — the mechanism M5's
-    own boot verification used and confirmed works, on any machine
-    profile, without this emitter having to pick a hard-disk controller
-    for the guest. Raises if no `dir` output exists to mount: **this
-    emitter** has no other bootable-volume path implemented yet.
+                            dir_output_path: Path | None, emulator_config: dict,
+                            hdf_output_path: Path | None = None) -> None:
+    """Write a `copperline.toml` that boots the build.
 
-    To be clear about whose limit that is, since this docstring's own
-    earlier wording ("no IDE/hard-disk-controller modeling yet") was
-    read at least once as a statement about the emulator: Copperline
-    itself boots hardfiles perfectly well, by two routes.
+    Two routes to a bootable volume, in this order of preference:
 
-    - `[ide]` — the real Gayle (A600/A1200) or A4000 IDE port. Needs a
-      machine with one: `[machine] profile = "A600"` / `"A1200"` /
-      `"A4000"`, else Copperline refuses with *"[ide] images need a
-      machine with an IDE port"*. AmiBake never emits `[machine]
-      profile` at all (see the sections built below), so an `[ide]`
-      block added by hand to an emitted config always lands on the
-      default profile and hits exactly that error.
-    - `[lide]` — Copperline's built-in lide.device-compatible Zorro II
-      board, which needs **no** machine profile and autoboots under any
-      Kickstart including 1.3, ROM bundled with the emulator. This is
-      the route an hdf-booting emitter should take, since AmiBake's
-      `machine` block has no profile concept to satisfy `[ide]` with.
-      Note the 0.18 config change: named `drive0`..`drive3` keys, one
-      per (channel, master/slave) slot; the older positional
-      `drives = [...]` array is still read but can't express a gap.
+    - an `hdf` output, attached to `[lide]` — Copperline's built-in
+      lide.device-compatible Zorro II IDE board (RIPPLE by default),
+      which needs **no** `[machine] profile`, works on any machine
+      model, autoboots under any Kickstart including 1.3, and brings its
+      own bundled ROM. Preferred when the manifest builds one, because
+      it boots the real artifact — the same RDB image a user would write
+      to CF — rather than a host-directory stand-in for it. Note the
+      0.18 config shape: named `drive0`..`drive3` keys, one per
+      (channel, master/slave) slot; the older positional
+      `drives = [...]` array still parses but can't express a gap.
+      Requires the partition's PBFB_BOOTABLE flag, which `emit/hdf.py`
+      sets (see its own comment — amitools does not set it by default).
+    - a `dir` output, mounted as a HOSTFS volume (`[[filesys]]` with
+      `bootpri = 6`, ahead of DF0:'s 5) — M5's original boot-verification
+      mechanism, and the fallback when no hdf was built.
 
-    Both grounded against the real emulator (0.18.0), not the docs
-    alone. See `docs/limits.md`."""
-    if dir_output_path is None:
+    Only one is emitted, never both: they carry the same volume name, so
+    mounting both would give the guest two identically-named volumes and
+    ambiguous assigns.
+
+    The road not taken is `[ide]`, the real Gayle (A600/A1200) or A4000
+    IDE port: it needs `[machine] profile` set to a machine that has one,
+    and AmiBake's `machine` block has no profile axis to derive that
+    from, so Copperline rightly refuses with *"[ide] images need a
+    machine with an IDE port"*. That is AmiBake's gap, not the
+    emulator's — worth stating because this docstring's own earlier
+    wording ("no IDE/hard-disk-controller modeling yet") was read at
+    least once as a claim that Copperline can't boot a hardfile at all.
+    It can, both ways; `[lide]` is simply the one that asks nothing of a
+    machine block that has no profile concept. All grounded against the
+    real emulator (0.18.0), not the docs alone. See `docs/limits.md`."""
+    if hdf_output_path is None and dir_output_path is None:
         raise EmitError(
-            "the copperline emitter needs a 'dir' build output to mount as a "
-            "bootable volume (this emitter can't boot an hdf yet — Copperline "
-            "itself can, via [ide] or [lide]; see this function's docstring) "
-            "— add 'dir' to the manifest's output list")
+            "the copperline emitter needs an 'hdf' or 'dir' build output to "
+            "boot ([lide] hardfile or [[filesys]] host directory) — add one "
+            "of them to the manifest's output list")
 
     machine = plan.machine
     root_overrides, table_overrides = _split_dotted_overrides(emulator_config)
 
     lines = [f"rom = {toml_value(str(rom_path))}", *root_overrides, ""]
 
-    lines.append("[cpu]")
-    lines.append(f"model = {toml_value(machine.get('cpu', '68000'))}")
+    def table(name: str, keys: list[str]) -> None:
+        """Emit one `[name]` table, folding in any `name.key` manifest
+        override. Merged rather than left to the trailing override loop
+        because two `[name]` headers in one document is a TOML error, not
+        a last-one-wins override — so a manifest setting `cpu.model` on a
+        config that already emits `[cpu]` would produce a file Copperline
+        refuses to parse. An override of a key emitted here replaces it."""
+        overridden = {line.split(" = ", 1)[0] for line in table_overrides.get(name, [])}
+        lines.append(f"[{name}]")
+        lines.extend(k for k in keys if k.split(" = ", 1)[0] not in overridden)
+        lines.extend(table_overrides.pop(name, []))
+        lines.append("")
+
+    cpu = [f"model = {toml_value(machine.get('cpu', '68000'))}"]
     if "fpu" in machine:
-        lines.append(f"fpu = {toml_value(bool(machine['fpu']))}")
-    lines.append("")
+        cpu.append(f"fpu = {toml_value(bool(machine['fpu']))}")
+    table("cpu", cpu)
 
     ram = parse_ram_spec(machine["ram"]) if machine.get("ram") else {}
     if ram:
-        lines.append("[memory]")
-        for kind in _RAM_KINDS:
-            if kind in ram:
-                lines.append(f"{kind} = {toml_value(format_bytes(ram[kind]))}")
-        lines.append("")
+        table("memory", [f"{kind} = {toml_value(format_bytes(ram[kind]))}"
+                         for kind in _RAM_KINDS if kind in ram])
 
     if machine.get("chipset"):
-        lines.append("[chipset]")
-        lines.append(f"revision = {toml_value(machine['chipset'].upper())}")
-        lines.append("")
+        table("chipset", [f"revision = {toml_value(machine['chipset'].upper())}"])
 
-    lines.append("[[filesys]]")
-    lines.append(f"path = {toml_value(str(dir_output_path))}")
-    lines.append(f"volume = {toml_value(dir_output_path.name)}")
-    lines.append("bootpri = 6")
-    lines.append("")
+    if hdf_output_path is not None:
+        # Channel 0 master. `board` is left unset: RIPPLE is the default
+        # and brings its own bundled ROM, so the minimal config is also
+        # the working one.
+        table("lide", [f"drive0 = {toml_value(str(hdf_output_path))}"])
+    else:
+        lines.append("[[filesys]]")
+        lines.append(f"path = {toml_value(str(dir_output_path))}")
+        lines.append(f"volume = {toml_value(dir_output_path.name)}")
+        lines.append("bootpri = 6")
+        lines.append("")
 
     for table in sorted(table_overrides):
         lines.append(f"[{table}]")

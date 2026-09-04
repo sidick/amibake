@@ -17,6 +17,7 @@ import amitools.fs.DosType as DosType
 from amitools.fs.ADFSVolume import ADFSVolume
 from amitools.fs.blkdev.BlkDevFactory import BlkDevFactory
 from amitools.fs.blkdev.HDFBlockDevice import HDFBlockDevice
+from amitools.fs.block.rdb.PartitionBlock import PartitionBlock
 from amitools.fs.FSString import FSString
 from amitools.fs.MetaInfo import MetaInfo
 from amitools.fs.ProtectFlags import ProtectFlags
@@ -90,8 +91,18 @@ def write_hdf(tree: Tree, path: Path, dos_type: str = DEFAULT_DOS_TYPE,
         rdisk = RDisk(blkdev)
         rdisk.create(blkdev.get_geometry())
         lo_hi = rdisk.get_free_cyl_ranges()[0]
+        # `flags=FLAG_BOOTABLE` (PBFB_BOOTABLE, bit 0 of the PART block's
+        # pb_Flags) is not amitools' default — `add_partition` defaults
+        # `flags=0`, which writes a perfectly valid partition that
+        # Kickstart's boot scan then skips, because strap only considers
+        # partitions carrying that bit. Harmless while the emitted
+        # emulator configs booted a HOSTFS directory instead; a real
+        # requirement now that `[lide]` boots this image for real.
+        # boot_pri stays 0, where real hard drives sit (DF0: is 5, so a
+        # bootable floppy still wins if one is ever configured).
         partition = rdisk.add_partition(
-            FSString(drive_name), lo_hi, dos_type=dos_type_const, boot_pri=0)
+            FSString(drive_name), lo_hi, dos_type=dos_type_const, boot_pri=0,
+            flags=PartitionBlock.FLAG_BOOTABLE)
 
         part_blkdev = partition.create_blkdev()
         part_blkdev.open()

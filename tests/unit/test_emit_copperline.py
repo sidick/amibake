@@ -50,10 +50,69 @@ def test_defaults_when_machine_block_is_empty(tmp_path):
     assert "chipset" not in doc
 
 
-def test_no_dir_output_raises_named_error(tmp_path):
-    plan = _plan({}, output=("hdf",))
-    with pytest.raises(EmitError, match="'dir' build output"):
+def test_no_bootable_output_raises_named_error(tmp_path):
+    plan = _plan({}, output=())
+    with pytest.raises(EmitError, match="'hdf' or 'dir' build output"):
         write_copperline_config(plan, tmp_path / "out.toml", tmp_path / "kick.rom", None, {})
+
+
+def test_hdf_output_boots_from_lide(tmp_path):
+    plan = _plan({}, output=("hdf",))
+    target = tmp_path / "out.copperline.toml"
+    hdf = tmp_path / "build" / "mysetup.hdf"
+
+    write_copperline_config(plan, target, tmp_path / "kick.rom", None, {}, hdf)
+
+    doc = tomllib.loads(target.read_text())
+    assert doc["lide"]["drive0"] == str(hdf)
+    # No board: RIPPLE is the default and bundles its own boot ROM.
+    assert "board" not in doc["lide"]
+    assert "filesys" not in doc
+
+
+def test_hdf_wins_over_dir_and_never_mounts_both(tmp_path):
+    """Both would carry the same volume name — two identically-named
+    volumes and ambiguous assigns for the guest."""
+    plan = _plan({}, output=("hdf", "dir"))
+    target = tmp_path / "out.copperline.toml"
+    hdf = tmp_path / "build" / "mysetup.hdf"
+    dir_out = tmp_path / "build" / "mysetup"
+    dir_out.mkdir(parents=True)
+
+    write_copperline_config(plan, target, tmp_path / "kick.rom", dir_out, {}, hdf)
+
+    doc = tomllib.loads(target.read_text())
+    assert doc["lide"]["drive0"] == str(hdf)
+    assert "filesys" not in doc
+
+
+def test_lide_override_merges_into_one_table(tmp_path):
+    """A second `[lide]` header would be a TOML parse error, not an
+    override — so a manifest key for a table the emitter already writes
+    has to be folded into it, replacing the emitted key."""
+    plan = _plan({}, output=("hdf",))
+    target = tmp_path / "out.copperline.toml"
+    hdf = tmp_path / "build" / "mysetup.hdf"
+
+    write_copperline_config(plan, target, tmp_path / "kick.rom", None,
+                            {"lide.board": "atbus2008", "lide.drive1": "extra.hdf"}, hdf)
+
+    doc = tomllib.loads(target.read_text())  # raises if the table is emitted twice
+    assert doc["lide"] == {"drive0": str(hdf), "board": "atbus2008", "drive1": "extra.hdf"}
+
+
+def test_override_of_an_emitted_key_replaces_it(tmp_path):
+    plan = _plan({"cpu": "68030"}, output=("dir",))
+    target = tmp_path / "out.copperline.toml"
+    dir_out = tmp_path / "build" / "mysetup"
+    dir_out.mkdir(parents=True)
+
+    write_copperline_config(plan, target, tmp_path / "kick.rom", dir_out,
+                            {"cpu.model": "68040", "cpu.clock_mhz": 25})
+
+    doc = tomllib.loads(target.read_text())
+    assert doc["cpu"] == {"model": "68040", "clock_mhz": 25}
+    assert doc["filesys"][0]["bootpri"] == 6
 
 
 def test_emulator_config_dotted_key_becomes_nested_table(tmp_path):

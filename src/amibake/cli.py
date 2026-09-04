@@ -201,6 +201,7 @@ def _cmd_build(manifest_path: Path, recipes_root: Path, out_dir: Path | None,
     stem = manifest_path.stem
     written = []
     dir_output_path = None
+    hdf_output_path = None
     for fmt in plan.output:
         suffix, emit = _EMITTERS[fmt]
         target = out_dir / f"{stem}{suffix}"
@@ -210,6 +211,8 @@ def _cmd_build(manifest_path: Path, recipes_root: Path, out_dir: Path | None,
             emit(tree, target)
         if fmt == "dir":
             dir_output_path = target.resolve()
+        if fmt == "hdf":
+            hdf_output_path = target.resolve()
         written.append(str(target))
 
     if plan.emit:
@@ -223,7 +226,7 @@ def _cmd_build(manifest_path: Path, recipes_root: Path, out_dir: Path | None,
                 if emitter == "copperline":
                     target = out_dir / f"{stem}.copperline.toml"
                     write_copperline_config(plan, target, rom_path, dir_output_path,
-                                            emulator_config)
+                                            emulator_config, hdf_output_path)
                 else:
                     target = out_dir / f"{stem}-{emitter}.uae"
                     write_uae_config(plan, target, rom_path, dir_output_path,
