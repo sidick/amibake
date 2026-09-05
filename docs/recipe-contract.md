@@ -176,6 +176,10 @@ expresses exactly that.
   paths is always a build error — an into-directory copy that happens
   to match nothing is not a silent no-op.
 
+  `when` is one `"<option> = <value>"` condition, or a **list** of them
+  that must all hold — `when = ["card = graffity", "fake-native-modes =
+  true"]` for an action that two independent manifest answers bear on.
+
   An into-directory copy **preserves subdirectory structure below the
   pattern's own literal (non-wildcard) prefix**, it does not flatten
   every match to its basename. `{ from = "AmiSSL/Libs/#?", to =
@@ -255,7 +259,9 @@ expresses exactly that.
 - `assigns` — array of `{ name, path }`: assigns added at boot, e.g.
   `{ name = "AmiSSL", path = "SYS:Devs/AmiSSL" }`.
 - `tooltypes` — array of `{ path, set }` (plus an optional `when`, same
-  rule as `copy`'s): tool types set on an installed Amiga `.info` icon,
+  rule as `copy`'s — including the list form, which is what lets one
+  card's icon carry an extra tool type only when a second option asks
+  for it): tool types set on an installed Amiga `.info` icon,
   the declarative form of a real Installer's `(tooltype (settooltype
   "BoardType" "Graffity"))`.
 

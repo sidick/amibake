@@ -119,6 +119,10 @@ tooltypes = [
   { path = "SYS:Devs/Monitors/PicassoIV.info", set = { BoardType = "PicassoIV" }, when = "card = picasso-iv" },
   { path = "SYS:Devs/Monitors/CVision3D.info", set = { BoardType = "CVision3D" }, when = "card = cybervision64-3d" },
   { path = "SYS:Devs/Monitors/Graffity.info", set = { BoardType = "Graffity" }, when = "card = graffity" },
+  { path = "SYS:Devs/Monitors/uaegfx.info", set = { FakeNativeModes = "Yes" }, when = ["card = uaegfx", "fake-native-modes = true"] },
+  { path = "SYS:Devs/Monitors/PicassoIV.info", set = { FakeNativeModes = "Yes" }, when = ["card = picasso-iv", "fake-native-modes = true"] },
+  { path = "SYS:Devs/Monitors/CVision3D.info", set = { FakeNativeModes = "Yes" }, when = ["card = cybervision64-3d", "fake-native-modes = true"] },
+  { path = "SYS:Devs/Monitors/Graffity.info", set = { FakeNativeModes = "Yes" }, when = ["card = graffity", "fake-native-modes = true"] },
 ]
 
 [options.card]
@@ -130,6 +134,24 @@ required = true
 # needs an emulator that actually implements it.
 [options.card.requires.uaegfx]
 emulator = ["amiberry", "winuae"]
+
+# `FakeNativeModes=Yes` on the monitor icon, the opt-in the guide points
+# at when the machine has no other way to show a picture: "the default
+# Amiga screen modes that would use the Amiga chip set are replaced by a
+# 640x480 chunky mode with 31 kHz on this board [...] a minimalistic
+# screen promotion functionality". Its own FAQ prescribes it verbatim
+# for two real situations — a card with no video pass-through whose
+# monitor goes blank at Workbench, and a monitor that can't do 15 kHz
+# with no flicker fixer — where without it you cannot see the screen you
+# would need in order to configure P96 at all.
+#
+# Off by default, which is the tool type's own default (absent = No) and
+# the real installer's: it never sets this one. It is a rescue/headless
+# setting, not a better way to run a configured machine — it gives one
+# 640x480 mode and is explicitly not a replacement for a mode promoter.
+[options.fake-native-modes]
+type    = "bool"
+default = false
 
 [verify]
 exists = ["SYS:Libs/Picasso96API.library"]

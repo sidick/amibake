@@ -380,6 +380,31 @@ def _check_variants(c: Checker, variants: list, where: str) -> None:
                     "later entry — name what machine condition selects it")
 
 
+def _check_when(c: Checker, entry: dict, label: str) -> None:
+    """`when` is one `"<option> = <value>"` condition, or a list of them
+    that must all hold — two independent questions can bear on one
+    action, e.g. ["card = graffity", "fake-native-modes = true"]."""
+    when = entry.get("when")
+    if when is None:
+        return
+    if isinstance(when, str):
+        conditions = [(when, f"{label}.when")]
+    elif isinstance(when, list):
+        conditions = [(w, f"{label}.when[{i}]") for i, w in enumerate(when)]
+    else:
+        c.error(f"{label}.when", "must be a string or a list of strings",
+                'one condition ("card = uaegfx") or several that must all '
+                'hold (["card = graffity", "fake-native-modes = true"])')
+        return
+    for condition, where in conditions:
+        if not isinstance(condition, str):
+            c.error(where, f"bad condition {condition!r}",
+                    'conditions are strings, e.g. "card = uaegfx"')
+        elif not _WHEN_RE.match(condition):
+            c.error(where, f"bad condition {condition!r}",
+                    'conditions are "<option> = <value>", e.g. "card = uaegfx"')
+
+
 def _check_install(c: Checker, install: dict) -> None:
     c.unknown_keys(install, INSTALL_KEYS, "[install]")
 
@@ -397,10 +422,7 @@ def _check_install(c: Checker, install: dict) -> None:
             c.error(f"{label}.to", f"destination {to!r} is not an Amiga path",
                     "destinations are absolute Amiga paths like SYS:Libs/ or "
                     "ENVARC:")
-        when = c.typed(entry, "when", str, label)
-        if when is not None and not _WHEN_RE.match(when):
-            c.error(f"{label}.when", f"bad condition {when!r}",
-                    'conditions are "<option> = <value>", e.g. "card = uaegfx"')
+        _check_when(c, entry, label)
         variants = c.typed(entry, "variants", list, label)
         if variants is not None:
             _check_variants(c, variants, label)
@@ -442,10 +464,7 @@ def _check_install(c: Checker, install: dict) -> None:
                 c.error(f"{label}.set.{name}", "tool type names can't contain '='",
                         "the name is the part before the '=' — write "
                         '{ BoardType = "Graffity" }, not { "BoardType=Graffity" = "" }')
-        when = c.typed(entry, "when", str, label)
-        if when is not None and not _WHEN_RE.match(when):
-            c.error(f"{label}.when", f"bad condition {when!r}",
-                    'conditions are "<option> = <value>", e.g. "card = uaegfx"')
+        _check_when(c, entry, label)
 
     for i, entry in enumerate(
             c.typed(install, "user-startup", list, "[install]", default=[])):
@@ -470,10 +489,7 @@ def _check_install(c: Checker, install: dict) -> None:
             c.error(f"{label}.to", f"destination {to!r} is not an Amiga path",
                     "destinations are absolute Amiga paths like SYS:S/Startup-Sequence")
         c.typed(entry, "content", str, label, required=True)
-        when = c.typed(entry, "when", str, label)
-        if when is not None and not _WHEN_RE.match(when):
-            c.error(f"{label}.when", f"bad condition {when!r}",
-                    'conditions are "<option> = <value>", e.g. "boot = cli"')
+        _check_when(c, entry, label)
 
     for i, entry in enumerate(c.typed(install, "assigns", list, "[install]", default=[])):
         label = f"[install].assigns[{i}]"

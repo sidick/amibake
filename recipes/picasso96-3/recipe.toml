@@ -233,6 +233,29 @@ tooltypes = [
   { path = "SYS:Devs/Monitors/S3ViRGE.info", set = { BoardType = "S3ViRGE", SettingsFile = "SYS:Devs/Picasso96Settings" }, when = "card = s3virge" },
   { path = "SYS:Devs/Monitors/Spectrum.info", set = { BoardType = "Spectrum", SettingsFile = "SYS:Devs/Picasso96Settings" }, when = "card = spectrum" },
   { path = "SYS:Devs/Monitors/Visiona.info", set = { BoardType = "Visiona", SettingsFile = "SYS:Devs/Picasso96Settings" }, when = "card = visiona" },
+  { path = "SYS:Devs/Monitors/uaegfx.info", set = { FakeNativeModes = "Yes" }, when = ["card = uaegfx", "fake-native-modes = true"] },
+  { path = "SYS:Devs/Monitors/Native.info", set = { FakeNativeModes = "Yes" }, when = ["card = native", "fake-native-modes = true"] },
+  { path = "SYS:Devs/Monitors/Altais.info", set = { FakeNativeModes = "Yes" }, when = ["card = altais", "fake-native-modes = true"] },
+  { path = "SYS:Devs/Monitors/A2410.info", set = { FakeNativeModes = "Yes" }, when = ["card = a2410", "fake-native-modes = true"] },
+  { path = "SYS:Devs/Monitors/CVisionPPC.info", set = { FakeNativeModes = "Yes" }, when = ["card = cvision-ppc", "fake-native-modes = true"] },
+  { path = "SYS:Devs/Monitors/CyberVision.info", set = { FakeNativeModes = "Yes" }, when = ["card = cybervision64", "fake-native-modes = true"] },
+  { path = "SYS:Devs/Monitors/CVision3D.info", set = { FakeNativeModes = "Yes" }, when = ["card = cybervision64-3d", "fake-native-modes = true"] },
+  { path = "SYS:Devs/Monitors/Domino.info", set = { FakeNativeModes = "Yes" }, when = ["card = domino", "fake-native-modes = true"] },
+  { path = "SYS:Devs/Monitors/GBA-PII++.info", set = { FakeNativeModes = "Yes" }, when = ["card = gba-pii", "fake-native-modes = true"] },
+  { path = "SYS:Devs/Monitors/Graffity.info", set = { FakeNativeModes = "Yes" }, when = ["card = graffity", "fake-native-modes = true"] },
+  { path = "SYS:Devs/Monitors/GVP110.info", set = { FakeNativeModes = "Yes" }, when = ["card = gvp110", "fake-native-modes = true"] },
+  { path = "SYS:Devs/Monitors/Merlin.info", set = { FakeNativeModes = "Yes" }, when = ["card = merlin", "fake-native-modes = true"] },
+  { path = "SYS:Devs/Monitors/oMniBus.info", set = { FakeNativeModes = "Yes" }, when = ["card = omnibus", "fake-native-modes = true"] },
+  { path = "SYS:Devs/Monitors/PicassoII.info", set = { FakeNativeModes = "Yes" }, when = ["card = picasso-ii", "fake-native-modes = true"] },
+  { path = "SYS:Devs/Monitors/PicassoIV.info", set = { FakeNativeModes = "Yes" }, when = ["card = picasso-iv", "fake-native-modes = true"] },
+  { path = "SYS:Devs/Monitors/Piccolo.info", set = { FakeNativeModes = "Yes" }, when = ["card = piccolo", "fake-native-modes = true"] },
+  { path = "SYS:Devs/Monitors/PiccoloSD64.info", set = { FakeNativeModes = "Yes" }, when = ["card = piccolo-sd64", "fake-native-modes = true"] },
+  { path = "SYS:Devs/Monitors/Pixel64.info", set = { FakeNativeModes = "Yes" }, when = ["card = pixel64", "fake-native-modes = true"] },
+  { path = "SYS:Devs/Monitors/Retina.info", set = { FakeNativeModes = "Yes" }, when = ["card = retina-z2", "fake-native-modes = true"] },
+  { path = "SYS:Devs/Monitors/RetinaBLT.info", set = { FakeNativeModes = "Yes" }, when = ["card = retina-blt-z3", "fake-native-modes = true"] },
+  { path = "SYS:Devs/Monitors/S3ViRGE.info", set = { FakeNativeModes = "Yes" }, when = ["card = s3virge", "fake-native-modes = true"] },
+  { path = "SYS:Devs/Monitors/Spectrum.info", set = { FakeNativeModes = "Yes" }, when = ["card = spectrum", "fake-native-modes = true"] },
+  { path = "SYS:Devs/Monitors/Visiona.info", set = { FakeNativeModes = "Yes" }, when = ["card = visiona", "fake-native-modes = true"] },
 ]
 
 [options.card]
@@ -246,6 +269,24 @@ required = true
 # only the monitor entry that offers its modes.)
 [options.card.requires.uaegfx]
 emulator = ["amiberry", "winuae"]
+
+# `FakeNativeModes=Yes` on the monitor icon, the opt-in the guide points
+# at when the machine has no other way to show a picture: "the default
+# Amiga screen modes that would use the Amiga chip set are replaced by a
+# 640x480 chunky mode with 31 kHz on this board [...] a minimalistic
+# screen promotion functionality". Its own FAQ prescribes it verbatim
+# for two real situations — a card with no video pass-through whose
+# monitor goes blank at Workbench, and a monitor that can't do 15 kHz
+# with no flicker fixer — where without it you cannot see the screen you
+# would need in order to configure P96 at all.
+#
+# Off by default, which is the tool type's own default (absent = No) and
+# the real installer's: it never sets this one. It is a rescue/headless
+# setting, not a better way to run a configured machine — it gives one
+# 640x480 mode and is explicitly not a replacement for a mode promoter.
+[options.fake-native-modes]
+type    = "bool"
+default = false
 
 # The real script's monitor question, which decides which
 # Picasso96Settings template becomes DEVS:Picasso96Settings. Default 31

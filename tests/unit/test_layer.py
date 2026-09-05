@@ -349,3 +349,27 @@ def test_tooltypes_on_something_that_is_not_an_icon_is_a_named_error():
     }
     with pytest.raises(LayerError, match="not an Amiga .info file"):
         apply_layer(Tree(), "picasso96-2", install, archive)
+
+
+def test_a_list_when_requires_every_condition():
+    """Two independent questions bearing on one action: this board's
+    monitor icon, and only when the manifest asked for that mode."""
+    archive = Tree()
+    archive.put("icon.info", _blank_icon())
+    install = {
+        "copy": [{"from": "icon.info", "to": "SYS:Devs/Monitors/Graffity.info"}],
+        "tooltypes": [{
+            "path": "SYS:Devs/Monitors/Graffity.info",
+            "set": {"FakeNativeModes": "Yes"},
+            "when": ["card = graffity", "fake-native-modes = true"],
+        }],
+    }
+    both = apply_layer(Tree(), "picasso96-3", install, archive,
+                       options={"card": "graffity", "fake-native-modes": True})
+    assert read_tool_types(both.get("SYS:Devs/Monitors/Graffity.info").data) == [
+        "FakeNativeModes=Yes"]
+
+    for options in ({"card": "graffity", "fake-native-modes": False},
+                    {"card": "picasso-iv", "fake-native-modes": True}):
+        tree = apply_layer(Tree(), "picasso96-3", install, archive, options=options)
+        assert read_tool_types(tree.get("SYS:Devs/Monitors/Graffity.info").data) == []

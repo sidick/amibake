@@ -78,9 +78,20 @@ def _amiga_pattern_to_regex(pattern: str) -> re.Pattern:
     return re.compile("^" + "".join(out) + "$", re.IGNORECASE)
 
 
-def _when_matches(when: str, options: dict) -> bool:
-    """Evaluate a copy entry's `when = "<option> = <value>"` condition
-    against this package's resolved options."""
+def _when_matches(when: str | list[str], options: dict) -> bool:
+    """Evaluate an entry's `when` against this package's resolved
+    options. A single `"<option> = <value>"` condition, or a list of
+    them, in which case every one must hold — two independent questions
+    can both bear on one action (`["card = graffity",
+    "fake-native-modes = true"]`: this board's monitor icon, and only if
+    the manifest asked for that mode). An empty list matches, the same
+    as no condition at all."""
+    if isinstance(when, str):
+        when = [when]
+    return all(_one_condition_matches(c, options) for c in when)
+
+
+def _one_condition_matches(when: str, options: dict) -> bool:
     key, _, value = when.partition("=")
     key = key.strip()
     value = value.strip()
