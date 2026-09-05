@@ -43,6 +43,21 @@ def test_extract_lha_normalizes_backslash_separators(tmp_path):
     assert tree.get("Classes/gadgets/layout.gadget").data == b"gadget"
 
 
+def test_extract_lha_tolerates_bytes_appended_past_the_end_marker(tmp_path):
+    """Real archives carry trailing junk: iComp's own P96 3.6.2 release
+    ends `00 "1907\\n"` — the end-of-archive marker, then five bytes of
+    what looks like a build or order stamp. `lhafile` allows exactly one
+    byte after the last member and calls anything more a broken header;
+    the `lha` CLI reads such an archive fine, and so must this."""
+    archive = tmp_path / "stamped.lha"
+    archive.write_bytes(make_lha_archive({
+        "Picasso96Install/Version": b"3.6.2\n",
+    }) + b"1907\n")
+
+    tree = extract_archive(archive)
+    assert tree.get("Picasso96Install/Version").data == b"3.6.2\n"
+
+
 def test_extract_lha_rejects_corrupt_archive(tmp_path):
     archive = tmp_path / "bad.lha"
     archive.write_bytes(b"not an lha archive at all")

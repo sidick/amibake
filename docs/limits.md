@@ -29,12 +29,18 @@ its own comments, naming what was read to derive it:
   (see below), so the recipe copies the generic (non-suffixed) binary.
 - `recipes/wb1.3` — no Installer at all (real 1.3 predates it) but the
   same translation approach for its plain-copy Startup-Sequence.
-- `recipes/picasso96-3` — no licensed copy available to any session
-  that's worked on this recipe; structure confirmed instead against the
-  real, freely-redistributable `picasso96-2` archive (same architecture,
-  predates the licensing change — see `recipes/picasso96-2`), still
-  flagged as unverified against the actual 3.6.3 release in the
-  recipe's own comments.
+- `recipes/picasso96-3` — grounded 2026-09-05 against the real
+  `Picasso96-3.6.2.lha`, after a long spell describing a 3.x nobody had
+  seen. What that spell cost, as a caution: the recipe named a version
+  that was never released (`3.6.3`), invented the asset filename to
+  match, copied a `fastlayers.library` that 3.6.2 doesn't contain, and
+  copied `uaegfx.card`/`zz9000.card`, neither of which P96 ships any
+  more. It all read as confidently as the grounded recipes around it.
+  Structure inferred from a *related* archive is a hypothesis, and
+  should say so in the recipe where a reader will see it. What remains
+  unverified is now only the runtime: no session can boot a real
+  graphics board, and `uaegfx` needs an emulator AmiBake doesn't emit
+  configs for yet.
 - `recipes/picasso96-2` / `recipes/picasso96-3` — the real
   `InstallPicasso96` script's board install is three steps: the `.card`,
   its matching `.chip`, and a `DEVS:Monitors/<BoardName>` entry whose

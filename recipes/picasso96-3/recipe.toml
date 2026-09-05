@@ -1,127 +1,265 @@
-# P96 (formerly Picasso96) — the RTG graphics stack. Commercial and
-# copyrighted since the Picasso96 -> P96 rename (the Picasso family
-# objected to the old name); current maintainer no longer permits
-# public redistribution, so — like the proposal's own "iComp P96"
-# example under proprietary packages — this recipe sources from
-# assets/, never a public URL. Nothing proprietary is ever fetched or
-# cached publicly.
+# P96 3.6.2 — the RTG graphics stack, iComp's commercial continuation of
+# Picasso96. Not publicly redistributable (the maintainer sells it), so
+# this recipe sources from `assets/`, never a URL; nothing proprietary is
+# fetched or cached. Named `picasso96-3` to sit beside the free,
+# Aminet-hosted `picasso96-2` (AmiBake has no version-range dispatch from
+# one package name to several recipes, so a free-vs-commercial split is
+# two ordinary recipes).
 #
-# Named `picasso96-3` (not `p96`) to sit next to the freely-
-# redistributable `picasso96-2` (the real, Aminet-hosted 2.0 release,
-# CI-buildable — see recipes/picasso96-2) without "p96"/"picasso96"
-# reading as unrelated packages; AmiBake has no version-range dispatch
-# from one package name to several recipes (each recipe is its own
-# name), so a free-vs-commercial version split is two ordinary
-# recipes, same shape as amipkg's per-CPU-tier catalog entries.
+# Grounded, at last, against the real thing: `Picasso96-3.6.2.lha`
+# (`Version` inside it reads "3.6.2 / (21.12.25) ©2017-2025 iComp"),
+# read with this project's own extractor, with its real
+# `InstallPicasso96` script read directly the way every other recipe
+# here does it. Everything below is that script's default,
+# non-interactive path.
 #
-# [install] below reflects the long-standing P96 layout (Picasso96API.
-# library + rtg.library direct in SYS:Libs/, per-card .card/.chip
-# drivers in SYS:Libs/Picasso96/) confirmed against the real, freely-
-# distributed picasso96-2 archive (see that recipe) — the architecture
-# predates and is independent of the licensing change, but exact
-# filenames for the current 3.6.3 release should be checked against
-# the real licensed archive once available; this is the one recipe in
-# the library nobody here could test-build end-to-end.
+# What that grounding corrected, since this recipe previously described
+# a 3.x it had never seen:
+#   - the version. It claimed `3.6.3`, which does not appear to be a
+#     released version at all (iComp's line runs ... 3.3.3, 3.4.0, 3.6.0,
+#     3.6.2); the asset filename `P96-{version}.lha` was invented to
+#     match it. Both now come from the real archive.
+#   - `fastlayers.library` was copied. It does not exist in 3.6.2 — the
+#     real `P_InstallLibs` installs exactly three libraries, and that is
+#     not one of them.
+#   - `uaegfx.card` was copied. 3.6.2 ships no such file, and the real
+#     script explicitly skips the `.card` copy for `uaegfx` (along with
+#     `Native` and `Generic`): UAE-family emulators supply that driver
+#     themselves. The option survives, and installs the monitor entry
+#     alone, which is what the script does.
+#   - `zz9000.card` was copied for a `zz9000` option. No such file
+#     either; MNT's ZZ9000 driver ships with the board's own firmware
+#     package, not with P96. Option removed rather than left to fail at
+#     build time.
 #
-# `graffity` (Cirrus Logic GD542x Zorro II board) is modeled here to
-# keep the two recipes' option sets aligned, on exactly the evidence
-# recipes/picasso96-2 has for it — that recipe's real 2.0 archive ships
-# `Graffity.card` and the `CirrusGD542X.chip` the installer pairs with
-# it, and 3.x is the same architecture. Whether a 3.6.3 archive still
-# ships a Graffity driver at all is unverified, same caveat as every
-# other filename here. The `DEVS:Monitors/<BoardName>` entries and their
-# BoardType tool types are installed here the same way picasso96-2 does
-# them.
+# The card list below is the script's own `P_InstallCard` /
+# `P_InstallHardwareDrivers` pairing, transcribed. Not modeled: the
+# PCI-bridge and later boards (IndiECS, Matrox, Radeon, RageXL, Voodoo,
+# VA2000, RainbowII) and the catch-all `Generic`. The script gives them
+# no `.chip` line, which for the others would mean "card only", but they
+# also come with their own detection helpers (`FindPCI`, `FindCVPPC`,
+# `FindIndiECSv4`) whose install-side consequences this recipe has not
+# read. Adding one is a three-line change once someone has.
+#
+# Still true, and worth keeping in view: nobody here can *boot* this.
+# `uaegfx` needs an emulator that implements it (Amiberry/WinUAE, per
+# [options.card.requires] below) and every other card is real hardware.
+# The build is verified, the install is transcribed from the real
+# script, and the runtime is not exercised.
 
 [package]
 name     = "picasso96-3"
-versions = ["3.6.3"]
+versions = ["3.6.2"]
 
 [requires]
 os  = ">= 3.0"       # Kickstart/Workbench 3.0 (V39)+
 cpu = ">= 68020"
 
 [source.assets]
-path = "P96-{version}.lha"
+# The real distributed filename. sha256 pins the exact archive this
+# recipe was written against — a proprietary asset is supplied by the
+# user, so the checksum is the only way to know they have the same one.
+path   = "Picasso96-{version}.lha"
+sha256 = { "3.6.2" = "9efbe86796d1edb84b1d5a18021174af72f990853a6362c4e673b9b18e40d5f7" }
 
 [install]
 copy = [
+  # --- P_InstallLibs: exactly these three, to exactly these places ---
   { from = "Picasso96Install/Libs/Picasso96API.library", to = "SYS:Libs/" },
   { from = "Picasso96Install/Libs/Picasso96/rtg.library", to = "SYS:Libs/Picasso96/" },
   { from = "Picasso96Install/Libs/Picasso96/emulation.library", to = "SYS:Libs/Picasso96/" },
-  { from = "Picasso96Install/Libs/Picasso96/fastlayers.library", to = "SYS:Libs/Picasso96/" },
-  { from = "Picasso96Install/Libs/Picasso96/uaegfx.card", to = "SYS:Libs/Picasso96/", when = "card = uaegfx" },
-  { from = "Picasso96Install/Libs/Picasso96/PicassoIV.card", to = "SYS:Libs/Picasso96/", when = "card = picasso-iv" },
+
+  # --- P_InstallPicasso96Mode: the prefs editor ---
+  # The real script picks by target: `P96Prefs` when the running
+  # gadtools.library is OS 3.2+, `Picasso96Mode` otherwise. `[install]`
+  # can only branch on manifest options, not on the base's OS version,
+  # and this recipe's [requires] spans both (os >= 3.0) — so both are
+  # installed, a few KB, and the right one runs on the machine it
+  # belongs to.
+  { from = "Picasso96Install/prefs/P96Prefs", to = "SYS:Prefs/P96Prefs" },
+  { from = "Picasso96Install/prefs/P96Prefs.info", to = "SYS:Prefs/P96Prefs.info" },
+  { from = "Picasso96Install/prefs/Picasso96Mode", to = "SYS:Prefs/Picasso96Mode" },
+  { from = "Picasso96Install/prefs/Picasso96Mode.info", to = "SYS:Prefs/Picasso96Mode.info" },
+
+
+  # --- P_InstallCard: the board driver ---
+  { from = "Picasso96Install/Libs/Picasso96/Altais.card", to = "SYS:Libs/Picasso96/", when = "card = altais" },
+  { from = "Picasso96Install/Libs/Picasso96/A2410.card", to = "SYS:Libs/Picasso96/", when = "card = a2410" },
+  { from = "Picasso96Install/Libs/Picasso96/CVisionPPC.card", to = "SYS:Libs/Picasso96/", when = "card = cvision-ppc" },
+  { from = "Picasso96Install/Libs/Picasso96/CyberVision.card", to = "SYS:Libs/Picasso96/", when = "card = cybervision64" },
   { from = "Picasso96Install/Libs/Picasso96/CVision3D.card", to = "SYS:Libs/Picasso96/", when = "card = cybervision64-3d" },
-  { from = "Picasso96Install/Libs/Picasso96/zz9000.card", to = "SYS:Libs/Picasso96/", when = "card = zz9000" },
+  { from = "Picasso96Install/Libs/Picasso96/Domino.card", to = "SYS:Libs/Picasso96/", when = "card = domino" },
+  { from = "Picasso96Install/Libs/Picasso96/GBA-PII++.card", to = "SYS:Libs/Picasso96/", when = "card = gba-pii" },
   { from = "Picasso96Install/Libs/Picasso96/Graffity.card", to = "SYS:Libs/Picasso96/", when = "card = graffity" },
+  { from = "Picasso96Install/Libs/Picasso96/GVP110.card", to = "SYS:Libs/Picasso96/", when = "card = gvp110" },
+  { from = "Picasso96Install/Libs/Picasso96/Merlin.card", to = "SYS:Libs/Picasso96/", when = "card = merlin" },
+  { from = "Picasso96Install/Libs/Picasso96/oMniBus.card", to = "SYS:Libs/Picasso96/", when = "card = omnibus" },
+  { from = "Picasso96Install/Libs/Picasso96/PicassoII.card", to = "SYS:Libs/Picasso96/", when = "card = picasso-ii" },
+  { from = "Picasso96Install/Libs/Picasso96/PicassoIV.card", to = "SYS:Libs/Picasso96/", when = "card = picasso-iv" },
+  { from = "Picasso96Install/Libs/Picasso96/Piccolo.card", to = "SYS:Libs/Picasso96/", when = "card = piccolo" },
+  { from = "Picasso96Install/Libs/Picasso96/PiccoloSD64.card", to = "SYS:Libs/Picasso96/", when = "card = piccolo-sd64" },
+  { from = "Picasso96Install/Libs/Picasso96/Pixel64.card", to = "SYS:Libs/Picasso96/", when = "card = pixel64" },
+  { from = "Picasso96Install/Libs/Picasso96/Retina.card", to = "SYS:Libs/Picasso96/", when = "card = retina-z2" },
+  { from = "Picasso96Install/Libs/Picasso96/RetinaBLT.card", to = "SYS:Libs/Picasso96/", when = "card = retina-blt-z3" },
+  { from = "Picasso96Install/Libs/Picasso96/S3ViRGE.card", to = "SYS:Libs/Picasso96/", when = "card = s3virge" },
+  { from = "Picasso96Install/Libs/Picasso96/Spectrum.card", to = "SYS:Libs/Picasso96/", when = "card = spectrum" },
+  { from = "Picasso96Install/Libs/Picasso96/Visiona.card", to = "SYS:Libs/Picasso96/", when = "card = visiona" },
 
-  # Chip drivers. A `.card` is only the board-specific half — the bus
-  # decode, memory map and AutoConfig identity — and it loads a `.chip`
-  # for the graphics chip actually fitted on it; `Graffity.card` is 1236
-  # bytes precisely because CirrusGD542X.chip does the drawing. The real
-  # InstallPicasso96 script pairs them explicitly, and these three lines
-  # are its own mapping, verbatim:
-  #   (BITAND #_boards (+ #GraffityBit #PicassoIIBit #PiccoloBit
-  #                       #SpectrumBit))  (P_InstallChip "CirrusGD542X")
-  #   (BITAND #_boards (+ #InfernoBit #PicassoIVBit))
-  #                                       (P_InstallChip "CirrusGD5446")
-  #   (BITAND #_boards #CyberVision3DBit) (P_InstallChip "S3ViRGE")
-  # uaegfx needs none: it is the emulator's own RTG, not a real board.
-  # (The picasso-iv/cybervision64-3d chips were missing here before
-  # Graffity was added — their .card alone could never have driven
-  # anything. Same bug, fixed in the same pass.) zz9000 gets none for
-  # the same reason as the card list above: its real file layout is
-  # unverified here, and inventing a .chip name for it would be a guess
-  # on top of a guess.
-  { from = "Picasso96Install/Libs/Picasso96/CirrusGD542X.chip", to = "SYS:Libs/Picasso96/", when = "card = graffity" },
-  { from = "Picasso96Install/Libs/Picasso96/CirrusGD5446.chip", to = "SYS:Libs/Picasso96/", when = "card = picasso-iv" },
+  # --- P_InstallHardwareDrivers: the graphics chip its .card drives ---
+  # A .card is the board half (bus decode, memory map, AutoConfig
+  # identity); the .chip does the drawing. The pairing is the script's,
+  # verbatim — note oMniBus, which the script matches in two chip
+  # groups and so gets both.
+  { from = "Picasso96Install/Libs/Picasso96/NCR77C32BLT.chip", to = "SYS:Libs/Picasso96/", when = "card = altais" },
+  { from = "Picasso96Install/Libs/Picasso96/TMS34010.chip", to = "SYS:Libs/Picasso96/", when = "card = a2410" },
+  { from = "Picasso96Install/Libs/Picasso96/3DLabsPermedia2.chip", to = "SYS:Libs/Picasso96/", when = "card = cvision-ppc" },
+  { from = "Picasso96Install/Libs/Picasso96/S3Trio64.chip", to = "SYS:Libs/Picasso96/", when = "card = cybervision64" },
   { from = "Picasso96Install/Libs/Picasso96/S3ViRGE.chip", to = "SYS:Libs/Picasso96/", when = "card = cybervision64-3d" },
+  { from = "Picasso96Install/Libs/Picasso96/TsengET4000.chip", to = "SYS:Libs/Picasso96/", when = "card = domino" },
+  { from = "Picasso96Install/Libs/Picasso96/CirrusGD5434.chip", to = "SYS:Libs/Picasso96/", when = "card = gba-pii" },
+  { from = "Picasso96Install/Libs/Picasso96/CirrusGD542X.chip", to = "SYS:Libs/Picasso96/", when = "card = graffity" },
+  { from = "Picasso96Install/Libs/Picasso96/IMSG364.chip", to = "SYS:Libs/Picasso96/", when = "card = gvp110" },
+  { from = "Picasso96Install/Libs/Picasso96/TsengET4000W32.chip", to = "SYS:Libs/Picasso96/", when = "card = merlin" },
+  { from = "Picasso96Install/Libs/Picasso96/TsengET4000.chip", to = "SYS:Libs/Picasso96/", when = "card = omnibus" },
+  { from = "Picasso96Install/Libs/Picasso96/TsengET4000W32.chip", to = "SYS:Libs/Picasso96/", when = "card = omnibus" },
+  { from = "Picasso96Install/Libs/Picasso96/CirrusGD542X.chip", to = "SYS:Libs/Picasso96/", when = "card = picasso-ii" },
+  { from = "Picasso96Install/Libs/Picasso96/CirrusGD5446.chip", to = "SYS:Libs/Picasso96/", when = "card = picasso-iv" },
+  { from = "Picasso96Install/Libs/Picasso96/CirrusGD542X.chip", to = "SYS:Libs/Picasso96/", when = "card = piccolo" },
+  { from = "Picasso96Install/Libs/Picasso96/CirrusGD5434.chip", to = "SYS:Libs/Picasso96/", when = "card = piccolo-sd64" },
+  { from = "Picasso96Install/Libs/Picasso96/CirrusGD5434.chip", to = "SYS:Libs/Picasso96/", when = "card = pixel64" },
+  { from = "Picasso96Install/Libs/Picasso96/NCR77C22E.chip", to = "SYS:Libs/Picasso96/", when = "card = retina-z2" },
+  { from = "Picasso96Install/Libs/Picasso96/NCR77C32BLT.chip", to = "SYS:Libs/Picasso96/", when = "card = retina-blt-z3" },
+  { from = "Picasso96Install/Libs/Picasso96/S3ViRGE.chip", to = "SYS:Libs/Picasso96/", when = "card = s3virge" },
+  { from = "Picasso96Install/Libs/Picasso96/CirrusGD542X.chip", to = "SYS:Libs/Picasso96/", when = "card = spectrum" },
+  { from = "Picasso96Install/Libs/Picasso96/IMSG300.chip", to = "SYS:Libs/Picasso96/", when = "card = visiona" },
 
-  # --- DEVS:Monitors entries (P_InstallCard's second half) ---
-  # The generic monitor program copied under each board's own name, with
-  # its icon; the entry is what offers the board's screenmodes at boot.
-  # See recipes/picasso96-2, where this is grounded against the real
-  # script and a real archive — the same caveat as every other path in
-  # this recipe applies to whether 3.6.3 still lays them out this way,
-  # and `zz9000`'s board name in particular is a guess on a guess (its
-  # .card filename here was already one).
-  { from = "Picasso96Install/Devs/Monitors/Picasso96", to = "SYS:Devs/Monitors/uaegfx", when = "card = uaegfx" },
-  { from = "Picasso96Install/Devs/Monitors/Picasso96.info", to = "SYS:Devs/Monitors/uaegfx.info", when = "card = uaegfx" },
-  { from = "Picasso96Install/Devs/Monitors/Picasso96", to = "SYS:Devs/Monitors/PicassoIV", when = "card = picasso-iv" },
-  { from = "Picasso96Install/Devs/Monitors/Picasso96.info", to = "SYS:Devs/Monitors/PicassoIV.info", when = "card = picasso-iv" },
-  { from = "Picasso96Install/Devs/Monitors/Picasso96", to = "SYS:Devs/Monitors/CVision3D", when = "card = cybervision64-3d" },
-  { from = "Picasso96Install/Devs/Monitors/Picasso96.info", to = "SYS:Devs/Monitors/CVision3D.info", when = "card = cybervision64-3d" },
-  { from = "Picasso96Install/Devs/Monitors/Picasso96", to = "SYS:Devs/Monitors/zz9000", when = "card = zz9000" },
-  { from = "Picasso96Install/Devs/Monitors/Picasso96.info", to = "SYS:Devs/Monitors/zz9000.info", when = "card = zz9000" },
-  { from = "Picasso96Install/Devs/Monitors/Picasso96", to = "SYS:Devs/Monitors/Graffity", when = "card = graffity" },
-  { from = "Picasso96Install/Devs/Monitors/Picasso96.info", to = "SYS:Devs/Monitors/Graffity.info", when = "card = graffity" },
+  # --- P_InstallCard's second half: the DEVS:Monitors entry ---
+  # One generic monitor program copied under the board's own name (the
+  # `Native` option gets the separate `devs/monitors/Native` program the
+  # script selects for it), with its icon. This entry is what offers the
+  # board's screenmodes at boot; without it the libraries are installed
+  # and no display mode is ever created.
+  { from = "Picasso96Install/devs/monitors/Picasso96", to = "SYS:Devs/Monitors/uaegfx", when = "card = uaegfx" },
+  { from = "Picasso96Install/devs/monitors/Picasso96.info", to = "SYS:Devs/Monitors/uaegfx.info", when = "card = uaegfx" },
+  { from = "Picasso96Install/devs/monitors/Native", to = "SYS:Devs/Monitors/Native", when = "card = native" },
+  { from = "Picasso96Install/devs/monitors/Native.info", to = "SYS:Devs/Monitors/Native.info", when = "card = native" },
+  { from = "Picasso96Install/devs/monitors/Picasso96", to = "SYS:Devs/Monitors/Altais", when = "card = altais" },
+  { from = "Picasso96Install/devs/monitors/Picasso96.info", to = "SYS:Devs/Monitors/Altais.info", when = "card = altais" },
+  { from = "Picasso96Install/devs/monitors/Picasso96", to = "SYS:Devs/Monitors/A2410", when = "card = a2410" },
+  { from = "Picasso96Install/devs/monitors/Picasso96.info", to = "SYS:Devs/Monitors/A2410.info", when = "card = a2410" },
+  { from = "Picasso96Install/devs/monitors/Picasso96", to = "SYS:Devs/Monitors/CVisionPPC", when = "card = cvision-ppc" },
+  { from = "Picasso96Install/devs/monitors/Picasso96.info", to = "SYS:Devs/Monitors/CVisionPPC.info", when = "card = cvision-ppc" },
+  { from = "Picasso96Install/devs/monitors/Picasso96", to = "SYS:Devs/Monitors/CyberVision", when = "card = cybervision64" },
+  { from = "Picasso96Install/devs/monitors/Picasso96.info", to = "SYS:Devs/Monitors/CyberVision.info", when = "card = cybervision64" },
+  { from = "Picasso96Install/devs/monitors/Picasso96", to = "SYS:Devs/Monitors/CVision3D", when = "card = cybervision64-3d" },
+  { from = "Picasso96Install/devs/monitors/Picasso96.info", to = "SYS:Devs/Monitors/CVision3D.info", when = "card = cybervision64-3d" },
+  { from = "Picasso96Install/devs/monitors/Picasso96", to = "SYS:Devs/Monitors/Domino", when = "card = domino" },
+  { from = "Picasso96Install/devs/monitors/Picasso96.info", to = "SYS:Devs/Monitors/Domino.info", when = "card = domino" },
+  { from = "Picasso96Install/devs/monitors/Picasso96", to = "SYS:Devs/Monitors/GBA-PII++", when = "card = gba-pii" },
+  { from = "Picasso96Install/devs/monitors/Picasso96.info", to = "SYS:Devs/Monitors/GBA-PII++.info", when = "card = gba-pii" },
+  { from = "Picasso96Install/devs/monitors/Picasso96", to = "SYS:Devs/Monitors/Graffity", when = "card = graffity" },
+  { from = "Picasso96Install/devs/monitors/Picasso96.info", to = "SYS:Devs/Monitors/Graffity.info", when = "card = graffity" },
+  { from = "Picasso96Install/devs/monitors/Picasso96", to = "SYS:Devs/Monitors/GVP110", when = "card = gvp110" },
+  { from = "Picasso96Install/devs/monitors/Picasso96.info", to = "SYS:Devs/Monitors/GVP110.info", when = "card = gvp110" },
+  { from = "Picasso96Install/devs/monitors/Picasso96", to = "SYS:Devs/Monitors/Merlin", when = "card = merlin" },
+  { from = "Picasso96Install/devs/monitors/Picasso96.info", to = "SYS:Devs/Monitors/Merlin.info", when = "card = merlin" },
+  { from = "Picasso96Install/devs/monitors/Picasso96", to = "SYS:Devs/Monitors/oMniBus", when = "card = omnibus" },
+  { from = "Picasso96Install/devs/monitors/Picasso96.info", to = "SYS:Devs/Monitors/oMniBus.info", when = "card = omnibus" },
+  { from = "Picasso96Install/devs/monitors/Picasso96", to = "SYS:Devs/Monitors/PicassoII", when = "card = picasso-ii" },
+  { from = "Picasso96Install/devs/monitors/Picasso96.info", to = "SYS:Devs/Monitors/PicassoII.info", when = "card = picasso-ii" },
+  { from = "Picasso96Install/devs/monitors/Picasso96", to = "SYS:Devs/Monitors/PicassoIV", when = "card = picasso-iv" },
+  { from = "Picasso96Install/devs/monitors/Picasso96.info", to = "SYS:Devs/Monitors/PicassoIV.info", when = "card = picasso-iv" },
+  { from = "Picasso96Install/devs/monitors/Picasso96", to = "SYS:Devs/Monitors/Piccolo", when = "card = piccolo" },
+  { from = "Picasso96Install/devs/monitors/Picasso96.info", to = "SYS:Devs/Monitors/Piccolo.info", when = "card = piccolo" },
+  { from = "Picasso96Install/devs/monitors/Picasso96", to = "SYS:Devs/Monitors/PiccoloSD64", when = "card = piccolo-sd64" },
+  { from = "Picasso96Install/devs/monitors/Picasso96.info", to = "SYS:Devs/Monitors/PiccoloSD64.info", when = "card = piccolo-sd64" },
+  { from = "Picasso96Install/devs/monitors/Picasso96", to = "SYS:Devs/Monitors/Pixel64", when = "card = pixel64" },
+  { from = "Picasso96Install/devs/monitors/Picasso96.info", to = "SYS:Devs/Monitors/Pixel64.info", when = "card = pixel64" },
+  { from = "Picasso96Install/devs/monitors/Picasso96", to = "SYS:Devs/Monitors/Retina", when = "card = retina-z2" },
+  { from = "Picasso96Install/devs/monitors/Picasso96.info", to = "SYS:Devs/Monitors/Retina.info", when = "card = retina-z2" },
+  { from = "Picasso96Install/devs/monitors/Picasso96", to = "SYS:Devs/Monitors/RetinaBLT", when = "card = retina-blt-z3" },
+  { from = "Picasso96Install/devs/monitors/Picasso96.info", to = "SYS:Devs/Monitors/RetinaBLT.info", when = "card = retina-blt-z3" },
+  { from = "Picasso96Install/devs/monitors/Picasso96", to = "SYS:Devs/Monitors/S3ViRGE", when = "card = s3virge" },
+  { from = "Picasso96Install/devs/monitors/Picasso96.info", to = "SYS:Devs/Monitors/S3ViRGE.info", when = "card = s3virge" },
+  { from = "Picasso96Install/devs/monitors/Picasso96", to = "SYS:Devs/Monitors/Spectrum", when = "card = spectrum" },
+  { from = "Picasso96Install/devs/monitors/Picasso96.info", to = "SYS:Devs/Monitors/Spectrum.info", when = "card = spectrum" },
+  { from = "Picasso96Install/devs/monitors/Picasso96", to = "SYS:Devs/Monitors/Visiona", when = "card = visiona" },
+  { from = "Picasso96Install/devs/monitors/Picasso96.info", to = "SYS:Devs/Monitors/Visiona.info", when = "card = visiona" },
+
+  # --- the monitor timing settings file ---
+  # `(select #_monitor "devs/Picasso96Settings.15" "...31" ...)` copied
+  # to `#_settingsname`, which defaults to `SYS:Devs/Picasso96Settings`.
+  # `#_monitor` defaults to 1 — the second entry, 31 kHz — and NOVICE
+  # installs are forced to it, so that is this recipe's default too.
+  { from = "Picasso96Install/devs/Picasso96Settings.15", to = "SYS:Devs/Picasso96Settings", when = "monitor = 15khz" },
+  { from = "Picasso96Install/devs/Picasso96Settings.31", to = "SYS:Devs/Picasso96Settings", when = "monitor = 31khz" },
+  { from = "Picasso96Install/devs/Picasso96Settings.35.5", to = "SYS:Devs/Picasso96Settings", when = "monitor = 35.5khz" },
+  { from = "Picasso96Install/devs/Picasso96Settings.38", to = "SYS:Devs/Picasso96Settings", when = "monitor = 38khz" },
+  { from = "Picasso96Install/devs/Picasso96Settings.48", to = "SYS:Devs/Picasso96Settings", when = "monitor = 48khz" },
+  { from = "Picasso96Install/devs/Picasso96Settings.57", to = "SYS:Devs/Picasso96Settings", when = "monitor = 57khz" },
+  { from = "Picasso96Install/devs/Picasso96Settings.64", to = "SYS:Devs/Picasso96Settings", when = "monitor = 64khz" },
 ]
+
 assigns = [
   { name = "Picasso96", path = "SYS:Libs/Picasso96" },
 ]
 
-# BoardType is what tells the copied monitor program which board it is
-# driving, and the icon ships with an empty tool-type array — see
-# recipes/picasso96-2's own comment for the full reasoning and the
-# evidence behind it.
+# `(settooltype "BoardType" #_boardname)` / `(settooltype "SettingsFile"
+# #_settingsname)`. The monitor program reads BoardType back at boot to
+# know which board it is driving — mandatory, per P96_english.guide —
+# and the icon ships with an empty tool-type array, so a plain copy
+# would install an entry that looks present and does nothing.
 tooltypes = [
-  { path = "SYS:Devs/Monitors/uaegfx.info", set = { BoardType = "uaegfx" }, when = "card = uaegfx" },
-  { path = "SYS:Devs/Monitors/PicassoIV.info", set = { BoardType = "PicassoIV" }, when = "card = picasso-iv" },
-  { path = "SYS:Devs/Monitors/CVision3D.info", set = { BoardType = "CVision3D" }, when = "card = cybervision64-3d" },
-  { path = "SYS:Devs/Monitors/zz9000.info", set = { BoardType = "zz9000" }, when = "card = zz9000" },
-  { path = "SYS:Devs/Monitors/Graffity.info", set = { BoardType = "Graffity" }, when = "card = graffity" },
+  { path = "SYS:Devs/Monitors/uaegfx.info", set = { BoardType = "uaegfx", SettingsFile = "SYS:Devs/Picasso96Settings" }, when = "card = uaegfx" },
+  { path = "SYS:Devs/Monitors/Native.info", set = { BoardType = "Native", SettingsFile = "SYS:Devs/Picasso96Settings" }, when = "card = native" },
+  { path = "SYS:Devs/Monitors/Altais.info", set = { BoardType = "Altais", SettingsFile = "SYS:Devs/Picasso96Settings" }, when = "card = altais" },
+  { path = "SYS:Devs/Monitors/A2410.info", set = { BoardType = "A2410", SettingsFile = "SYS:Devs/Picasso96Settings" }, when = "card = a2410" },
+  { path = "SYS:Devs/Monitors/CVisionPPC.info", set = { BoardType = "CVisionPPC", SettingsFile = "SYS:Devs/Picasso96Settings" }, when = "card = cvision-ppc" },
+  { path = "SYS:Devs/Monitors/CyberVision.info", set = { BoardType = "CyberVision", SettingsFile = "SYS:Devs/Picasso96Settings" }, when = "card = cybervision64" },
+  { path = "SYS:Devs/Monitors/CVision3D.info", set = { BoardType = "CVision3D", SettingsFile = "SYS:Devs/Picasso96Settings" }, when = "card = cybervision64-3d" },
+  { path = "SYS:Devs/Monitors/Domino.info", set = { BoardType = "Domino", SettingsFile = "SYS:Devs/Picasso96Settings" }, when = "card = domino" },
+  { path = "SYS:Devs/Monitors/GBA-PII++.info", set = { BoardType = "GBA-PII++", SettingsFile = "SYS:Devs/Picasso96Settings" }, when = "card = gba-pii" },
+  { path = "SYS:Devs/Monitors/Graffity.info", set = { BoardType = "Graffity", SettingsFile = "SYS:Devs/Picasso96Settings" }, when = "card = graffity" },
+  { path = "SYS:Devs/Monitors/GVP110.info", set = { BoardType = "GVP110", SettingsFile = "SYS:Devs/Picasso96Settings" }, when = "card = gvp110" },
+  { path = "SYS:Devs/Monitors/Merlin.info", set = { BoardType = "Merlin", SettingsFile = "SYS:Devs/Picasso96Settings" }, when = "card = merlin" },
+  { path = "SYS:Devs/Monitors/oMniBus.info", set = { BoardType = "oMniBus", SettingsFile = "SYS:Devs/Picasso96Settings" }, when = "card = omnibus" },
+  { path = "SYS:Devs/Monitors/PicassoII.info", set = { BoardType = "PicassoII", SettingsFile = "SYS:Devs/Picasso96Settings" }, when = "card = picasso-ii" },
+  { path = "SYS:Devs/Monitors/PicassoIV.info", set = { BoardType = "PicassoIV", SettingsFile = "SYS:Devs/Picasso96Settings" }, when = "card = picasso-iv" },
+  { path = "SYS:Devs/Monitors/Piccolo.info", set = { BoardType = "Piccolo", SettingsFile = "SYS:Devs/Picasso96Settings" }, when = "card = piccolo" },
+  { path = "SYS:Devs/Monitors/PiccoloSD64.info", set = { BoardType = "PiccoloSD64", SettingsFile = "SYS:Devs/Picasso96Settings" }, when = "card = piccolo-sd64" },
+  { path = "SYS:Devs/Monitors/Pixel64.info", set = { BoardType = "Pixel64", SettingsFile = "SYS:Devs/Picasso96Settings" }, when = "card = pixel64" },
+  { path = "SYS:Devs/Monitors/Retina.info", set = { BoardType = "Retina", SettingsFile = "SYS:Devs/Picasso96Settings" }, when = "card = retina-z2" },
+  { path = "SYS:Devs/Monitors/RetinaBLT.info", set = { BoardType = "RetinaBLT", SettingsFile = "SYS:Devs/Picasso96Settings" }, when = "card = retina-blt-z3" },
+  { path = "SYS:Devs/Monitors/S3ViRGE.info", set = { BoardType = "S3ViRGE", SettingsFile = "SYS:Devs/Picasso96Settings" }, when = "card = s3virge" },
+  { path = "SYS:Devs/Monitors/Spectrum.info", set = { BoardType = "Spectrum", SettingsFile = "SYS:Devs/Picasso96Settings" }, when = "card = spectrum" },
+  { path = "SYS:Devs/Monitors/Visiona.info", set = { BoardType = "Visiona", SettingsFile = "SYS:Devs/Picasso96Settings" }, when = "card = visiona" },
 ]
 
 [options.card]
 type     = "enum"
-values   = ["uaegfx", "picasso-iv", "cybervision64-3d", "zz9000", "graffity"]
+values   = ["uaegfx", "native", "altais", "a2410", "cvision-ppc", "cybervision64", "cybervision64-3d", "domino", "gba-pii", "graffity", "gvp110", "merlin", "omnibus", "picasso-ii", "picasso-iv", "piccolo", "piccolo-sd64", "pixel64", "retina-z2", "retina-blt-z3", "s3virge", "spectrum", "visiona"]
 required = true
 
 # uaegfx is UAE-family emulator-internal RTG, not a real board driver —
-# needs an emulator that actually implements it.
+# needs an emulator that actually implements it. (3.6.2 ships no
+# uaegfx.card at all: the emulator supplies it, and this option installs
+# only the monitor entry that offers its modes.)
 [options.card.requires.uaegfx]
 emulator = ["amiberry", "winuae"]
 
+# The real script's monitor question, which decides which
+# Picasso96Settings template becomes DEVS:Picasso96Settings. Default 31
+# kHz is the script's own (`(set #_monitor 1)`, and NOVICE installs never
+# get asked).
+[options.monitor]
+type    = "enum"
+values  = ["15khz", "31khz", "35.5khz", "38khz", "48khz", "57khz", "64khz"]
+default = "31khz"
+
 [verify]
-exists = ["SYS:Libs/Picasso96API.library"]
+exists = [
+  "SYS:Libs/Picasso96API.library",
+  "SYS:Libs/Picasso96/rtg.library",
+  "SYS:Libs/Picasso96/emulation.library",
+  "SYS:Devs/Picasso96Settings",
+]

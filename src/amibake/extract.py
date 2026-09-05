@@ -172,11 +172,58 @@ def _expand_nested_adfs(tree: Tree) -> Tree:
     return merged
 
 
+# How much trailing junk past the end-of-archive marker to tolerate.
+# Real archives carry small amounts: iComp's own P96 3.6.2 release ends
+# `00 "1907\n"` — the marker, then five bytes of what looks like a build
+# or order stamp. 512 is far more than any real one seen and keeps the
+# rescan bounded.
+_LHA_TRAILING_SLACK = 512
+
+
 def _extract_lha(path: Path) -> Tree:
+    data = path.read_bytes()
     try:
         return _lha_members(lhafile.LhaFile(str(path)))
-    except lhafile.BadLhafile as e:
-        raise ExtractError(f"{path.name} is not a valid .lha archive: {e}") from e
+    except lhafile.BadLhafile as first_error:
+        tree = _lha_members_ignoring_trailing_junk(data)
+        if tree is not None:
+            return tree
+        raise ExtractError(
+            f"{path.name} is not a valid .lha archive: {first_error}") from first_error
+
+
+def _lha_members_ignoring_trailing_junk(data: bytes) -> Tree | None:
+    """Retry an archive that has bytes appended past its end-of-archive
+    marker, which `lhafile` refuses outright.
+
+    Its end-of-stream test is `fp.tell() == filesize - 1`: exactly one
+    byte — the 0x00 marker — may follow the last member, and anything
+    else makes it read the trailer as a header and fail with "Header is
+    broken". The `lha` CLI reads such an archive without complaint, and
+    so should this: the members are intact and fully parsed (all 118 of
+    P96 3.6.2's, checked directly) before the trailer is ever reached.
+
+    Rather than guess where the archive ends, try truncating at each
+    0x00 in the last `_LHA_TRAILING_SLACK` bytes, nearest the end first,
+    and let `lhafile` itself say which one is the real marker — a
+    truncation in the middle of a member's data doesn't parse. Bounded,
+    deterministic, and it never accepts an archive lhafile wouldn't."""
+    tail_start = max(0, len(data) - _LHA_TRAILING_SLACK)
+    candidates = [i for i, b in enumerate(data[tail_start:], tail_start) if b == 0]
+    for marker in reversed(candidates):
+        truncated = data[:marker + 1]
+        with tempfile.NamedTemporaryFile(suffix=".lha") as tmp:
+            tmp.write(truncated)
+            tmp.flush()
+            try:
+                return _lha_members(lhafile.LhaFile(tmp.name))
+            except Exception:
+                # lhafile signals a bad guess in several ways (its own
+                # BadLhafile, but also struct.error / decompression
+                # errors from reading a truncated member), all of which
+                # just mean "not the marker" — try the next candidate.
+                continue
+    return None
 
 
 def _lha_members(lf: lhafile.LhaFile) -> Tree:
