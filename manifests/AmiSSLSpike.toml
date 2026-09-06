@@ -1,0 +1,10 @@
+# Boot image for midge's AmiSSL de-risking spike (midge issue #3,
+# Milestone 2: tests/copperline/amissl-spike/). Matches midge's own
+# baseline (CLAUDE.md: 68020, AmigaOS 3.1+/3.2 reference) rather than the
+# proposal's RTG exemplar — no picasso96-3/classact, just AmiSSL on a
+# plain 68020.
+base     = "os3.2.2"
+machine  = { cpu = "68020", ram = "chip:1M,fast:8M" }
+packages = ["amissl = 5.27"]
+output   = ["dir"]
+emit     = ["copperline"]
