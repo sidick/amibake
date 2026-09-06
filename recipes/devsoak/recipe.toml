@@ -5,8 +5,9 @@
 # counts, unsupported commands) and that it keeps doing so for hours
 # under several tasks issuing overlapping I/O with multiple requests in
 # flight. Complements Chris Hooper's devtest (acceptance probing +
-# whole-device sweeps) by holding per-sector state over a fixed range,
-# so it can prove *content* correctness, not just command acceptance.
+# whole-device sweeps, shipped here as recipes/devtest) by holding
+# per-sector state over a fixed range, so it can prove *content*
+# correctness, not just command acceptance.
 #
 # *** This tool is deliberately destructive. *** It overwrites every
 # sector in the range it is pointed at, and there is no undo — the only

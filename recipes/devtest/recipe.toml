@@ -1,0 +1,77 @@
+# devtest 1.9 / 1.8 (github.com/cdhooper/amiga_devtest) — Chris Hooper's
+# block device test utility: talks straight to a trackdisk-style driver
+# (trackdisk.device, scsi.device, a4091.device, lide.device, …) to probe
+# which targets/LUNs respond, report geometry, measure read/write
+# throughput from different Amiga memory types, check data integrity,
+# report which packet types the driver supports, and issue individual
+# commands (including raw HD_SCSICMD) by hand.
+#
+# Pairs with recipes/devsoak, which names devtest as its complement in
+# its own readme: devtest probes what a driver accepts and sweeps whole
+# devices; devsoak holds per-sector state over a fixed range to prove
+# content correctness under sustained concurrent load. Neither depends
+# on the other — they're independent tools that answer different
+# questions about the same driver — so no `depends` here.
+#
+# *** Partly destructive, on demand. *** Unlike devsoak, devtest's
+# default operations are read-only; the write benchmark and the
+# destructive integrity tests are behind its own `-d` flag, which
+# additionally prompts ("Destructive test - are you sure? (y/n)") unless
+# `-y` is also given. Installing it is therefore safe in a way devsoak
+# is not — but the same rule applies: nothing here runs it, no
+# user-startup fragment, no assign.
+#
+# Aminet carries this too (disk/misc/devtest.lha) but currently lags at
+# 1.8 under a rolling unversioned filename. Upstream's tagged GitHub
+# releases carry a per-version asset name (`devtest_{version}.lha`), so
+# [source.github] is what lets this recipe offer more than one real
+# release — exactly the case docs/recipe-contract.md's [source.aminet]
+# caveat describes.
+#
+# Archive layout confirmed by reading the real 1.9 and 1.8 .lha files
+# with this project's own lhafile-based extractor: each holds a single
+# version-stamped `devtest_<version>/` directory with just the static
+# binary and README.md — no LICENSE file in the archive (the BSD-2-
+# Clause licence lives in the repo), no Installer script, no icons.
+#
+# That version-stamped top-level directory is why `from` is a wildcard:
+# install paths take no `{version}` substitution (only source URLs do),
+# so `devtest_#?/devtest` is what addresses both releases with one
+# entry. Both copies name an exact destination file rather than a
+# directory, deliberately — an into-directory copy preserves everything
+# below the pattern's literal prefix, which here would put the binary in
+# `SYS:C/1.9/devtest`.
+#
+# README.md is the whole manual (no .guide/.doc ships), so it goes to
+# this project's usual `SYS:Help/`, renamed `devtest.md` for the same
+# reason devsoak's is — `README.md` is far too generic for a shared
+# documentation drawer.
+
+[package]
+name     = "devtest"
+versions = ["1.9", "1.8"]
+
+[requires]
+# The binary's own refusal message is the authority here: "This program
+# requires AmigaOS 2.04 or higher." (confirmed in the real 1.9 binary;
+# neither README.md nor the repo states a floor anywhere else). Given
+# as the equivalent Kickstart floor, same convention segtracker and
+# reqtools use when that's what the real requirement pins to. No `cpu`
+# key: nothing upstream states a CPU floor above the 68000 baseline
+# this project already assumes.
+kickstart = ">= 37"
+
+[source.github]
+repo   = "cdhooper/amiga_devtest"
+asset  = "devtest_{version}.lha"
+tag    = "v{version}"
+sha256 = { "1.9" = "4029e68ec676ff7bbeaaf3ef60c67f7f27ff3dd96a13d052dfca6901789a3d58", "1.8" = "e434fc05cc80a9b88192dc758cf5ede77e342c6f4809078bfb6967605efeec85" }
+
+[install]
+copy = [
+  { from = "devtest_#?/devtest",   to = "SYS:C/devtest" },
+  { from = "devtest_#?/README.md", to = "SYS:Help/devtest.md" },
+]
+
+[verify]
+exists = ["SYS:C/devtest"]
