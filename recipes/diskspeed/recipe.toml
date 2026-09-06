@@ -1,0 +1,52 @@
+# DiskSpeed 4.2 (disk/moni/DiskSpeed42.lha) — Michael Sinz's disk/
+# filesystem performance tester, "the standard by which Amiga hard
+# disks and controllers are judged" per its own doc. Bundles ScsiSpeed,
+# a companion raw-device-read benchmark. Useful alongside devtest/
+# devsoak (recipes/devtest, recipes/devsoak) as a third, non-destructive
+# angle on driver/filesystem performance rather than correctness.
+#
+# Derived by downloading the real archive from Aminet and reading it
+# directly with this project's own lhafile-based extractor. Archive
+# layout: a top-level `DiskSpeed.info` (drawer icon) plus a `DiskSpeed/`
+# directory holding both binaries (DiskSpeed, ScsiSpeed), their own
+# Workbench icons, `DiskSpeed.doc`, a `POSTER` text file, and a `src/`
+# directory of full C/asm source plus per-file icons. No Installer
+# script and no install section in the doc at all — DiskSpeed.doc only
+# documents running it from Workbench (icon/tooltypes) or the CLI.
+# `src/`, `POSTER`, and every `.info` icon are skipped, matching this
+# project's established convention (lha/segtracker/devtest) of shipping
+# the command and its manual, not click-icon chrome or developer files.
+#
+# DiskSpeed.doc: "DiskSpeed 4.x will be the last 1.2/1.3 compatible
+# version of DiskSpeed" — genuinely Kickstart 1.2+, expressed as the
+# equivalent os floor since the doc itself talks in OS/Workbench release
+# terms throughout (its own ReadArgs-style CLI parsing is explicitly
+# *not* real ReadArgs(), "since that feature is only available as of
+# Release 2").
+
+[package]
+name        = "diskspeed"
+versions    = ["4.2"]
+depends     = []
+conflicts   = []
+provides    = []
+
+[requires]
+os          = ">= 1.2"
+
+[source.aminet]
+# Single version only, so {version} substitution isn't needed in the URL
+# (see docs/recipe-contract.md's [source.aminet] caveat about Aminet's
+# rolling unversioned filenames).
+url         = "disk/moni/DiskSpeed42.lha"
+sha256      = { "4.2" = "d91bc04bbe21220e1aa9d4893744466aa4f195192e352a101557285d4e160824" }
+
+[install]
+copy = [
+  { from = "DiskSpeed/DiskSpeed",     to = "SYS:C/" },
+  { from = "DiskSpeed/ScsiSpeed",     to = "SYS:C/" },
+  { from = "DiskSpeed/DiskSpeed.doc", to = "SYS:Help/" },
+]
+
+[verify]
+exists = ["SYS:C/DiskSpeed", "SYS:C/ScsiSpeed"]
