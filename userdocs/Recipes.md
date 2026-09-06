@@ -30,6 +30,7 @@ in `base = "..."`.
 | `bgui` | `41.11` | BOOPSI-based GUI toolkit (`bgui.library`). |
 | `bsdsocket-emulation` | `1.0` | No-op capability provider: satisfies a `bsdsocket` requirement without installing a real TCP/IP stack, via each emulator's own bsdsocket emulation. |
 | `classact` | `3.3` | BOOPSI GUI toolkit (`window.class`, `layout.gadget`, `listbrowser.gadget`, 30+ others) — needed by OS 3.1, bundled natively by OS 3.2. |
+| `devsoak` | `1.0` | Destructive correctness/soak tester for trackdisk-style block device drivers — installs the command only, never runs it. |
 | `lha` | `2.15` | The standard Amiga archiver — provides the `lha` capability for other recipes/tools to depend on. |
 | `mmulibs` | `3.2.2` | CPU support libraries (`680x0.library` + `68030`/`68040`/`68060.library`) — stops `CPU CHECKINSTALL` failing at boot on 68030+. |
 | `muforce` | `47.1` | mmu.library-aware memory-protection debugger (Enforcer's successor). |

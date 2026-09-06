@@ -1,0 +1,73 @@
+# devsoak 1.0 — a destructive correctness and soak tester for
+# trackdisk-style AmigaOS block device drivers. One run checks both
+# that every command a driver accepts does the right thing (bounds,
+# alignment, zero length, the 64-bit offset high word, stale ETD change
+# counts, unsupported commands) and that it keeps doing so for hours
+# under several tasks issuing overlapping I/O with multiple requests in
+# flight. Complements Chris Hooper's devtest (acceptance probing +
+# whole-device sweeps) by holding per-sector state over a fixed range,
+# so it can prove *content* correctness, not just command acceptance.
+#
+# *** This tool is deliberately destructive. *** It overwrites every
+# sector in the range it is pointed at, and there is no undo — the only
+# guard is the -d/-r/-y flags the operator passes by hand. Nothing here
+# runs it: no user-startup fragment, no assign, no icon. Installing the
+# recipe only puts the command on the tree; aiming it at a unit is
+# always a deliberate act by whoever runs the build.
+#
+# Both this project's usual freely-redistributable sources carry the
+# identical archive (verified 2026-09-06: Aminet dev/misc/devsoak.lha
+# and the GitHub v1.0 release asset are byte-identical, same sha256).
+# [source.github] is used here per docs/recipe-contract.md's stated
+# preference — upstream publishes tagged releases (`v{version}`), so
+# unlike Aminet's rolling unversioned devsoak.lha this can express more
+# than one installable version when 1.1 lands.
+#
+# Archive layout confirmed by reading the real downloaded .lha with
+# this project's own lhafile-based extractor, not guessed: a single
+# `devsoak/` directory holding the static binary, `devsoak.quirks`,
+# `README.md` and a BSD-2-Clause `LICENSE`.
+#
+# There is no Installer script and no install section in the readme —
+# it is a single self-contained binary plus one data file. Two notes on
+# the copies below:
+#   - `devsoak.quirks` (the seed list of known driver-specific behaviour
+#     to skip/expect/pin rather than report as a bug) MUST land beside
+#     the binary: README.md documents the lookup as "devsoak.quirks in
+#     the current directory, then PROGDIR:". Installing to `SYS:C/`
+#     without it would silently lose every quirk the seed file records.
+#   - `README.md` is the whole manual (there is no .guide/.doc in the
+#     archive), so it ships to this project's usual `SYS:Help/`,
+#     renamed to `devsoak.md` — `README.md` is far too generic a name
+#     for a shared documentation drawer. LICENSE is excluded, same as
+#     recipes/bgui and recipes/amipilot do with theirs.
+
+[package]
+name     = "devsoak"
+versions = ["1.0"]
+
+[requires]
+# devsoak.readme: "Requires: 68000" / "Architecture: m68k-amigaos >= 1.3",
+# and README.md: "Runs on Kickstart 1.3 and later, and on AROS m68k.
+# 68000-safe. No ixemul, no ReadArgs, no utility.library." The 1.3 floor
+# is real and deliberately defended upstream (built -mcrt=nix13 so libnix
+# can't drag in a V36+ utility.library dependency), so it is honest to
+# advertise it. 68000 is the baseline this project already assumes, so
+# no `cpu` key.
+os = ">= 1.3"
+
+[source.github]
+repo   = "sidick/devsoak"
+asset  = "devsoak.lha"
+tag    = "v{version}"
+sha256 = { "1.0" = "96f306e677d1507dae3ac773531757b189059e129e633961523a40c168b1e00c" }
+
+[install]
+copy = [
+  { from = "devsoak/devsoak",        to = "SYS:C/" },
+  { from = "devsoak/devsoak.quirks", to = "SYS:C/" },
+  { from = "devsoak/README.md",      to = "SYS:Help/devsoak.md" },
+]
+
+[verify]
+exists = ["SYS:C/devsoak", "SYS:C/devsoak.quirks"]
