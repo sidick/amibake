@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from ._validate import Checker, load_toml
+from ._validate import Checker, check_tooltype_values, load_toml
 from .errors import Problem
 from .versionspec import is_name, parse_constraint, parse_package_spec
 
@@ -13,8 +13,19 @@ CPU_FAMILIES = {"68000", "68010", "68020", "68030", "68040", "68060"}
 CHIPSETS = {"ocs", "ecs", "aga"}
 OUTPUT_FORMATS = {"hdf", "dir", "tgz", "zip"}
 EMULATORS = {"copperline", "amiberry", "winuae"}
+RUN_MODES = {"cli", "wbstartup"}
+RUN_KEYS = {"command", "args", "stack", "output", "detach", "mode",
+            "tooltypes", "startpri", "donotwait"}
+# Which keys only make sense for which mode. `command`, `stack` and
+# `mode` itself are mode-independent.
+_RUN_CLI_ONLY = {"args", "output", "detach"}
+_RUN_WBSTARTUP_ONLY = {"tooltypes", "startpri", "donotwait"}
+# Sugar key -> the tool type it lowers into; setting both in one entry
+# is a contradiction, not an override.
+_RUN_SUGAR_TOOLTYPES = {"stack": "STACK", "startpri": "STARTPRI",
+                        "donotwait": "DONOTWAIT"}
 
-TOP_KEYS = {"base", "machine", "packages", "output", "emit", "providers"}
+TOP_KEYS = {"base", "machine", "packages", "output", "emit", "providers", "run"}
 MACHINE_KEYS = {"cpu", "fpu", "mmu", "ram", "rtg", "chipset"}
 
 _RAM_SPEC_RE = re.compile(r"^(chip|fast|slow|z3):\d+[KMG]$")
@@ -42,6 +53,10 @@ def validate_manifest(path: Path) -> list[Problem]:
             if item not in allowed:
                 c.error(f"{key}[{i}]", f"unknown {kind} {item!r}",
                         f"use one of: {', '.join(sorted(allowed))}")
+
+    runs = c.typed(doc, "run", list, "", default=[])
+    for i, entry in enumerate(runs):
+        _check_run_entry(c, entry, f"run[{i}]")
 
     providers = c.typed(doc, "providers", dict, "", default={})
     for cap, provider in providers.items():
@@ -85,6 +100,59 @@ def _check_base(c: Checker, doc: dict) -> None:
     else:
         c.error("base", "base must be a name string or a table",
                 'e.g. base = "wb1.3" or base = { name = "wb1.3", boot = "cli" }')
+
+
+def _check_run_entry(c: Checker, entry, label: str) -> None:
+    """One [[run]] table: a program the built image runs at boot — via
+    the generated S:AmiBake-Startup script (mode "cli", the default) or
+    the SYS:WBStartup drawer (mode "wbstartup"). Spec: docs/manifest.md."""
+    if not isinstance(entry, dict):
+        c.error(label, "run entries must be tables",
+                'e.g. [[run]] with command = "C:devsoak", args = "..."')
+        return
+    c.unknown_keys(entry, RUN_KEYS, label)
+
+    command = c.typed(entry, "command", str, label, required=True)
+    if command is not None and ":" not in command:
+        c.error(f"{label}.command", f"{command!r} is not an Amiga path",
+                'name the installed program by an absolute Amiga path, e.g. '
+                '"C:devsoak" or "SYS:Tools/AmiInspect"')
+
+    mode = c.typed(entry, "mode", str, label, default="cli")
+    if mode not in RUN_MODES:
+        c.error(f"{label}.mode", f"unknown run mode {mode!r}",
+                f"use one of: {', '.join(sorted(RUN_MODES))}")
+        mode = "cli"
+
+    wrong = (_RUN_WBSTARTUP_ONLY if mode == "cli" else _RUN_CLI_ONLY) & set(entry)
+    for key in sorted(wrong):
+        other = "wbstartup" if mode == "cli" else "cli"
+        c.error(f"{label}.{key}",
+                f"{key!r} only applies to mode = \"{other}\" entries",
+                "remove it, or change this entry's mode")
+
+    stack = c.typed(entry, "stack", int, label)
+    if stack is not None and stack <= 0:
+        c.error(f"{label}.stack", f"stack must be a positive byte count, got {stack}",
+                "e.g. stack = 65536")
+    c.typed(entry, "args", str, label)
+    c.typed(entry, "detach", bool, label)
+    c.typed(entry, "startpri", int, label)
+    c.typed(entry, "donotwait", bool, label)
+    output = c.typed(entry, "output", str, label)
+    if output is not None and ":" not in output:
+        c.error(f"{label}.output", f"{output!r} is not an Amiga path",
+                'redirect to an absolute Amiga path, e.g. "T:devsoak.log" or "SER:"')
+
+    tooltypes = c.typed(entry, "tooltypes", dict, label)
+    if tooltypes is not None:
+        check_tooltype_values(c, tooltypes, f"{label}.tooltypes")
+        for sugar, tooltype in _RUN_SUGAR_TOOLTYPES.items():
+            if sugar in entry and any(k.lower() == tooltype.lower() for k in tooltypes):
+                c.error(f"{label}.tooltypes.{tooltype}",
+                        f"{tooltype} is also set via this entry's {sugar!r} key",
+                        "within one entry that's a contradiction, not an "
+                        "override — set it one way or the other")
 
 
 def _check_machine(c: Checker, machine: dict) -> None:

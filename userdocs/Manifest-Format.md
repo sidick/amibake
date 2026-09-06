@@ -117,6 +117,36 @@ the same capability (e.g. two different `bsdsocket` providers):
 providers = { bsdsocket = "roadshow" }
 ```
 
+## `[[run]]` — run a program at boot
+
+Each `[[run]]` entry names an already-installed program the built image
+should run at boot — the build fails if no package installed it:
+
+```toml
+[[run]]
+command = "C:devsoak"                # any spelling: C: and SYS:C/ agree
+args    = "scsi.device 0 -d -r 0,8M -t 30s -y"
+stack   = 65536                      # optional; defaults from the recipe
+output  = "SER:"                     # optional redirect (serial capture!)
+detach  = false                      # true = Run >NIL:, don't block boot
+
+[[run]]
+mode      = "wbstartup"              # SYS:WBStartup/ instead of a script
+command   = "SYS:Tools/AmiInspect"
+tooltypes = { CX_POPUP = "NO" }      # set on the WBStartup icon
+```
+
+`cli` entries (the default) become a generated `S:AmiBake-Startup`
+script, executed from `S:User-Startup` after every package's own
+startup fragments — works on every base, including Kickstart 1.3.
+`wbstartup` entries are copied into `SYS:WBStartup/` with their icon
+(which must ship with the package) patched with the resolved tool
+types — OS 2.0+ only, and the program must have an icon. A recipe may
+declare a program's stack needs and default tool types
+(`[install].commands`); the manifest always wins per key, with a
+warning (never an error) if it sets a stack *below* what the recipe
+declares. See `docs/manifest.md` for the full key table.
+
 ## Validation: lint time vs. resolve time
 
 `amibake lint` checks shape, types, known keys, and constraint syntax —

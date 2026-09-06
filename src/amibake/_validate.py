@@ -83,6 +83,22 @@ class Checker:
         return out
 
 
+def check_tooltype_values(c: Checker, tooltypes: dict, where: str) -> None:
+    """A tool-type map as [install].commands and a manifest [[run]] entry
+    declare it: string values are `NAME=value`, `true` is the bare
+    valueless name (DONOTWAIT), `false` removes/omits the tool type."""
+    for name, value in tooltypes.items():
+        if not isinstance(value, str | bool):
+            c.error(f"{where}.{name}",
+                    "tool type values must be strings or booleans",
+                    'a string sets NAME=value, true sets the bare valueless '
+                    'name (DONOTWAIT = true), false removes/omits it')
+        elif "=" in name:
+            c.error(f"{where}.{name}", "tool type names can't contain '='",
+                    "the name is the part before the '=' — write "
+                    '{ CX_POPUP = "NO" }, not { "CX_POPUP=NO" = "" }')
+
+
 def _typename(typ: type) -> str:
     return {str: "string", bool: "boolean", int: "integer", list: "array",
             dict: "table", float: "float"}.get(typ, typ.__name__)

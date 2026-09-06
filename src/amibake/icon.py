@@ -126,10 +126,17 @@ def read_tool_types(data: bytes) -> list[str]:
     return entries
 
 
-def set_tool_types(data: bytes, values: dict[str, str]) -> bytes:
+def set_tool_types(data: bytes, values: dict[str, str | bool]) -> bytes:
     """`data` with each `NAME=value` set — replaced in place if the name
     is already there (keeping its position, the way a real `tooltype`
     statement does), appended in sorted order otherwise.
+
+    A value of `True` writes the bare name with no `=` — the valueless
+    convention (`DONOTWAIT`): Workbench checks such tool types by
+    presence, and real icons ship them without a value. `False` removes
+    the tool type entirely if present (and adds nothing) — the
+    "fall back to the program's own default" spelling a manifest uses
+    to unset a recipe-declared tool type.
 
     Names are matched case-insensitively, as `FindToolType` matches
     them; the recipe's own spelling wins for the name it sets. Sorted
@@ -142,14 +149,29 @@ def set_tool_types(data: bytes, values: dict[str, str]) -> bytes:
     size = _tool_types_size(data, off)
     entries = read_tool_types(data)
 
+    def _format(name: str, value: str | bool) -> str | None:
+        if value is False:
+            return None
+        if value is True:
+            return name
+        return f"{name}={value}"
+
     remaining = dict(values)
-    for i, entry in enumerate(entries):
+    out_entries = []
+    for entry in entries:
         name = entry.partition("=")[0]
         match = next((k for k in remaining if k.lower() == name.lower()), None)
-        if match is not None:
-            entries[i] = f"{match}={remaining.pop(match)}"
+        if match is None:
+            out_entries.append(entry)
+            continue
+        formatted = _format(match, remaining.pop(match))
+        if formatted is not None:
+            out_entries.append(formatted)
     for name in sorted(remaining):
-        entries.append(f"{name}={remaining[name]}")
+        formatted = _format(name, remaining[name])
+        if formatted is not None:
+            out_entries.append(formatted)
+    entries = out_entries
 
     header = bytearray(data[:_HEADER_SIZE])
     # do_ToolTypes is a live RAM pointer that icon.library writes out

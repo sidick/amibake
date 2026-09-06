@@ -227,6 +227,23 @@ a revision number with an existing one would collide on the same
 `assets/roms/kickstart-{version}.rom` path; see `recipes/os3.1.4`'s
 own comments.
 
+## `[[run]]` mode = "wbstartup" needs a shipped icon
+
+A `wbstartup` run entry copies the program *and its icon* into
+`SYS:WBStartup/` — Workbench only starts what has an icon, and AmiBake
+cannot yet author a default `.info` from nothing (a structurally valid
+minimal icon needs a rendered image; generating one deterministically
+is future work). The build fails with a named error when
+`<command>.info` isn't in the tree. What manifests do instead: use the
+icon the package's archive ships (most WB tools have one), add one via
+the recipe's `[install].files`, or start the program from a `mode =
+"cli"` entry. Two adjacent honest gaps: the resolver checks the
+Kickstart 36+ floor but *not* whether the base actually runs `LoadWB`
+(a `boot = "cli"` wb1.3 build never scans WBStartup — the entry is
+silently inert there), and a `cli` entry's `Stack` line persists into
+subsequent entries because the base Shell's own default stack isn't
+knowable portably (documented in `docs/manifest.md`).
+
 ## AmigaDOS pattern matching subset
 
 `[install].copy`'s `from` patterns support the subset AmigaDOS

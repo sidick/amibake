@@ -17,7 +17,8 @@ from pathlib import Path
 from ._validate import load_toml
 from .errors import Problem
 from .machine import cpu_satisfies
-from .plan import BaseInfo, BuildPlan, ResolvedPackage
+from .paths import to_physical_path
+from .plan import BaseInfo, BuildPlan, ResolvedPackage, RunEntry
 from .versionspec import Constraint, max_satisfying, parse_constraint, parse_package_spec, satisfies
 
 
@@ -185,7 +186,13 @@ def resolve(manifest_path: Path, manifest: dict, library: dict[str, LoadedRecipe
                     f"in this build",
                     f"remove one of {name!r} / {conflict_name!r} from the manifest"))
 
-    if problems:
+    runs = _resolve_runs(problems, manifest_file, manifest.get("run") or [],
+                         base, base_info, [library[n] for n in order])
+
+    # Warnings (e.g. a [[run]] stack override below the recipe's declared
+    # default) never abort a resolve — the tool says it noticed, but
+    # assumes the manifest author meant it.
+    if any(p.severity == "error" for p in problems):
         return ResolveResult(None, problems)
 
     plan = BuildPlan(
@@ -195,8 +202,99 @@ def resolve(manifest_path: Path, manifest: dict, library: dict[str, LoadedRecipe
         packages=tuple(resolved[n] for n in order),
         output=tuple(manifest.get("output") or ["hdf"]),
         emit=tuple(emit),
+        runs=runs,
     )
-    return ResolveResult(plan, [])
+    return ResolveResult(plan, problems)
+
+
+def _amiga_path_key(path: str) -> str:
+    """Case- and alias-insensitive comparison key for an absolute Amiga
+    path, so `C:devsoak` and `SYS:C/devsoak` (one file on the single
+    output partition, per paths.py) compare equal — the same collapse
+    Tree._key applies, but usable on paths that aren't in a Tree yet."""
+    return to_physical_path(path).lower()
+
+
+# The [[run]] sugar keys and the tool types they lower into, lowest
+# precedence in the merge (manifest lint already rejected an entry
+# setting the same tool type both ways).
+_RUN_MODES_NEEDING_WBSTARTUP = ("wbstartup",)
+
+
+def _resolve_runs(problems: list[Problem], manifest_file: str, run_entries: list,
+                  base: LoadedRecipe, base_info: BaseInfo,
+                  package_recipes: list[LoadedRecipe]) -> tuple[RunEntry, ...]:
+    """Manifest [[run]] entries -> resolved RunEntry tuple: stack and
+    tool types merged per-key from (lowest to highest) the entry's own
+    sugar keys, the owning recipe's [install].commands declaration, and
+    the entry's explicit answers. Lint has already checked shapes; this
+    is the cross-document half."""
+    # Every resolved recipe's [install].commands, keyed by installed path.
+    declared: dict[str, dict] = {}
+    for recipe in (base, *package_recipes):
+        for cmd in ((recipe.doc.get("install") or {}).get("commands")) or []:
+            declared[_amiga_path_key(cmd["path"])] = cmd
+
+    runs: list[RunEntry] = []
+    for i, entry in enumerate(run_entries):
+        label = f"run[{i}]"
+        command = entry["command"]
+        mode = entry.get("mode", "cli")
+        recipe_cmd = declared.get(_amiga_path_key(command), {})
+
+        stack = entry.get("stack")
+        declared_stack = recipe_cmd.get("stack")
+        if stack is None:
+            stack = declared_stack
+        elif declared_stack is not None and stack < declared_stack:
+            problems.append(Problem(
+                manifest_file, f"{label}.stack",
+                f"stack {stack} is below the {declared_stack} the recipe "
+                f"declares for {command!r}",
+                "assuming the undersized stack is deliberate (crash-"
+                "reproduction setups are a real use); raise it to at least "
+                "the declared value to silence this",
+                severity="warning"))
+
+        tooltypes: tuple[tuple[str, str | bool], ...] = ()
+        if mode in _RUN_MODES_NEEDING_WBSTARTUP:
+            if (base_info.kickstart_version is not None
+                    and not satisfies(base_info.kickstart_version,
+                                      parse_constraint(">= 36"))):
+                problems.append(Problem(
+                    manifest_file, f"{label}.mode",
+                    f'mode = "wbstartup" needs Workbench 2.0+ (Kickstart 36+) '
+                    f"but base {base_info.name!r} is kickstart "
+                    f"{base_info.kickstart_version}",
+                    "the SYS:WBStartup drawer is a 2.0 convention Workbench 1.3 "
+                    'never scans — use a mode = "cli" entry instead'))
+            derived: dict[str, str | bool] = {"DONOTWAIT": True}
+            if stack is not None:
+                derived["STACK"] = str(stack)
+            if "startpri" in entry:
+                derived["STARTPRI"] = str(entry["startpri"])
+            if entry.get("donotwait") is False:
+                derived["DONOTWAIT"] = False
+            merged = dict(derived)
+            for layer_map in (recipe_cmd.get("tooltypes") or {},
+                              entry.get("tooltypes") or {}):
+                for name, value in layer_map.items():
+                    stale = next((k for k in merged if k.lower() == name.lower()), None)
+                    if stale is not None:
+                        del merged[stale]
+                    merged[name] = value
+            tooltypes = tuple(sorted(merged.items()))
+
+        runs.append(RunEntry(
+            command=command,
+            mode=mode,
+            args=entry.get("args", ""),
+            stack=stack,
+            output=entry.get("output"),
+            detach=bool(entry.get("detach")),
+            tooltypes=tooltypes,
+        ))
+    return tuple(runs)
 
 
 def _parse_manifest_base(base) -> tuple[str, dict]:

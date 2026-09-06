@@ -35,6 +35,24 @@ class ResolvedPackage:
 
 
 @dataclass(frozen=True)
+class RunEntry:
+    """One resolved [[run]] entry from the manifest: a program the built
+    image runs at boot. `stack` and `tooltypes` are post-merge — the
+    manifest's answer over the recipe's [install].commands default over
+    the sugar keys — so the builder applies them without re-consulting
+    any recipe. `tooltypes` values follow icon.set_tool_types'
+    convention: a string is NAME=value, True the bare valueless name,
+    False removal (only meaningful for mode "wbstartup")."""
+    command: str
+    mode: str = "cli"
+    args: str = ""
+    stack: int | None = None
+    output: str | None = None
+    detach: bool = False
+    tooltypes: tuple[tuple[str, str | bool], ...] = ()
+
+
+@dataclass(frozen=True)
 class BuildPlan:
     base: BaseInfo
     base_package: ResolvedPackage
@@ -42,6 +60,7 @@ class BuildPlan:
     packages: tuple[ResolvedPackage, ...]
     output: tuple[str, ...]
     emit: tuple[str, ...]
+    runs: tuple[RunEntry, ...] = ()
 
 
 def format_lockfile(plan: BuildPlan) -> str:
@@ -99,6 +118,24 @@ def format_lockfile(plan: BuildPlan) -> str:
             lines.append(f"[package.sources.{kind}]")
             for key in sorted(src):
                 lines.append(f"{key} = {toml_value(src[key])}")
+
+    for run in plan.runs:
+        lines.append("")
+        lines.append("[[run]]")
+        lines.append(f"command = {toml_value(run.command)}")
+        lines.append(f"mode = {toml_value(run.mode)}")
+        if run.args:
+            lines.append(f"args = {toml_value(run.args)}")
+        if run.stack is not None:
+            lines.append(f"stack = {toml_value(run.stack)}")
+        if run.output is not None:
+            lines.append(f"output = {toml_value(run.output)}")
+        if run.detach:
+            lines.append(f"detach = {toml_value(run.detach)}")
+        if run.tooltypes:
+            tt = ", ".join(f"{name} = {toml_value(value)}"
+                           for name, value in run.tooltypes)
+            lines.append(f"tooltypes = {{ {tt} }}")
 
     return "\n".join(lines) + "\n"
 

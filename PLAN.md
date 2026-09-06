@@ -742,6 +742,18 @@ aren't part of the M0-M10 sequence and haven't been sized/placed yet.
   alternate before raising `FetchError`, rather than failing on the
   first attempt.
 
+- **`[[run]]` follow-ons** (the manifest boot-run feature itself
+  shipped 2026-09-06 — `docs/manifest.md`'s `[[run]]` section,
+  `src/amibake/runs.py`): two honest gaps recorded in
+  `docs/limits.md` worth closing eventually. (1) Generating a minimal
+  deterministic `.info` icon from nothing, so `mode = "wbstartup"`
+  works for tools whose archive ships no icon — today the build fails
+  with a named error and the manifest must fall back to a `cli`
+  entry. (2) A resolve-time check that the base actually runs
+  `LoadWB` before accepting a `wbstartup` entry (a `boot = "cli"`
+  wb1.3 build never scans `SYS:WBStartup/`, making the entry
+  silently inert; the Kickstart 36+ floor *is* checked).
+
 ## Cross-cutting decisions to settle early (flagged, not blocking M0)
 
 1. **Settled in M4**: boot-verification channel — how CI observes "it

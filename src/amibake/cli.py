@@ -22,6 +22,7 @@ from .manifest import validate_manifest
 from .plan import BuildPlan, format_lockfile, write_lockfile
 from .recipe import validate_recipe
 from .resolver import LoadedRecipe, load_recipe_library, resolve
+from .runs import RunError
 from .verify import verify_exists
 
 
@@ -129,6 +130,8 @@ def _lint_then_resolve(manifest_path: Path, recipes_root: Path):
     result = resolve(manifest_path, manifest, library)
     if not result.ok:
         return None, None, result.problems, "resolve"
+    for problem in result.problems:  # warnings only, when ok
+        print(problem, file=sys.stderr)
     return result, library, [], ""
 
 
@@ -182,7 +185,7 @@ def _cmd_build(manifest_path: Path, recipes_root: Path, out_dir: Path | None,
     try:
         tree = build_tree(plan, cache_root, assets_root, use_cache=use_cache,
                           allow_hooks=allow_hooks)
-    except HookError as e:
+    except (HookError, RunError) as e:
         print(e, file=sys.stderr)
         return 1
 

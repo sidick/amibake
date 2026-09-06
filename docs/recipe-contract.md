@@ -258,6 +258,19 @@ expresses exactly that.
   recipe must ship one (`files` is the tool for that).
 - `assigns` — array of `{ name, path }`: assigns added at boot, e.g.
   `{ name = "AmiSSL", path = "SYS:Devs/AmiSSL" }`.
+- `commands` — array of `{ path, stack, tooltypes }`: purely
+  informational metadata about an installed *program* — nothing in the
+  build acts on it unless a manifest `[[run]]` entry (see
+  `docs/manifest.md`) names the same path, which then defaults its
+  `stack` and (for `mode = "wbstartup"`) its tool types from here. This
+  is where package knowledge belongs — the recipe author knows the
+  program's stack needs and, for a commodity, what its `CX_*` tool
+  types mean — while manifests stay terse and may still override
+  per-key. `path` is the installed destination (matched
+  alias-insensitively, so `C:foo` and `SYS:C/foo` agree); `stack` is
+  bytes; `tooltypes` values are strings (`NAME=value`), `true` (bare
+  valueless name, e.g. `DONOTWAIT`) or `false` (remove/omit). Declare a
+  `stack` only when upstream actually documents one — don't guess.
 - `tooltypes` — array of `{ path, set }` (plus an optional `when`, same
   rule as `copy`'s — including the list form, which is what lets one
   card's icon carry an extra tool type only when a second option asks

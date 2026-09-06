@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from ._validate import Checker, load_toml
+from ._validate import Checker, check_tooltype_values, load_toml
 from .errors import Problem
 from .manifest import EMULATORS
 from .versionspec import is_name, is_version, parse_constraint, parse_package_spec
@@ -25,7 +25,8 @@ DOS_TYPES = {
 PACKAGE_KEYS = {"name", "versions", "depends", "conflicts", "provides", "strategy"}
 REQUIRES_KEYS = {"os", "kickstart", "cpu", "fpu", "mmu", "emulator", "per-version"}
 SOURCE_KINDS = {"aminet", "github", "url", "assets"}
-INSTALL_KEYS = {"copy", "envarc", "user-startup", "assigns", "files", "tooltypes"}
+INSTALL_KEYS = {"copy", "envarc", "user-startup", "assigns", "files", "tooltypes",
+                "commands"}
 COPY_KEYS = {"from", "to", "variants", "when"}
 VARIANT_KEYS = {"path", "cpu", "fpu", "mmu"}
 VARIANT_PREDICATE_KEYS = {"cpu", "fpu", "mmu"}
@@ -490,6 +491,25 @@ def _check_install(c: Checker, install: dict) -> None:
                     "destinations are absolute Amiga paths like SYS:S/Startup-Sequence")
         c.typed(entry, "content", str, label, required=True)
         _check_when(c, entry, label)
+
+    for i, entry in enumerate(c.typed(install, "commands", list, "[install]", default=[])):
+        label = f"[install].commands[{i}]"
+        if not isinstance(entry, dict):
+            c.error(label, "commands entries must be tables",
+                    'e.g. { path = "SYS:C/devsoak", stack = 65536 }')
+            continue
+        c.unknown_keys(entry, {"path", "stack", "tooltypes"}, label)
+        path = c.typed(entry, "path", str, label, required=True)
+        if path is not None and ":" not in path:
+            c.error(f"{label}.path", f"{path!r} is not an Amiga path",
+                    "name the installed program by its destination path, e.g. "
+                    '"SYS:C/devsoak"')
+        stack = c.typed(entry, "stack", int, label)
+        if stack is not None and stack <= 0:
+            c.error(f"{label}.stack", f"stack must be a positive byte count, got {stack}",
+                    "e.g. stack = 65536")
+        tooltypes = c.typed(entry, "tooltypes", dict, label)
+        check_tooltype_values(c, tooltypes or {}, f"{label}.tooltypes")
 
     for i, entry in enumerate(c.typed(install, "assigns", list, "[install]", default=[])):
         label = f"[install].assigns[{i}]"
