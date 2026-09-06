@@ -202,13 +202,14 @@ def _check_sources(c: Checker, doc: dict, versions: list[str],
         if repo is not None and repo.count("/") != 1:
             c.error("[source.github].repo", f"bad repo {repo!r}",
                     'must be "owner/name", e.g. "jens-maus/amissl"')
-        asset = c.typed(github, "asset", str, "[source.github]", required=True)
-        if asset is not None and len(versions) > 1 and "{version}" not in asset:
-            c.error("[source.github].asset",
-                    "recipe lists multiple versions but the asset name has no "
-                    "{version} placeholder",
-                    "add {version} where the version appears in the asset name, "
-                    'e.g. "AmiSSL-{version}-OS3.lha"')
+        # No {version} requirement on `asset`, deliberately: the download
+        # URL is .../download/{tag}/{asset} and `tag` must carry {version}
+        # (checked below; default "{version}"), so the URL is version-
+        # unique even with a fixed asset name — the common GitHub shape of
+        # an unversioned asset attached to versioned tags (e.g. devsoak's
+        # devsoak.lha at v1.0 and v1.1). [source.url], which has no tag,
+        # keeps its own {version} requirement.
+        c.typed(github, "asset", str, "[source.github]", required=True)
         tag = c.typed(github, "tag", str, "[source.github]")
         if tag is not None and "{version}" not in tag:
             c.error("[source.github].tag",

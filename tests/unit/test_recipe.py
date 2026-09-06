@@ -178,14 +178,17 @@ def test_valid_github_source(write):
     assert problems == []
 
 
-def test_multi_version_asset_needs_placeholder(write):
+def test_multi_version_fixed_asset_name_is_valid(write):
+    """A fixed, unversioned asset name is the common GitHub shape (the
+    same asset filename attached to every versioned tag — devsoak's
+    devsoak.lha); the tag template carries {version}, keeping the
+    download URL version-unique, so this must lint clean."""
     text = (
         '[package]\nname = "pkg"\nversions = ["1.0", "2.0"]\n\n'
         '[source.github]\nrepo = "owner/name"\nasset = "pkg.lha"\n'
         f'sha256 = {{ "1.0" = "{SHA}", "2.0" = "{SHA}" }}\n'
     )
-    problems = errors_of(validate_recipe(write(text, name="recipe.toml", subdir="pkg")))
-    assert any("{version}" in p.problem for p in problems)
+    assert validate_recipe(write(text, name="recipe.toml", subdir="pkg")) == []
 
 
 def test_valid_assets_source_without_checksum(write):

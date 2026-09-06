@@ -1,4 +1,4 @@
-# devsoak 1.0 — a destructive correctness and soak tester for
+# devsoak 1.1 / 1.0 — a destructive correctness and soak tester for
 # trackdisk-style AmigaOS block device drivers. One run checks both
 # that every command a driver accepts does the right thing (bounds,
 # alignment, zero length, the 64-bit offset high word, stale ETD change
@@ -20,14 +20,24 @@
 # identical archive (verified 2026-09-06: Aminet dev/misc/devsoak.lha
 # and the GitHub v1.0 release asset are byte-identical, same sha256).
 # [source.github] is used here per docs/recipe-contract.md's stated
-# preference — upstream publishes tagged releases (`v{version}`), so
-# unlike Aminet's rolling unversioned devsoak.lha this can express more
-# than one installable version when 1.1 lands.
+# preference — upstream publishes tagged releases (`v{version}`), which
+# is exactly what let this recipe pick up 1.1 (released 2026-09-06)
+# alongside 1.0 while Aminet's rolling unversioned devsoak.lha can only
+# ever carry one of them.
 #
-# Archive layout confirmed by reading the real downloaded .lha with
-# this project's own lhafile-based extractor, not guessed: a single
-# `devsoak/` directory holding the static binary, `devsoak.quirks`,
-# `README.md` and a BSD-2-Clause `LICENSE`.
+# 1.1 adds partition mode: `devsoak DH1: -d ...` takes a mounted DOS
+# device name as the target, resolves its driver/unit/extent itself,
+# and keeps every probe inside that partition — built to pair with the
+# manifest's `[hdf].scratch` unformatted partition (docs/manifest.md),
+# which exists to give exactly this kind of destructive run a safe,
+# named target.
+#
+# Archive layout confirmed for both releases by reading the real
+# downloaded .lha files with this project's own lhafile-based
+# extractor, not guessed: a single `devsoak/` directory holding the
+# static binary, `devsoak.quirks`, `README.md` and a BSD-2-Clause
+# `LICENSE` — identical layout in 1.0 and 1.1, so one version-
+# independent copy list serves both.
 #
 # There is no Installer script and no install section in the readme —
 # it is a single self-contained binary plus one data file. Two notes on
@@ -45,7 +55,7 @@
 
 [package]
 name     = "devsoak"
-versions = ["1.0"]
+versions = ["1.1", "1.0"]
 
 [requires]
 # devsoak.readme: "Requires: 68000" / "Architecture: m68k-amigaos >= 1.3",
@@ -61,7 +71,7 @@ os = ">= 1.3"
 repo   = "sidick/devsoak"
 asset  = "devsoak.lha"
 tag    = "v{version}"
-sha256 = { "1.0" = "96f306e677d1507dae3ac773531757b189059e129e633961523a40c168b1e00c" }
+sha256 = { "1.1" = "319dd9a01a3d8d3d1120811d25ea6dadf9c101a01d32ea1972546082802aacb2", "1.0" = "96f306e677d1507dae3ac773531757b189059e129e633961523a40c168b1e00c" }
 
 [install]
 copy = [

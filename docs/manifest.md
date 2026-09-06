@@ -134,9 +134,12 @@ xfdPatch). Each `[[run]]` entry names an installed program by its
 destination Amiga path; the build fails if nothing installed it.
 
 ```toml
+[hdf]
+scratch = "8M"    # unformatted DH1 — a safe target for the run below
+
 [[run]]
 command = "C:devsoak"
-args    = "copperhf.device 0 -d -r 0,8M -t 30s -y"
+args    = "DH1: -d -t 30s -y"   # devsoak 1.1+ partition mode
 stack   = 65536
 output  = "SER:"
 

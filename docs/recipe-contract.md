@@ -106,12 +106,15 @@ all, since it has nothing to download.
 - **`[source.github]`** — freely-redistributable path, for upstreams that
   publish versioned GitHub Releases (common for actively maintained
   packages, e.g. AmiSSL at github.com/jens-maus/amissl). `repo` is
-  `"owner/name"`; `asset` is the release asset filename template with
-  `{version}` substituted (required when the recipe lists more than one
-  version, e.g. `"AmiSSL-{version}-OS3.lha"`); `tag` is the release tag
-  template, default `"{version}"` (override when a project prefixes tags,
-  e.g. `"v{version}"`); `sha256` maps every listed version to its archive
-  checksum, same rule as `[source.aminet]`. The download URL is built as
+  `"owner/name"`; `asset` is the release asset filename template,
+  `{version}`-substituted when the name carries the version (e.g.
+  `"AmiSSL-{version}-OS3.lha"`) — a fixed, unversioned asset name is
+  fine too, since the tag already makes the URL version-unique (the
+  common GitHub shape, e.g. devsoak's `devsoak.lha` at both v1.0 and
+  v1.1); `tag` is the release tag template, default `"{version}"`
+  (override when a project prefixes tags, e.g. `"v{version}"`), and
+  must contain `{version}`; `sha256` maps every listed version to its
+  archive checksum, same rule as `[source.aminet]`. The download URL is built as
   `https://github.com/{repo}/releases/download/{tag}/{asset}`.
 - **`[source.url]`** — freely-redistributable path, for anything not
   Aminet or GitHub (SourceForge, a project's own site, …). `url` is the
