@@ -112,17 +112,28 @@ assigns = [
 # mandatory, selects the type of the board"). The script also sets
 # SettingsFile and five optional display tweaks, all of which the guide
 # gives defaults for; SettingsFile defaults to `DEVS:Picasso96Settings`
-# and the rest to system behaviour, so this recipe sets only what is
-# mandatory and leaves the tuning to whoever has the real monitor.
+# and the rest to system behaviour, so by default this recipe sets only
+# what is mandatory. The guide-documented tuning tool types are exposed
+# as opt-in [options] below (each default = tool type absent = the
+# guide's own default), so a manifest can build test images with a
+# specific tuning without the recipe ever guessing at one.
 tooltypes = [
   { path = "SYS:Devs/Monitors/uaegfx.info", set = { BoardType = "uaegfx" }, when = "card = uaegfx" },
   { path = "SYS:Devs/Monitors/PicassoIV.info", set = { BoardType = "PicassoIV" }, when = "card = picasso-iv" },
   { path = "SYS:Devs/Monitors/CVision3D.info", set = { BoardType = "CVision3D" }, when = "card = cybervision64-3d" },
   { path = "SYS:Devs/Monitors/Graffity.info", set = { BoardType = "Graffity" }, when = "card = graffity" },
-  { path = "SYS:Devs/Monitors/uaegfx.info", set = { FakeNativeModes = "Yes" }, when = ["card = uaegfx", "fake-native-modes = true"] },
-  { path = "SYS:Devs/Monitors/PicassoIV.info", set = { FakeNativeModes = "Yes" }, when = ["card = picasso-iv", "fake-native-modes = true"] },
-  { path = "SYS:Devs/Monitors/CVision3D.info", set = { FakeNativeModes = "Yes" }, when = ["card = cybervision64-3d", "fake-native-modes = true"] },
-  { path = "SYS:Devs/Monitors/Graffity.info", set = { FakeNativeModes = "Yes" }, when = ["card = graffity", "fake-native-modes = true"] },
+
+  # Board-tuning entries use one pattern each rather than four per-card
+  # copies: `SYS:Devs/Monitors/#?.info` resolves to whichever single
+  # monitor icon this build's `card` answer installed (a pattern
+  # [install].tooltypes path must match exactly one icon this recipe's
+  # own copies created — see docs/recipe-contract.md). BoardType above
+  # can't consolidate only because its *value* differs per card.
+  { path = "SYS:Devs/Monitors/#?.info", set = { FakeNativeModes = "Yes" }, when = "fake-native-modes = true" },
+  { path = "SYS:Devs/Monitors/#?.info", set = { IgnoreMask = "Yes" },      when = "ignore-mask = true" },
+  { path = "SYS:Devs/Monitors/#?.info", set = { SoftSprite = "Yes" },      when = "soft-sprite = true" },
+  { path = "SYS:Devs/Monitors/#?.info", set = { BorderBlank = "Yes" },     when = "border-blank = true" },
+  { path = "SYS:Devs/Monitors/#?.info", set = { NoBlitter = "Yes" },       when = "no-blitter = true" },
 ]
 
 [options.card]
@@ -150,6 +161,38 @@ emulator = ["amiberry", "winuae"]
 # setting, not a better way to run a configured machine — it gives one
 # 640x480 mode and is explicitly not a replacement for a mode promoter.
 [options.fake-native-modes]
+type    = "bool"
+default = false
+
+# Board-tuning monitor-icon tool types, each grounded in
+# Picasso96_english.guide's own TOOLTYPES node (this 2.0 archive's copy
+# read directly). 2.0's vocabulary has no Interrupt tool type — that is
+# a 3.x addition, so no `interrupt` option here (recipes/picasso96-3
+# has it). BigSprite/DisplayChain/System2ScreenBlits/GrantDirectAccess
+# stay unexpressed until a manifest actually needs one.
+
+# "advisable... speeds up certain blitter functions on the boards using
+# Cirrus VGA chips. But be warned: this mode is not entirely compatible
+# to the native Amiga graphics system" — the guide's own bold text even
+# prescribes it for PicassoII scrolling speed parity.
+[options.ignore-mask]
+type    = "bool"
+default = false
+
+# "if set to 'Yes' then use software sprite in all modes" — exercises
+# the software-sprite path against a board's hardware sprite.
+[options.soft-sprite]
+type    = "bool"
+default = false
+
+# "switches screen border (default: like system)".
+[options.border-blank]
+type    = "bool"
+default = false
+
+# "the blitter on the graphics board will not be used at all... use it
+# only if you have serious problems" — the driver-triage knob.
+[options.no-blitter]
 type    = "bool"
 default = false
 

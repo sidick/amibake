@@ -233,29 +233,20 @@ tooltypes = [
   { path = "SYS:Devs/Monitors/S3ViRGE.info", set = { BoardType = "S3ViRGE", SettingsFile = "SYS:Devs/Picasso96Settings" }, when = "card = s3virge" },
   { path = "SYS:Devs/Monitors/Spectrum.info", set = { BoardType = "Spectrum", SettingsFile = "SYS:Devs/Picasso96Settings" }, when = "card = spectrum" },
   { path = "SYS:Devs/Monitors/Visiona.info", set = { BoardType = "Visiona", SettingsFile = "SYS:Devs/Picasso96Settings" }, when = "card = visiona" },
-  { path = "SYS:Devs/Monitors/uaegfx.info", set = { FakeNativeModes = "Yes" }, when = ["card = uaegfx", "fake-native-modes = true"] },
-  { path = "SYS:Devs/Monitors/Native.info", set = { FakeNativeModes = "Yes" }, when = ["card = native", "fake-native-modes = true"] },
-  { path = "SYS:Devs/Monitors/Altais.info", set = { FakeNativeModes = "Yes" }, when = ["card = altais", "fake-native-modes = true"] },
-  { path = "SYS:Devs/Monitors/A2410.info", set = { FakeNativeModes = "Yes" }, when = ["card = a2410", "fake-native-modes = true"] },
-  { path = "SYS:Devs/Monitors/CVisionPPC.info", set = { FakeNativeModes = "Yes" }, when = ["card = cvision-ppc", "fake-native-modes = true"] },
-  { path = "SYS:Devs/Monitors/CyberVision.info", set = { FakeNativeModes = "Yes" }, when = ["card = cybervision64", "fake-native-modes = true"] },
-  { path = "SYS:Devs/Monitors/CVision3D.info", set = { FakeNativeModes = "Yes" }, when = ["card = cybervision64-3d", "fake-native-modes = true"] },
-  { path = "SYS:Devs/Monitors/Domino.info", set = { FakeNativeModes = "Yes" }, when = ["card = domino", "fake-native-modes = true"] },
-  { path = "SYS:Devs/Monitors/GBA-PII++.info", set = { FakeNativeModes = "Yes" }, when = ["card = gba-pii", "fake-native-modes = true"] },
-  { path = "SYS:Devs/Monitors/Graffity.info", set = { FakeNativeModes = "Yes" }, when = ["card = graffity", "fake-native-modes = true"] },
-  { path = "SYS:Devs/Monitors/GVP110.info", set = { FakeNativeModes = "Yes" }, when = ["card = gvp110", "fake-native-modes = true"] },
-  { path = "SYS:Devs/Monitors/Merlin.info", set = { FakeNativeModes = "Yes" }, when = ["card = merlin", "fake-native-modes = true"] },
-  { path = "SYS:Devs/Monitors/oMniBus.info", set = { FakeNativeModes = "Yes" }, when = ["card = omnibus", "fake-native-modes = true"] },
-  { path = "SYS:Devs/Monitors/PicassoII.info", set = { FakeNativeModes = "Yes" }, when = ["card = picasso-ii", "fake-native-modes = true"] },
-  { path = "SYS:Devs/Monitors/PicassoIV.info", set = { FakeNativeModes = "Yes" }, when = ["card = picasso-iv", "fake-native-modes = true"] },
-  { path = "SYS:Devs/Monitors/Piccolo.info", set = { FakeNativeModes = "Yes" }, when = ["card = piccolo", "fake-native-modes = true"] },
-  { path = "SYS:Devs/Monitors/PiccoloSD64.info", set = { FakeNativeModes = "Yes" }, when = ["card = piccolo-sd64", "fake-native-modes = true"] },
-  { path = "SYS:Devs/Monitors/Pixel64.info", set = { FakeNativeModes = "Yes" }, when = ["card = pixel64", "fake-native-modes = true"] },
-  { path = "SYS:Devs/Monitors/Retina.info", set = { FakeNativeModes = "Yes" }, when = ["card = retina-z2", "fake-native-modes = true"] },
-  { path = "SYS:Devs/Monitors/RetinaBLT.info", set = { FakeNativeModes = "Yes" }, when = ["card = retina-blt-z3", "fake-native-modes = true"] },
-  { path = "SYS:Devs/Monitors/S3ViRGE.info", set = { FakeNativeModes = "Yes" }, when = ["card = s3virge", "fake-native-modes = true"] },
-  { path = "SYS:Devs/Monitors/Spectrum.info", set = { FakeNativeModes = "Yes" }, when = ["card = spectrum", "fake-native-modes = true"] },
-  { path = "SYS:Devs/Monitors/Visiona.info", set = { FakeNativeModes = "Yes" }, when = ["card = visiona", "fake-native-modes = true"] },
+
+  # The board-tuning tool types below use one pattern entry each instead
+  # of 23 per-card copies: `SYS:Devs/Monitors/#?.info` resolves to
+  # whichever single monitor icon this build's `card` answer installed
+  # (a pattern [install].tooltypes path must match exactly one icon this
+  # recipe's own copies created — see docs/recipe-contract.md). The
+  # BoardType/SettingsFile entries above can't consolidate the same way
+  # only because BoardType's *value* differs per card.
+  { path = "SYS:Devs/Monitors/#?.info", set = { FakeNativeModes = "Yes" }, when = "fake-native-modes = true" },
+  { path = "SYS:Devs/Monitors/#?.info", set = { IgnoreMask = "Yes" },      when = "ignore-mask = true" },
+  { path = "SYS:Devs/Monitors/#?.info", set = { SoftSprite = "Yes" },      when = "soft-sprite = true" },
+  { path = "SYS:Devs/Monitors/#?.info", set = { BorderBlank = "Yes" },     when = "border-blank = true" },
+  { path = "SYS:Devs/Monitors/#?.info", set = { NoBlitter = "Yes" },       when = "no-blitter = true" },
+  { path = "SYS:Devs/Monitors/#?.info", set = { Interrupt = "No" },        when = "interrupt = false" },
 ]
 
 [options.card]
@@ -296,6 +287,55 @@ default = false
 type    = "enum"
 values  = ["15khz", "31khz", "35.5khz", "38khz", "48khz", "57khz", "64khz"]
 default = "31khz"
+
+# Board-tuning monitor-icon tool types, each grounded in what
+# P96_english.guide (3.6.2's own, TOOLTYPES node + FAQ) documents.
+# Only the generally-applicable knobs are options; the expert/
+# board-specific ones the guide says to leave alone (MemoryClock,
+# MemoryType, TrueColorKludge, Sync, TrueColorPixShift, WaitStates,
+# InvMode, OSC1/OSC2, NOMASKEDBLITS) stay unexpressed until a manifest
+# actually needs one. Every default below = tool type absent = P96's
+# own documented default.
+
+# `IgnoreMask=Yes` — guide: "advisable to set this tool type to Yes to
+# speed up scrolling and rendering, though this mode is not entirely
+# compatible to rendering on the native Amiga" — a real compatibility
+# axis worth building test images both ways for.
+[options.ignore-mask]
+type    = "bool"
+default = false
+
+# `SoftSprite=Yes` — software-rendered mouse pointer in all modes; the
+# guide's own FAQ fix for sprite-color and pointer-flicker problems,
+# and the way to exercise the software-sprite rendering path against a
+# driver's hardware sprite.
+[options.soft-sprite]
+type    = "bool"
+default = false
+
+# `BorderBlank=Yes` — guide FAQ: workaround for a hardware defect of
+# early Cirrus chips (GD542x/GD5434 — Spectrum, Piccolo, PicassoII-era
+# boards) showing garbage in 4-bit planar autoscroll borders.
+[options.border-blank]
+type    = "bool"
+default = false
+
+# `NoBlitter=Yes` — guide: disables all blitter operations of the card;
+# "may help to isolate blitter related P96 problems". Slows everything
+# down, but that's the point: a driver-debugging knob, first thing to
+# flip when triaging a rendering bug in a .card/.chip driver.
+[options.no-blitter]
+type    = "bool"
+default = false
+
+# `Interrupt=No` — guide: some cards' interrupts cause instability;
+# disabling them is its documented last-resort workaround (and isolates
+# interrupt-path driver bugs). Default true = tool type absent = the
+# card's interrupt stays enabled, P96's own default; the tool type is
+# only written on an explicit `interrupt = false`.
+[options.interrupt]
+type    = "bool"
+default = true
 
 [verify]
 exists = [

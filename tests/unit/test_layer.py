@@ -333,6 +333,59 @@ def test_tooltypes_honours_when_like_copy_does():
         "BoardType=Graffity"]
 
 
+def test_tooltypes_pattern_path_finds_the_one_installed_icon():
+    """The P96 case the pattern form exists for: one option-gated entry
+    covering whichever card's monitor icon this build installed."""
+    archive = Tree()
+    archive.put("Picasso96Install/Devs/Monitors/Picasso96.info", _blank_icon())
+    install = {
+        "copy": [{"from": "Picasso96Install/Devs/Monitors/Picasso96.info",
+                  "to": "SYS:Devs/Monitors/Graffity.info", "when": "card = graffity"}],
+        "tooltypes": [{"path": "SYS:Devs/Monitors/#?.info",
+                       "set": {"IgnoreMask": "Yes"}, "when": "ignore-mask = true"}],
+    }
+    tree = apply_layer(Tree(), "picasso96-3", install, archive,
+                       options={"card": "graffity", "ignore-mask": True})
+
+    assert read_tool_types(tree.get("SYS:Devs/Monitors/Graffity.info").data) == [
+        "IgnoreMask=Yes"]
+
+
+def test_tooltypes_pattern_never_matches_what_the_base_installed():
+    """A pattern matches only this layer's own copy/files destinations —
+    a base's unrelated monitor icons must not be silently caught."""
+    base = Tree()
+    base.put("SYS:Devs/Monitors/PAL.info", _blank_icon())
+    install = {"tooltypes": [{"path": "SYS:Devs/Monitors/#?.info",
+                              "set": {"IgnoreMask": "Yes"}}]}
+    with pytest.raises(LayerError, match="matched nothing this recipe installed"):
+        apply_layer(base, "picasso96-3", install, Tree())
+
+
+def test_tooltypes_pattern_matching_two_installs_is_a_named_error():
+    archive = Tree()
+    archive.put("a.info", _blank_icon())
+    archive.put("b.info", _blank_icon())
+    install = {
+        "copy": [{"from": "a.info", "to": "SYS:Devs/Monitors/A.info"},
+                 {"from": "b.info", "to": "SYS:Devs/Monitors/B.info"}],
+        "tooltypes": [{"path": "SYS:Devs/Monitors/#?.info", "set": {"X": "1"}}],
+    }
+    with pytest.raises(LayerError, match="matched 2 installed paths"):
+        apply_layer(Tree(), "p", install, archive)
+
+
+def test_tooltypes_pattern_matches_files_destinations_too():
+    install = {
+        "files": [{"to": "SYS:Devs/Monitors/Custom.info", "content": ""}],
+        "tooltypes": [{"path": "SYS:Devs/#?/Custom.info", "set": {"X": "1"}}],
+    }
+    # The empty files content isn't a real icon — the pattern resolution
+    # itself is what's under test; the icon parse then fails by name.
+    with pytest.raises(LayerError, match="Custom.info"):
+        apply_layer(Tree(), "p", install, Tree())
+
+
 def test_tooltypes_on_a_file_nothing_installed_is_a_named_error():
     install = {"tooltypes": [{"path": "SYS:Devs/Monitors/Ghost.info",
                               "set": {"BoardType": "Ghost"}}]}

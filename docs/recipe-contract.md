@@ -287,7 +287,15 @@ expresses exactly that.
   `path` names the icon by its *destination* path — an earlier `copy` or
   `files` entry must already have put it in the tree, or the build fails
   naming the recipe. Applied after all copies, the real installer's own
-  order. A name already present is replaced in place (matched
+  order. `path` may also be an AmigaDOS pattern (same subset `from`
+  uses): it then must match **exactly one** destination this recipe's
+  own copy/files entries installed (never anything a base or another
+  package put in the tree — a pattern can't silently catch unrelated
+  icons). That's what lets one option-gated entry apply to "whichever
+  icon this recipe installed" instead of enumerating every combination
+  — P96's real case: one `{ path = "SYS:Devs/Monitors/#?.info", set =
+  { IgnoreMask = "Yes" }, when = "ignore-mask = true" }` covers all 23
+  cards, because each build installs exactly one card's monitor icon. A name already present is replaced in place (matched
   case-insensitively, as `FindToolType` matches); new names are appended
   in sorted order, so the output stays deterministic. Values are always
   strings. A commented-out tool type is written the way a real Installer

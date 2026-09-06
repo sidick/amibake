@@ -151,6 +151,32 @@ def _select_variant(package_name: str, variants: list[dict], archive: Tree,
     return None
 
 
+def _resolve_tooltypes_path(package_name: str, path: str,
+                            installed: list[str]) -> str:
+    """A [install].tooltypes `path` may be an AmigaDOS pattern (same
+    subset `from` uses) instead of an exact path — it then must match
+    exactly one destination this layer's own copy/files entries
+    installed. This is what lets one option-gated entry say "the monitor
+    icon this recipe installed, whichever card was chosen" instead of
+    enumerating every card × option combination (P96's 23 per-card
+    icons were the motivating case). Deliberately matched against this
+    layer's own installs, never the whole tree, so a base's unrelated
+    icons can't be caught by a package's pattern."""
+    if not any(w in path for w in ("#?", "?", "(")):
+        return path
+    regex = _amiga_pattern_to_regex(path)
+    matches = sorted({p for p in installed if regex.match(p)})
+    if len(matches) != 1:
+        detail = ("matched nothing this recipe installed" if not matches else
+                  f"matched {len(matches)} installed paths ({', '.join(matches)})")
+        raise LayerError(
+            f"{package_name}: [install].tooltypes pattern {path!r} {detail} — "
+            f"a pattern path must match exactly one icon this recipe's own "
+            f"copy/files entries put in the tree; narrow the pattern (or use "
+            f"an exact path)")
+    return matches[0]
+
+
 def apply_layer(base: Tree, package_name: str, install: dict, archive: Tree,
                 options: dict | None = None, machine: dict | None = None) -> Tree:
     """Apply one recipe's [install] section to `base`, returning a new
@@ -162,6 +188,11 @@ def apply_layer(base: Tree, package_name: str, install: dict, archive: Tree,
     tree = base.clone()
     options = options or {}
     machine = machine or {}
+    # Destination paths this layer's own copy/files entries create, in
+    # order — what a wildcard [install].tooltypes path matches against
+    # (never the whole tree: a base's own icons must not be silently
+    # caught by a package's pattern).
+    installed: list[str] = []
 
     for entry in install.get("copy") or []:
         when = entry.get("when")
@@ -215,6 +246,7 @@ def apply_layer(base: Tree, package_name: str, install: dict, archive: Tree,
             # way).
             src = archive.get(chosen_path if chosen_path is not None else src_path)
             tree.put(dest, src.data, src.meta)
+            installed.append(dest)
 
     for entry in install.get("envarc") or []:
         tree.put(f"ENVARC:{entry['name']}", entry["content"].encode("latin-1"))
@@ -224,6 +256,7 @@ def apply_layer(base: Tree, package_name: str, install: dict, archive: Tree,
         if when is not None and not _when_matches(when, options):
             continue
         tree.put(entry["to"], entry["content"].encode("latin-1"))
+        installed.append(entry["to"])
 
     # After copy/files: a tool type is set on an icon one of those just
     # put in the tree (the real Installer's own order — `copylib` the
@@ -232,7 +265,7 @@ def apply_layer(base: Tree, package_name: str, install: dict, archive: Tree,
         when = entry.get("when")
         if when is not None and not _when_matches(when, options):
             continue
-        path = entry["path"]
+        path = _resolve_tooltypes_path(package_name, entry["path"], installed)
         if not tree.exists(path):
             raise LayerError(
                 f"{package_name}: [install].tooltypes names {path!r}, which no "
