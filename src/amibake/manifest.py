@@ -25,9 +25,11 @@ _RUN_WBSTARTUP_ONLY = {"tooltypes", "startpri", "donotwait"}
 _RUN_SUGAR_TOOLTYPES = {"stack": "STACK", "startpri": "STARTPRI",
                         "donotwait": "DONOTWAIT"}
 
-TOP_KEYS = {"base", "machine", "packages", "output", "emit", "providers", "run", "hdf"}
+TOP_KEYS = {"base", "machine", "packages", "output", "emit", "providers", "run", "hdf",
+            "emulator-config"}
 MACHINE_KEYS = {"cpu", "fpu", "mmu", "ram", "rtg", "chipset"}
 HDF_KEYS = {"size", "scratch"}
+HDF_CONTROLLERS = {"copperhf", "lide"}
 
 _RAM_SPEC_RE = re.compile(r"^(chip|fast|slow|z3):\d+[KMG]$")
 _SIZE_RE = re.compile(r"^\d+[KMG]$")
@@ -59,6 +61,9 @@ def validate_manifest(path: Path) -> list[Problem]:
     hdf = c.typed(doc, "hdf", dict, "", default=None)
     if hdf is not None:
         _check_hdf(c, hdf, doc)
+
+    emulator_config = c.typed(doc, "emulator-config", dict, "", default={})
+    _check_emulator_config(c, emulator_config)
 
     runs = c.typed(doc, "run", list, "", default=[])
     for i, entry in enumerate(runs):
@@ -124,6 +129,41 @@ def _check_hdf(c: Checker, hdf: dict, doc: dict) -> None:
         c.error("hdf", "[hdf] configures the hdf output, which this manifest's "
                 "explicit output list does not include",
                 'add "hdf" to output, or drop the [hdf] table')
+
+
+def _check_emulator_config(c: Checker, emulator_config: dict) -> None:
+    """Manifest-level [emulator-config.<emitter>]: the same shape as a
+    recipe's (see docs/recipe-contract.md) — literal directives in the
+    target emulator's own vocabulary — merged after every resolved
+    recipe's directives, so the manifest wins on conflict. One directive
+    is AmiBake's own, interpreted rather than passed through:
+    copperline's `hdf-controller` picks which Copperline controller
+    mounts the built hdf."""
+    for emitter, directives in emulator_config.items():
+        where = f"emulator-config.{emitter}"
+        if emitter not in EMULATORS:
+            c.error(where, f"unknown emulator {emitter!r}",
+                    f"use one of: {', '.join(sorted(EMULATORS))}")
+        if not isinstance(directives, dict):
+            c.error(where, "must be a table", 'e.g. { "hostsocket.net" = "host" }')
+            continue
+        for key, value in directives.items():
+            if not isinstance(value, str | int | bool):
+                c.error(f"{where}.{key}",
+                        "directive values must be strings, integers or booleans",
+                        "check the target emulator's config format for the "
+                        "expected type")
+        if "hdf-controller" in directives:
+            controller = directives["hdf-controller"]
+            if emitter != "copperline":
+                c.error(f"{where}.hdf-controller",
+                        "hdf-controller is a copperline-only directive (only that "
+                        "emitter mounts the built hdf)",
+                        "move it under [emulator-config.copperline], or drop it")
+            elif controller not in HDF_CONTROLLERS:
+                c.error(f"{where}.hdf-controller",
+                        f"unknown hdf controller {controller!r}",
+                        f"use one of: {', '.join(sorted(HDF_CONTROLLERS))}")
 
 
 def _check_run_entry(c: Checker, entry, label: str) -> None:

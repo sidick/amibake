@@ -179,42 +179,52 @@ oracle.
 
 ## Emulator config: hardfile boot on Copperline only
 
-`emit/copperline.py` boots either output: an `hdf` attached to
-`[lide]` (preferred — it boots the real RDB artifact), or a `dir` as a
-`[[filesys]]` HOSTFS volume. `emit/uae.py` (Amiberry/WinUAE) still
-mounts a `dir` only, via `filesystem2=`; its own `uaehf0`/`hardfile2`
-path isn't grounded against a real example yet, so a manifest emitting
-`amiberry`/`winuae` needs `dir` in `output` regardless of what
-Copperline would accept. A manifest with `emit` set and nothing
-bootable in `output` fails with a named error.
+`emit/copperline.py` boots either output: an `hdf` attached to a
+hardfile controller (preferred — it boots the real RDB artifact), or a
+`dir` as a `[[filesys]]` HOSTFS volume. `emit/uae.py` (Amiberry/
+WinUAE) still mounts a `dir` only, via `filesystem2=`; its own
+`uaehf0`/`hardfile2` path isn't grounded against a real example yet,
+so a manifest emitting `amiberry`/`winuae` needs `dir` in `output`
+regardless of what Copperline would accept. A manifest with `emit` set
+and nothing bootable in `output` fails with a named error.
 
-**`[ide]` is the road not taken, and not because Copperline can't.**
-Worth spelling out, because this emitter's own error used to read "no
-IDE/hard-disk-controller modeling yet" and another project read that as
-a claim about the emulator. Both Copperline routes work; they differ in
-what they ask of the config (checked against 0.18.0):
+Which controller mounts the hdf is the manifest's
+`[emulator-config.copperline] hdf-controller` directive (see
+`docs/manifest.md`). Three Copperline routes exist; they differ in
+what they ask of the config and in authenticity (checked against
+0.18.0/0.19.0):
 
-- `[ide]` is the real Gayle (A600/A1200) or A4000 IDE port, and needs a
-  machine that *has* one: `[machine] profile = "A600"`/`"A1200"`/
-  `"A4000"` (the A3000 has motherboard SCSI instead; an A500 carries
-  Fat Gary, no Gayle at all). Without it Copperline refuses —
-  *"[ide] images need a machine with an IDE port"*. AmiBake's `machine`
-  block has no profile axis to derive one from, so that error is
-  AmiBake's gap showing, not the emulator's.
-- `[lide]` is Copperline's built-in lide.device-compatible Zorro II
-  board (RIPPLE by default, also RIDE/AT-Bus 2008): no machine profile
-  needed, any model, autoboots under any Kickstart including 1.3, own
-  bundled ROM. Hence the choice here. Its config shape changed in 0.18:
-  named `drive0`..`drive3` keys, one per (channel, master/slave) slot,
-  replacing the positional `drives = [...]` array (still read, but it
-  can't express an empty slot).
-
-The remaining real limit is authenticity, not capability: a build whose
-`machine` block says A1200 boots off a Zorro II IDE board no A1200 ever
-had, instead of the Gayle port it does have. Fine for verifying that a
-build boots; wrong if the thing under test is the machine's own
-controller. A machine-profile axis is what would fix that, and would
-unlock `[ide]` at the same time.
+- `[copperhf]` (the default since Copperline 0.19 shipped it,
+  2026-09-06) — Copperline's emulator-only virtual hardfile
+  controller, copperhf.device: the equivalent of WinUAE's
+  uaehf.device, with no real board's registers or timing modeled at
+  all. No machine profile needed, autoboot ROM baked into the
+  emulator, `unit0`..`unit6` slots. The honest default *because* it
+  models nothing real: it claims to be nothing the machine wouldn't
+  have had, where a `[lide]` A1200 build boots off a Zorro II board no
+  A1200 ever carried.
+- `[lide]` (`hdf-controller = "lide"`, the pre-0.19 default) —
+  Copperline's built-in lide.device-compatible Zorro II board (RIPPLE
+  by default, also RIDE/AT-Bus 2008): no machine profile needed, any
+  model, autoboots under any Kickstart including 1.3, own bundled ROM.
+  The right choice when the thing under test is a real controller
+  stack (lide.device itself, RDB parsing by a real driver). Its config
+  shape changed in 0.18: named `drive0`..`drive3` keys, one per
+  (channel, master/slave) slot, replacing the positional
+  `drives = [...]` array (still read, but it can't express an empty
+  slot).
+- `[ide]` — the road still not taken, and not because Copperline
+  can't. Worth spelling out, because this emitter's own error used to
+  read "no IDE/hard-disk-controller modeling yet" and another project
+  read that as a claim about the emulator. `[ide]` is the real Gayle
+  (A600/A1200) or A4000 IDE port, and needs a machine that *has* one:
+  `[machine] profile = "A600"`/`"A1200"`/`"A4000"` (the A3000 has
+  motherboard SCSI instead; an A500 carries Fat Gary, no Gayle at
+  all). Without it Copperline refuses — *"[ide] images need a machine
+  with an IDE port"*. AmiBake's `machine` block has no profile axis to
+  derive one from, so that error is AmiBake's gap showing, not the
+  emulator's. A machine-profile axis is what would unlock it — the
+  route for when the thing under test is the machine's own port.
 
 Both emitters mount exactly one volume even when both outputs exist —
 they share a volume name, and two identically-named volumes give the

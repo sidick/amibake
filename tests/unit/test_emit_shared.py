@@ -48,6 +48,20 @@ def test_other_emitters_ignored():
     assert collect_emulator_config(plan, library, "copperline") == {"hostsocket.net": "host"}
 
 
+def test_manifest_directives_win_over_recipes():
+    library = {
+        "somebase": _recipe("somebase", {"emulator-config": {
+            "copperline": {"k": "recipe", "only-recipe": "r"}}}),
+    }
+    plan = BuildPlan(
+        base=BaseInfo(name="somebase"), base_package=_pkg("somebase"),
+        machine={}, packages=(), output=("hdf",), emit=(),
+        emulator_config={"copperline": {"k": "manifest", "only-manifest": "m"}},
+    )
+    assert collect_emulator_config(plan, library, "copperline") == {
+        "k": "manifest", "only-recipe": "r", "only-manifest": "m"}
+
+
 def test_no_directives_is_empty():
     library = {"somebase": _recipe("somebase", {})}
     plan = BuildPlan(

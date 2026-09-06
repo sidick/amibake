@@ -401,10 +401,17 @@ responsibility to get right, same as any other emulator-specific
 setting. Every resolved recipe's directives for a given emitter are
 merged (base first, then packages in resolution order; a later
 recipe's key wins on conflict — same "last layer wins" rule as
-`[install]`). For the `amiberry`/`winuae` (flat `key=value` `.uae`
-format) emitter, a key is written as-is. For `copperline` (nested
-TOML), a key may use `.` to address a nested table — `"hostsocket.net"`
-sets `net` inside `[hostsocket]`.
+`[install]`), and the manifest's own `[emulator-config.<emitter>]`
+table (see `docs/manifest.md`) merges last of all — the manifest
+describes the test setup, so it outranks any recipe. For the
+`amiberry`/`winuae` (flat `key=value` `.uae` format) emitter, a key is
+written as-is. For `copperline` (nested TOML), a key may use `.` to
+address a nested table — `"hostsocket.net"` sets `net` inside
+`[hostsocket]`. One directive is AmiBake's own, interpreted rather
+than passed through: copperline's `hdf-controller` (`"copperhf"` |
+`"lide"`), which picks the controller the built hdf is attached to —
+a recipe may set it (e.g. a recipe whose subject is the lide.device
+stack itself), but it's normally the manifest's call.
 
 ## `[hook]` — the fenced escape hatch
 

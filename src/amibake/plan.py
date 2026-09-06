@@ -73,6 +73,10 @@ class BuildPlan:
     emit: tuple[str, ...]
     runs: tuple[RunEntry, ...] = ()
     hdf: HdfOptions = HdfOptions()
+    # The manifest's own [emulator-config.<emitter>] tables, verbatim —
+    # merged by emit.collect_emulator_config after every recipe's
+    # directives, so the manifest wins on key conflict.
+    emulator_config: dict = field(default_factory=dict)
 
 
 def format_lockfile(plan: BuildPlan) -> str:
@@ -86,6 +90,13 @@ def format_lockfile(plan: BuildPlan) -> str:
         f"output = {toml_value(list(plan.output))}",
         f"emit = {toml_value(list(plan.emit))}",
     ]
+
+    for emitter in sorted(plan.emulator_config):
+        directives = plan.emulator_config[emitter]
+        lines.append("")
+        lines.append(f"[emulator-config.{emitter}]")
+        for key in sorted(directives):
+            lines.append(f"{toml_value(key)} = {toml_value(directives[key])}")
 
     if plan.hdf.size is not None or plan.hdf.scratch is not None:
         lines.append("")

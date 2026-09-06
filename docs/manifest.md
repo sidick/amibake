@@ -31,6 +31,7 @@ emit     = ["copperline", "amiberry"]
 | `emit` | array of string | no | Emulator configurations to emit, any of `copperline`, `amiberry`, `winuae`. Default: none. `amibake build` writes `<manifest-stem>.copperline.toml` / `<manifest-stem>-amiberry.uae` / `<manifest-stem>-winuae.uae` alongside the build outputs, once `[verify]` passes. Needs something bootable in `output` — `copperline` takes an `hdf` (attached to `[lide]`, preferred when present) or a `dir` (`[[filesys]]` HOSTFS); `amiberry`/`winuae` still need a `dir` (`filesystem2=`), their hardfile path not being grounded yet — and a Kickstart ROM at `assets/roms/kickstart-{the base recipe's [base].kickstart-version}.rom`, under the same `--assets` root recipes use for their own proprietary media. |
 | `providers` | table | no | Capability → package name, resolving provider ambiguity (e.g. `bsdsocket = "roadshow"`). |
 | `hdf` | table | no | Shapes the `hdf` output image (size, scratch partition); see `[hdf]` below. An error if `output` is given explicitly and doesn't include `hdf`. |
+| `emulator-config` | table | no | Per-emitter literal config directives, merged over every recipe's own — see `[emulator-config.*]` below. |
 | `run` | array of tables | no | Programs the built image runs at boot; see `[[run]]` below. |
 
 Unknown top-level keys are an error, not ignored — a typo must fail, not
@@ -74,6 +75,36 @@ partition-bounded target that is safe to destroy, while `DH0` keeps the
 system intact. The scratch partition's RDB entry records the same DOS
 type as `DH0` as its mount hint, but nothing formats it — the guest
 finds an uninitialized ("Not a DOS disk") device.
+
+## `[emulator-config.*]` — overriding emitted emulator config
+
+The same mechanism recipes use to contribute config directives
+(`docs/recipe-contract.md`), available at manifest level: keys are
+emitter names (matching `emit`), values are flat tables of
+string/integer/boolean directives in that emulator's own config
+vocabulary. Merge order is base recipe, then packages in resolution
+order, then the manifest — the manifest describes the test setup, so
+it wins on any key conflict. For the `copperline` emitter a key may
+use `.` to address a nested TOML table (`"hostsocket.net" = "host"`);
+for `amiberry`/`winuae` keys are written as-is into the flat `.uae`
+format.
+
+One directive is AmiBake's own, interpreted rather than passed
+through:
+
+```toml
+[emulator-config.copperline]
+hdf-controller = "lide"   # default: "copperhf"
+```
+
+`hdf-controller` picks which Copperline controller mounts the built
+`hdf`: `copperhf` (the default; Copperline 0.19+'s emulator-only
+virtual hardfile controller, the copperhf.device equivalent of
+WinUAE's uaehf.device — no board fiction, no machine profile needed)
+or `lide` (Copperline's lide.device-compatible Zorro II IDE board —
+the right choice when the thing under test is a real controller stack
+rather than the build). Copperline-only: an error under any other
+emitter, which never mounts the hdf (see `docs/limits.md`).
 
 ## Package entries
 

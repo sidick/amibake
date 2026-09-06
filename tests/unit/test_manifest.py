@@ -57,6 +57,14 @@ INVALID = [
     ('base = "os3.2.2"\n[hdf]\nbogus = "1M"\n', "hdf.bogus"),  # unknown key
     # [hdf] shapes the hdf output; not emitting one is a contradiction
     ('base = "os3.2.2"\noutput = ["dir"]\n[hdf]\nsize = "64M"\n', "hdf"),
+    ('base = "os3.2.2"\n[emulator-config.fs-uae]\nk = "v"\n',
+     "emulator-config.fs-uae"),  # unknown emulator
+    ('base = "os3.2.2"\n[emulator-config.copperline]\nk = 5.2\n',
+     "emulator-config.copperline.k"),  # float directive value
+    ('base = "os3.2.2"\n[emulator-config.copperline]\nhdf-controller = "gayle"\n',
+     "hdf-controller"),  # unknown controller
+    ('base = "os3.2.2"\n[emulator-config.amiberry]\nhdf-controller = "lide"\n',
+     "hdf-controller"),  # copperline-only directive
 ]
 
 
@@ -79,6 +87,16 @@ def test_valid_hdf_table(write):
 def test_hdf_table_with_default_output_is_valid(write):
     # output defaults to ["hdf"], so an omitted output list is consistent
     assert validate_manifest(write('base = "os3.2.2"\n[hdf]\nscratch = "8M"\n')) == []
+
+
+def test_valid_emulator_config(write):
+    assert validate_manifest(write(
+        'base = "os3.2.2"\n'
+        '[emulator-config.copperline]\n'
+        'hdf-controller = "lide"\n'
+        '"hostsocket.net" = "host"\n'
+        '[emulator-config.amiberry]\n'
+        'bsdsocket_emu = "true"\n')) == []
 
 
 def test_unparseable_toml_aborts(write):

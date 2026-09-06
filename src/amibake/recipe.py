@@ -7,7 +7,7 @@ from pathlib import Path
 
 from ._validate import Checker, check_tooltype_values, load_toml
 from .errors import Problem
-from .manifest import EMULATORS
+from .manifest import EMULATORS, HDF_CONTROLLERS
 from .versionspec import is_name, is_version, parse_constraint, parse_package_spec
 
 TOP_KEYS = {"package", "requires", "source", "install", "verify", "options", "hook", "base",
@@ -543,6 +543,20 @@ def _check_emulator_config(c: Checker, emulator_config: dict) -> None:
                 c.error(f"{where}.{key}",
                         "directive values must be strings, integers or booleans",
                         "check the target emulator's config format for the expected type")
+        # hdf-controller is AmiBake's own interpreted directive (see
+        # manifest.py's checker and emit/copperline.py) — same rules here
+        # so a recipe declaring it fails at lint, not at emit.
+        if "hdf-controller" in directives:
+            controller = directives["hdf-controller"]
+            if emitter != "copperline":
+                c.error(f"{where}.hdf-controller",
+                        "hdf-controller is a copperline-only directive (only that "
+                        "emitter mounts the built hdf)",
+                        "move it under [emulator-config.copperline], or drop it")
+            elif controller not in HDF_CONTROLLERS:
+                c.error(f"{where}.hdf-controller",
+                        f"unknown hdf controller {controller!r}",
+                        f"use one of: {', '.join(sorted(HDF_CONTROLLERS))}")
 
 
 def _check_option(c: Checker, opt_name: str, opt) -> None:

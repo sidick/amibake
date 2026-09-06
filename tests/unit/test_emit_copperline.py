@@ -56,7 +56,7 @@ def test_no_bootable_output_raises_named_error(tmp_path):
         write_copperline_config(plan, tmp_path / "out.toml", tmp_path / "kick.rom", None, {})
 
 
-def test_hdf_output_boots_from_lide(tmp_path):
+def test_hdf_output_boots_from_copperhf_by_default(tmp_path):
     plan = _plan({}, output=("hdf",))
     target = tmp_path / "out.copperline.toml"
     hdf = tmp_path / "build" / "mysetup.hdf"
@@ -64,10 +64,34 @@ def test_hdf_output_boots_from_lide(tmp_path):
     write_copperline_config(plan, target, tmp_path / "kick.rom", None, {}, hdf)
 
     doc = tomllib.loads(target.read_text())
+    assert doc["copperhf"]["unit0"] == str(hdf)
+    assert "lide" not in doc
+    assert "filesys" not in doc
+
+
+def test_hdf_controller_directive_selects_lide(tmp_path):
+    plan = _plan({}, output=("hdf",))
+    target = tmp_path / "out.copperline.toml"
+    hdf = tmp_path / "build" / "mysetup.hdf"
+
+    write_copperline_config(plan, target, tmp_path / "kick.rom", None,
+                            {"hdf-controller": "lide"}, hdf)
+
+    doc = tomllib.loads(target.read_text())
     assert doc["lide"]["drive0"] == str(hdf)
     # No board: RIPPLE is the default and bundles its own boot ROM.
     assert "board" not in doc["lide"]
-    assert "filesys" not in doc
+    assert "copperhf" not in doc
+    # consumed, never written into the config
+    assert "hdf-controller" not in target.read_text()
+
+
+def test_unknown_hdf_controller_raises_named_error(tmp_path):
+    plan = _plan({}, output=("hdf",))
+    with pytest.raises(EmitError, match="hdf-controller"):
+        write_copperline_config(plan, tmp_path / "out.toml", tmp_path / "kick.rom",
+                                None, {"hdf-controller": "gayle"},
+                                tmp_path / "mysetup.hdf")
 
 
 def test_hdf_wins_over_dir_and_never_mounts_both(tmp_path):
@@ -82,7 +106,7 @@ def test_hdf_wins_over_dir_and_never_mounts_both(tmp_path):
     write_copperline_config(plan, target, tmp_path / "kick.rom", dir_out, {}, hdf)
 
     doc = tomllib.loads(target.read_text())
-    assert doc["lide"]["drive0"] == str(hdf)
+    assert doc["copperhf"]["unit0"] == str(hdf)
     assert "filesys" not in doc
 
 
@@ -95,10 +119,24 @@ def test_lide_override_merges_into_one_table(tmp_path):
     hdf = tmp_path / "build" / "mysetup.hdf"
 
     write_copperline_config(plan, target, tmp_path / "kick.rom", None,
-                            {"lide.board": "atbus2008", "lide.drive1": "extra.hdf"}, hdf)
+                            {"hdf-controller": "lide",
+                             "lide.board": "atbus2008", "lide.drive1": "extra.hdf"}, hdf)
 
     doc = tomllib.loads(target.read_text())  # raises if the table is emitted twice
     assert doc["lide"] == {"drive0": str(hdf), "board": "atbus2008", "drive1": "extra.hdf"}
+
+
+def test_copperhf_override_merges_into_one_table(tmp_path):
+    """Same one-header rule for the default controller's own table."""
+    plan = _plan({}, output=("hdf",))
+    target = tmp_path / "out.copperline.toml"
+    hdf = tmp_path / "build" / "mysetup.hdf"
+
+    write_copperline_config(plan, target, tmp_path / "kick.rom", None,
+                            {"copperhf.unit1": "extra.hdf"}, hdf)
+
+    doc = tomllib.loads(target.read_text())
+    assert doc["copperhf"] == {"unit0": str(hdf), "unit1": "extra.hdf"}
 
 
 def test_override_of_an_emitted_key_replaces_it(tmp_path):

@@ -463,6 +463,18 @@ def test_hdf_table_reaches_the_plan(tmp_path):
     assert result.plan.hdf.scratch == "8M"
 
 
+def test_emulator_config_reaches_the_plan(tmp_path):
+    library = _lib(tmp_path, {"os32-fixture": OS32_BASE})
+    path, manifest = _manifest(tmp_path, (
+        'base = "os32-fixture"\n'
+        '[emulator-config.copperline]\n'
+        'hdf-controller = "lide"\n'
+    ))
+    result = resolve(path, manifest, library)
+    assert result.ok, result.problems
+    assert result.plan.emulator_config == {"copperline": {"hdf-controller": "lide"}}
+
+
 def test_hdf_defaults_to_empty(tmp_path):
     library = _lib(tmp_path, {"os32-fixture": OS32_BASE})
     path, manifest = _manifest(tmp_path, 'base = "os32-fixture"\n')

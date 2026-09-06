@@ -47,6 +47,15 @@ def test_lockfile_omits_empty_hdf_table():
     assert "[hdf]" not in format_lockfile(_plan())
 
 
+def test_lockfile_records_emulator_config():
+    plan = dataclasses.replace(_plan(), emulator_config={
+        "copperline": {"hdf-controller": "lide", "hostsocket.net": "host"}})
+    parsed = tomllib.loads(format_lockfile(plan))
+    assert parsed["emulator-config"]["copperline"] == {
+        "hdf-controller": "lide", "hostsocket.net": "host"}
+    assert "[emulator-config" not in format_lockfile(_plan())
+
+
 def test_lockfile_round_trips_through_toml():
     plan = _plan()
     text = format_lockfile(plan)

@@ -14,6 +14,12 @@ from ..plan import BuildPlan, toml_value
 
 _RAM_KINDS = ("chip", "fast", "slow", "z3")
 
+# hdf-controller directive value -> (config table, first-drive key).
+# copperhf's slots are unit0..unit6, lide's drive0..drive3; only the
+# first is ever emitted here — extra drives are an override's business
+# (e.g. "lide.drive1" = "extra.hdf").
+_HDF_CONTROLLERS = {"copperhf": ("copperhf", "unit0"), "lide": ("lide", "drive0")}
+
 
 class EmitError(Exception):
     pass
@@ -26,18 +32,30 @@ def write_copperline_config(plan: BuildPlan, path: Path, rom_path: Path,
 
     Two routes to a bootable volume, in this order of preference:
 
-    - an `hdf` output, attached to `[lide]` — Copperline's built-in
-      lide.device-compatible Zorro II IDE board (RIPPLE by default),
-      which needs **no** `[machine] profile`, works on any machine
-      model, autoboots under any Kickstart including 1.3, and brings its
-      own bundled ROM. Preferred when the manifest builds one, because
-      it boots the real artifact — the same RDB image a user would write
-      to CF — rather than a host-directory stand-in for it. Note the
-      0.18 config shape: named `drive0`..`drive3` keys, one per
-      (channel, master/slave) slot; the older positional
-      `drives = [...]` array still parses but can't express a gap.
-      Requires the partition's PBFB_BOOTABLE flag, which `emit/hdf.py`
-      sets (see its own comment — amitools does not set it by default).
+    - an `hdf` output, attached to a hardfile controller. Preferred when
+      the manifest builds one, because it boots the real artifact — the
+      same RDB image a user would write to CF — rather than a
+      host-directory stand-in for it. Which controller is the
+      `hdf-controller` directive (an AmiBake-interpreted
+      `[emulator-config.copperline]` key, consumed here, never written
+      to the config):
+        - `"copperhf"` (default since Copperline 0.19): `[copperhf]`,
+          Copperline's emulator-only virtual hardfile controller — the
+          copperhf.device equivalent of WinUAE's uaehf.device. No real
+          board fiction (a `[lide]` build claiming to be an A1200 boots
+          off a Zorro II board no A1200 ever had), no machine profile
+          needed, autoboot ROM baked into the emulator. `unit0`..`unit6`
+          keys, bare-path or table form like the other controllers.
+        - `"lide"`: the pre-0.19 default, Copperline's built-in
+          lide.device-compatible Zorro II IDE board (RIPPLE by default)
+          — the right choice when the thing under test is a real
+          controller stack rather than the build. `drive0`..`drive3`
+          keys, one per (channel, master/slave) slot (0.18+; the older
+          positional `drives = [...]` still parses but can't express a
+          gap).
+      Either way the partition's PBFB_BOOTABLE flag is required, which
+      `emit/hdf.py` sets (see its own comment — amitools does not set
+      it by default).
     - a `dir` output, mounted as a HOSTFS volume (`[[filesys]]` with
       `bootpri = 6`, ahead of DF0:'s 5) — M5's original boot-verification
       mechanism, and the fallback when no hdf was built.
@@ -54,16 +72,21 @@ def write_copperline_config(plan: BuildPlan, path: Path, rom_path: Path,
     emulator's — worth stating because this docstring's own earlier
     wording ("no IDE/hard-disk-controller modeling yet") was read at
     least once as a claim that Copperline can't boot a hardfile at all.
-    It can, both ways; `[lide]` is simply the one that asks nothing of a
-    machine block that has no profile concept. All grounded against the
-    real emulator (0.18.0), not the docs alone. See `docs/limits.md`."""
+    All grounded against the real emulator (0.18.0/0.19.0), not the docs
+    alone. See `docs/limits.md`."""
     if hdf_output_path is None and dir_output_path is None:
         raise EmitError(
             "the copperline emitter needs an 'hdf' or 'dir' build output to "
-            "boot ([lide] hardfile or [[filesys]] host directory) — add one "
-            "of them to the manifest's output list")
+            "boot ([copperhf]/[lide] hardfile or [[filesys]] host directory) — "
+            "add one of them to the manifest's output list")
 
     machine = plan.machine
+    emulator_config = dict(emulator_config)  # consumed keys must not leak back
+    controller = emulator_config.pop("hdf-controller", "copperhf")
+    if controller not in _HDF_CONTROLLERS:
+        raise EmitError(
+            f"unknown hdf-controller {controller!r} — use one of: "
+            f"{', '.join(sorted(_HDF_CONTROLLERS))}")
     root_overrides, table_overrides = _split_dotted_overrides(emulator_config)
 
     lines = [f"rom = {toml_value(str(rom_path))}", *root_overrides, ""]
@@ -95,10 +118,12 @@ def write_copperline_config(plan: BuildPlan, path: Path, rom_path: Path,
         table("chipset", [f"revision = {toml_value(machine['chipset'].upper())}"])
 
     if hdf_output_path is not None:
-        # Channel 0 master. `board` is left unset: RIPPLE is the default
-        # and brings its own bundled ROM, so the minimal config is also
-        # the working one.
-        table("lide", [f"drive0 = {toml_value(str(hdf_output_path))}"])
+        # First slot only, no board/rom keys: both controllers' minimal
+        # config is also the working one (copperhf's autoboot ROM is
+        # baked into the emulator; lide's RIPPLE default bundles its own).
+        controller_table, first_drive = _HDF_CONTROLLERS[controller]
+        table(controller_table,
+              [f"{first_drive} = {toml_value(str(hdf_output_path))}"])
     else:
         lines.append("[[filesys]]")
         lines.append(f"path = {toml_value(str(dir_output_path))}")
