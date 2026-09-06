@@ -51,12 +51,12 @@ emit = []
 name = "aros68k"
 os-version = "3.1"
 dos-type = "ffs-intl-longname"
-version = "20260814"
-recipe-sha256 = "ee1ddca0c512a622ea5fc5887ad7cb0767c239215fad3ad04d7089498829fcd8"
+version = "20260904"
+recipe-sha256 = "923cb550b425addfe2647e533bb14f9154af9c7dbf6c13b301e8ba1b81f774d2"
 [base.sources.url]
-filename = "AROS-20260814-amiga-m68k-boot-iso.zip"
-sha256 = "dcd80e76de846575864d07493667e67628996f8cd907fd7a4717024e4d09a43a"
-url = "https://sourceforge.net/projects/aros/files/nightly2/20260814/Binaries/AROS-20260814-amiga-m68k-boot-iso.zip/download"
+filename = "AROS-20260904-amiga-m68k-boot-iso.zip"
+sha256 = "6e6fefd70d9a8943dc4fc221d9335d6562a2dab6ffd833b29cd3985b7719fe0b"
+url = "https://sourceforge.net/projects/aros/files/nightly2/20260904/Binaries/AROS-20260904-amiga-m68k-boot-iso.zip/download"
 
 [machine]
 cpu = "68020"

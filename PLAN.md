@@ -742,6 +742,15 @@ aren't part of the M0-M10 sequence and haven't been sized/placed yet.
   alternate before raising `FetchError`, rather than failing on the
   first attempt.
 
+- **AROS nightly re-pin is now tool-assisted** (2026-09-06):
+  `tools/refresh_aros_nightly.py` discovers the newest SourceForge
+  nightly that actually carries the m68k boot-iso (the newest *date*
+  sometimes doesn't), checksums it, and rewrites recipes/aros68k's
+  pin — determinism preserved, only the tool chases "latest". A
+  natural follow-on: a weekly scheduled GitHub Action that runs it
+  and opens a PR the smoke build then validates, so the pin never
+  quietly rots into a 404 again (which the 20260814 pin did within
+  a month).
 - **`[[run]]` follow-ons** (the manifest boot-run feature itself
   shipped 2026-09-06 — `docs/manifest.md`'s `[[run]]` section,
   `src/amibake/runs.py`): two honest gaps recorded in
