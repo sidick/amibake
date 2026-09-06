@@ -17,5 +17,9 @@ assets/
 # amibake build's default layer/archive cache root.
 .amibake-cache/
 
+# Scratch home for local `amibake build --out` trees, lockfiles and
+# emitted emulator configs — build output never belongs in manifests/.
+.amibake-out/
+
 # MkDocs local build output (mkdocs.yml + .github/workflows/docs.yml).
 site/
