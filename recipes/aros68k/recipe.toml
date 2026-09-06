@@ -7,7 +7,7 @@
 # Source: the m68k-amiga nightly's "boot-iso" artifact from AROS's
 # SourceForge project — a zip wrapping one ISO9660+RockRidge image (the
 # "AROS Live CD" filesystem tree), which extract.py's zip-wrapping-iso
-# expansion handles transparently. Pinned to the 2026-09-04 nightly;
+# expansion handles transparently. Pinned to the 2026-09-06 nightly;
 # every AROS nightly is a new, differently-checksummed build, and
 # SourceForge prunes old dated directories (a pin goes 404 within
 # weeks), so this pin is a moving target by nature: run
@@ -29,7 +29,7 @@
 
 [package]
 name     = "aros68k"
-versions = ["20260904"]
+versions = ["20260906"]
 strategy = "extract"
 
 [base]
@@ -50,7 +50,7 @@ dos-type   = "ffs-intl-longname"
 [source.url]
 url      = "https://sourceforge.net/projects/aros/files/nightly2/{version}/Binaries/AROS-{version}-amiga-m68k-boot-iso.zip/download"
 filename = "AROS-{version}-amiga-m68k-boot-iso.zip"
-sha256   = { "20260904" = "6e6fefd70d9a8943dc4fc221d9335d6562a2dab6ffd833b29cd3985b7719fe0b" }
+sha256   = { "20260906" = "b02a0977ea420803cda30e3b8fd9ff6f14d92cb26a9c266694e20c08197cacd2" }
 
 [install]
 copy = [
