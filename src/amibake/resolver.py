@@ -18,7 +18,7 @@ from ._validate import load_toml
 from .errors import Problem
 from .machine import cpu_satisfies
 from .paths import to_physical_path
-from .plan import BaseInfo, BuildPlan, ResolvedPackage, RunEntry
+from .plan import BaseInfo, BuildPlan, HdfOptions, ResolvedPackage, RunEntry
 from .versionspec import Constraint, max_satisfying, parse_constraint, parse_package_spec, satisfies
 
 
@@ -195,6 +195,7 @@ def resolve(manifest_path: Path, manifest: dict, library: dict[str, LoadedRecipe
     if any(p.severity == "error" for p in problems):
         return ResolveResult(None, problems)
 
+    hdf_table = manifest.get("hdf") or {}
     plan = BuildPlan(
         base=base_info,
         base_package=base_package,
@@ -203,6 +204,7 @@ def resolve(manifest_path: Path, manifest: dict, library: dict[str, LoadedRecipe
         output=tuple(manifest.get("output") or ["hdf"]),
         emit=tuple(emit),
         runs=runs,
+        hdf=HdfOptions(size=hdf_table.get("size"), scratch=hdf_table.get("scratch")),
     )
     return ResolveResult(plan, problems)
 

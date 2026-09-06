@@ -15,9 +15,11 @@ from .emit.copperline import EmitError as CopperlineEmitError
 from .emit.copperline import write_copperline_config
 from .emit.dirtree import write_dirtree
 from .emit.hdf import DEFAULT_DOS_TYPE, write_hdf
+from .emit.hdf import EmitError as HdfEmitError
 from .emit.uae import EmitError as UaeEmitError
 from .emit.uae import write_uae_config
 from .errors import AmiBakeError, Problem
+from .machine import parse_size
 from .manifest import validate_manifest
 from .plan import BuildPlan, format_lockfile, write_lockfile
 from .recipe import validate_recipe
@@ -209,7 +211,13 @@ def _cmd_build(manifest_path: Path, recipes_root: Path, out_dir: Path | None,
         suffix, emit = _EMITTERS[fmt]
         target = out_dir / f"{stem}{suffix}"
         if fmt == "hdf":
-            emit(tree, target, dos_type=plan.base.dos_type or DEFAULT_DOS_TYPE)
+            try:
+                emit(tree, target, dos_type=plan.base.dos_type or DEFAULT_DOS_TYPE,
+                     size=parse_size(plan.hdf.size) if plan.hdf.size else None,
+                     scratch=parse_size(plan.hdf.scratch) if plan.hdf.scratch else None)
+            except HdfEmitError as e:
+                print(f"hdf: {e}", file=sys.stderr)
+                return 1
         else:
             emit(tree, target)
         if fmt == "dir":

@@ -30,6 +30,7 @@ emit     = ["copperline", "amiberry"]
 | `output` | array of string | no | Output formats, any of `hdf`, `dir`, `tgz`, `zip`. Default: `["hdf"]`. |
 | `emit` | array of string | no | Emulator configurations to emit, any of `copperline`, `amiberry`, `winuae`. Default: none. `amibake build` writes `<manifest-stem>.copperline.toml` / `<manifest-stem>-amiberry.uae` / `<manifest-stem>-winuae.uae` alongside the build outputs, once `[verify]` passes. Needs something bootable in `output` — `copperline` takes an `hdf` (attached to `[lide]`, preferred when present) or a `dir` (`[[filesys]]` HOSTFS); `amiberry`/`winuae` still need a `dir` (`filesystem2=`), their hardfile path not being grounded yet — and a Kickstart ROM at `assets/roms/kickstart-{the base recipe's [base].kickstart-version}.rom`, under the same `--assets` root recipes use for their own proprietary media. |
 | `providers` | table | no | Capability → package name, resolving provider ambiguity (e.g. `bsdsocket = "roadshow"`). |
+| `hdf` | table | no | Shapes the `hdf` output image (size, scratch partition); see `[hdf]` below. An error if `output` is given explicitly and doesn't include `hdf`. |
 | `run` | array of tables | no | Programs the built image runs at boot; see `[[run]]` below. |
 
 Unknown top-level keys are an error, not ignored — a typo must fail, not
@@ -49,6 +50,30 @@ silently change the build.
 `cpu` is structured (family + explicit `fpu`/`mmu` flags), never a packed
 string like `68030/68882`: the flags are real independent hardware axes
 and recipes validate against each separately.
+
+## The `[hdf]` table
+
+Shapes the `hdf` output image. Without it, the image is auto-sized from
+the build's content (with headroom) and holds a single bootable `DH0`
+partition spanning the whole disk.
+
+```toml
+[hdf]
+size    = "64M"   # total image size (default: auto from content)
+scratch = "8M"    # unformatted DH1 partition at the end of the disk
+```
+
+| Key | Type | Meaning |
+|---|---|---|
+| `size` | string | Total image size: an integer with a `K`/`M`/`G` unit, rounded up to whole megabytes. The build fails with a named error if the content (plus any `scratch`) doesn't fit. |
+| `scratch` | string | Reserves at least this much space (same `K`/`M`/`G` format, rounded up to whole cylinders) as a **second, unformatted partition** — `DH1` — at the end of the disk: a real RDB entry, mountable and non-bootable, with no filesystem written. Without `size`, the image grows so `DH0` keeps its auto-sized capacity. |
+
+`scratch` exists for destructive block-device testing (e.g. `devsoak`,
+which overwrites whatever it is pointed at): the guest sees a named,
+partition-bounded target that is safe to destroy, while `DH0` keeps the
+system intact. The scratch partition's RDB entry records the same DOS
+type as `DH0` as its mount hint, but nothing formats it — the guest
+finds an uninitialized ("Not a DOS disk") device.
 
 ## Package entries
 

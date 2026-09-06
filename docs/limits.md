@@ -159,10 +159,13 @@ not attempted here.
 
 ## Multi-partition `hdf` output
 
-`emit/hdf.py` writes a single-partition RDB image. A base needing
-multiple real partitions (a separate work/swap partition, for
-instance) isn't supported — later milestone, see `emit/hdf.py`'s own
-module docstring.
+`emit/hdf.py` writes one system partition, plus at most one
+*unformatted* scratch partition at the end when the manifest asks for
+it (`[hdf].scratch`, see `docs/manifest.md` — an RDB entry with no
+filesystem, giving destructive block-device tests like devsoak a safe
+target). Fuller layouts — a second *formatted* partition, a separate
+work partition, per-partition filesystem or name choices — aren't
+supported; later milestone, see `emit/hdf.py`'s own module docstring.
 
 Also worth knowing here: both the writer and any amitools-based
 checker share amitools' bugs (`emit/hdf.py` already documents one). If

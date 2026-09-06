@@ -124,6 +124,57 @@ def test_build_end_to_end(tmp_path, capsys):
     assert (tmp_path / "m").is_dir()
 
 
+def _hdf_fixture(tmp_path, manifest_text):
+    recipes = tmp_path / "recipes"
+    base_dir = recipes / "os32-fixture"
+    base_dir.mkdir(parents=True)
+    (base_dir / "recipe.toml").write_text(
+        '[package]\nname = "os32-fixture"\nversions = ["3.2.2"]\n'
+        'strategy = "extract"\n\n[base]\nos-version = "3.2.2"\n'
+    )
+    manifest = tmp_path / "m.toml"
+    manifest.write_text(manifest_text)
+    return recipes, manifest
+
+
+def test_build_hdf_options_end_to_end(tmp_path, capsys):
+    from amitools.fs.blkdev.RawBlockDevice import RawBlockDevice
+    from amitools.fs.rdb.RDisk import RDisk
+
+    recipes, manifest = _hdf_fixture(tmp_path, (
+        'base = "os32-fixture"\noutput = ["hdf"]\n'
+        '[hdf]\nsize = "8M"\nscratch = "2M"\n'
+    ))
+    rc = main(["build", str(manifest), "--recipes", str(recipes),
+              "--cache", str(tmp_path / "cache")])
+    assert rc == 0, capsys.readouterr().err
+
+    hdf = tmp_path / "m.hdf"
+    assert hdf.stat().st_size <= 8 * 1024 * 1024
+    raw = RawBlockDevice(str(hdf), read_only=True)
+    raw.open()
+    rdisk = RDisk(raw)
+    assert rdisk.open()
+    try:
+        names = [rdisk.get_partition(i).get_drive_name().get_unicode()
+                 for i in range(rdisk.get_num_partitions())]
+        assert names == ["DH0", "DH1"]
+    finally:
+        rdisk.close()
+        raw.close()
+
+
+def test_build_hdf_scratch_overflow_fails_named_error(tmp_path, capsys):
+    recipes, manifest = _hdf_fixture(tmp_path, (
+        'base = "os32-fixture"\noutput = ["hdf"]\n'
+        '[hdf]\nsize = "4M"\nscratch = "8M"\n'
+    ))
+    rc = main(["build", str(manifest), "--recipes", str(recipes),
+              "--cache", str(tmp_path / "cache")])
+    assert rc == 1
+    assert "[hdf].scratch" in capsys.readouterr().err
+
+
 def test_build_emits_configs_for_every_emit_target(tmp_path, capsys):
     recipes = tmp_path / "recipes"
     base_dir = recipes / "os32-fixture"

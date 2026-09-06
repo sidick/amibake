@@ -42,6 +42,13 @@ def cpu_satisfies(cpu: str, constraints: list[Constraint]) -> bool:
     return True
 
 
+def parse_size(spec: str) -> int:
+    """`"64M"` -> bytes. Shared by `machine.ram` parsing and the
+    manifest's `[hdf]` sizes; assumes the string already passed
+    validation (an integer immediately followed by K/M/G)."""
+    return int(spec[:-1]) * _UNITS[spec[-1]]
+
+
 def parse_ram_spec(spec: str) -> dict[str, int]:
     """`"chip:2M,fast:8M"` -> `{"chip": 2097152, "fast": 8388608}`.
 
@@ -52,7 +59,7 @@ def parse_ram_spec(spec: str) -> dict[str, int]:
     out: dict[str, int] = {}
     for part in spec.split(","):
         kind, _, size = part.strip().partition(":")
-        out[kind] = int(size[:-1]) * _UNITS[size[-1]]
+        out[kind] = parse_size(size)
     return out
 
 

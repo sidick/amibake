@@ -52,6 +52,11 @@ INVALID = [
     ('base = "os3.2.2"\noutput = ["floppy"]\n', "output[0]"),
     ('base = "os3.2.2"\nemit = ["fs-uae"]\n', "emit[0]"),
     ('base = "os3.2.2"\n[providers]\nbsdsocket = 3\n', "providers.bsdsocket"),
+    ('base = "os3.2.2"\n[hdf]\nsize = "64MB"\n', "hdf.size"),  # bad unit
+    ('base = "os3.2.2"\n[hdf]\nscratch = 8\n', "hdf.scratch"),  # not a string
+    ('base = "os3.2.2"\n[hdf]\nbogus = "1M"\n', "hdf.bogus"),  # unknown key
+    # [hdf] shapes the hdf output; not emitting one is a contradiction
+    ('base = "os3.2.2"\noutput = ["dir"]\n[hdf]\nsize = "64M"\n', "hdf"),
 ]
 
 
@@ -64,6 +69,16 @@ def test_invalid_manifests(write, text, field):
         f"no problem mentioning {field!r} in {[p.field for p in problems]}")
     for p in problems:
         assert p.remedy, "every error carries a remedy"
+
+
+def test_valid_hdf_table(write):
+    assert validate_manifest(write(
+        'base = "os3.2.2"\n[hdf]\nsize = "64M"\nscratch = "8M"\n')) == []
+
+
+def test_hdf_table_with_default_output_is_valid(write):
+    # output defaults to ["hdf"], so an omitted output list is consistent
+    assert validate_manifest(write('base = "os3.2.2"\n[hdf]\nscratch = "8M"\n')) == []
 
 
 def test_unparseable_toml_aborts(write):

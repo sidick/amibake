@@ -53,6 +53,17 @@ class RunEntry:
 
 
 @dataclass(frozen=True)
+class HdfOptions:
+    """The manifest's [hdf] table, verbatim strings ("64M") rather than
+    bytes — the lockfile round-trips what the author wrote, and
+    emit/hdf.py's caller converts at the last moment. `size` overrides
+    the content-derived image size; `scratch` reserves an unformatted
+    partition at the end of the disk."""
+    size: str | None = None
+    scratch: str | None = None
+
+
+@dataclass(frozen=True)
 class BuildPlan:
     base: BaseInfo
     base_package: ResolvedPackage
@@ -61,6 +72,7 @@ class BuildPlan:
     output: tuple[str, ...]
     emit: tuple[str, ...]
     runs: tuple[RunEntry, ...] = ()
+    hdf: HdfOptions = HdfOptions()
 
 
 def format_lockfile(plan: BuildPlan) -> str:
@@ -74,6 +86,14 @@ def format_lockfile(plan: BuildPlan) -> str:
         f"output = {toml_value(list(plan.output))}",
         f"emit = {toml_value(list(plan.emit))}",
     ]
+
+    if plan.hdf.size is not None or plan.hdf.scratch is not None:
+        lines.append("")
+        lines.append("[hdf]")
+        if plan.hdf.size is not None:
+            lines.append(f"size = {toml_value(plan.hdf.size)}")
+        if plan.hdf.scratch is not None:
+            lines.append(f"scratch = {toml_value(plan.hdf.scratch)}")
 
     lines.append("")
     lines.append("[base]")

@@ -130,6 +130,86 @@ def test_write_hdf_longname_dos_type_allows_long_filenames(tmp_path):
     assert contents["Fonts/Dustismo Roman Bold Italic.font"] == b"fontdata"
 
 
+def test_write_hdf_scratch_partition(tmp_path):
+    from amitools.fs.blkdev.RawBlockDevice import RawBlockDevice
+    from amitools.fs.block.rdb.PartitionBlock import PartitionBlock
+    from amitools.fs.rdb.RDisk import RDisk
+
+    out = tmp_path / "out.hdf"
+    scratch = 2 * 1024 * 1024
+    write_hdf(_tree(), out, scratch=scratch)
+
+    # open the RDB directly (not through BlkDevFactory's partition
+    # auto-open) so both partitions are visible
+    raw = RawBlockDevice(str(out), read_only=True)
+    raw.open()
+    rdisk = RDisk(raw)
+    assert rdisk.open()
+    try:
+        parts = [rdisk.get_partition(i) for i in range(rdisk.get_num_partitions())]
+        assert [p.get_drive_name().get_unicode() for p in parts] == ["DH0", "DH1"]
+        sys_part, scratch_part = parts
+        assert sys_part.get_flags() & PartitionBlock.FLAG_BOOTABLE
+        assert not scratch_part.get_flags() & PartitionBlock.FLAG_BOOTABLE
+        assert not scratch_part.get_flags() & PartitionBlock.FLAG_NO_AUTOMOUNT
+        # at least the requested bytes, contiguous to the end of the disk
+        assert scratch_part.get_num_bytes() >= scratch
+        # the scratch region is genuinely unformatted: no filesystem was
+        # created there, so its first block carries no DOS signature
+        blkdev = scratch_part.create_blkdev()
+        blkdev.open()
+        try:
+            assert blkdev.read_block(0)[0:3] != b"DOS"
+        finally:
+            blkdev.close()
+    finally:
+        rdisk.close()
+        raw.close()
+    # ...and the system volume is still intact alongside it
+    assert _read_hdf(out)["Libs/foo.library"] == b"libdata"
+
+
+def test_write_hdf_scratch_is_deterministic(tmp_path):
+    out_a = tmp_path / "a.hdf"
+    out_b = tmp_path / "b.hdf"
+    write_hdf(_tree(), out_a, scratch=1024 * 1024)
+    write_hdf(_tree(), out_b, scratch=1024 * 1024)
+    assert out_a.read_bytes() == out_b.read_bytes()
+
+
+def test_write_hdf_explicit_size(tmp_path):
+    out = tmp_path / "out.hdf"
+    write_hdf(_tree(), out, size=16 * 1024 * 1024)
+    # amitools derives a geometry fitting within the requested size
+    assert 15 * 1024 * 1024 < out.stat().st_size <= 16 * 1024 * 1024
+
+
+def test_write_hdf_scratch_larger_than_size_is_a_named_error(tmp_path):
+    from amibake.emit.hdf import EmitError
+
+    out = tmp_path / "out.hdf"
+    try:
+        write_hdf(_tree(), out, size=4 * 1024 * 1024, scratch=8 * 1024 * 1024)
+    except EmitError as e:
+        assert "[hdf].scratch" in str(e)
+    else:
+        raise AssertionError("expected EmitError for scratch > size")
+
+
+def test_write_hdf_content_overflowing_explicit_size_is_a_named_error(tmp_path):
+    from amibake.emit.hdf import EmitError
+
+    t = Tree()
+    t.put("SYS:big", b"\x5a" * (3 * 1024 * 1024))
+    out = tmp_path / "out.hdf"
+    try:
+        write_hdf(t, out, size=4 * 1024 * 1024, scratch=3 * 1024 * 1024)
+    except EmitError as e:
+        assert "[hdf].size" in str(e)
+    else:
+        raise AssertionError("expected EmitError for content not fitting")
+
+
 def test_to_physical_path_matches_hdf_layout():
     assert to_physical_path("SYS:Libs/foo.library") == "Libs/foo.library"
     assert to_physical_path("ENVARC:AmiSSL/opts") == "Prefs/Env-Archive/AmiSSL/opts"

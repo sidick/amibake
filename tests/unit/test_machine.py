@@ -1,4 +1,4 @@
-from amibake.machine import format_bytes, parse_ram_spec
+from amibake.machine import format_bytes, parse_ram_spec, parse_size
 
 
 def test_single_spec():
@@ -33,3 +33,9 @@ def test_format_bytes_round_trips_parse_ram_spec():
     for spec in ("chip:512K", "fast:8M", "z3:1G"):
         kind, value = next(iter(parse_ram_spec(spec).items()))
         assert f"{kind}:{format_bytes(value)}" == spec
+
+
+def test_parse_size():
+    assert parse_size("512K") == 512 * 1024
+    assert parse_size("64M") == 64 * 1024 * 1024
+    assert parse_size("1G") == 1024 * 1024 * 1024

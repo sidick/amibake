@@ -25,10 +25,12 @@ _RUN_WBSTARTUP_ONLY = {"tooltypes", "startpri", "donotwait"}
 _RUN_SUGAR_TOOLTYPES = {"stack": "STACK", "startpri": "STARTPRI",
                         "donotwait": "DONOTWAIT"}
 
-TOP_KEYS = {"base", "machine", "packages", "output", "emit", "providers", "run"}
+TOP_KEYS = {"base", "machine", "packages", "output", "emit", "providers", "run", "hdf"}
 MACHINE_KEYS = {"cpu", "fpu", "mmu", "ram", "rtg", "chipset"}
+HDF_KEYS = {"size", "scratch"}
 
 _RAM_SPEC_RE = re.compile(r"^(chip|fast|slow|z3):\d+[KMG]$")
+_SIZE_RE = re.compile(r"^\d+[KMG]$")
 
 
 def validate_manifest(path: Path) -> list[Problem]:
@@ -53,6 +55,10 @@ def validate_manifest(path: Path) -> list[Problem]:
             if item not in allowed:
                 c.error(f"{key}[{i}]", f"unknown {kind} {item!r}",
                         f"use one of: {', '.join(sorted(allowed))}")
+
+    hdf = c.typed(doc, "hdf", dict, "", default=None)
+    if hdf is not None:
+        _check_hdf(c, hdf, doc)
 
     runs = c.typed(doc, "run", list, "", default=[])
     for i, entry in enumerate(runs):
@@ -100,6 +106,24 @@ def _check_base(c: Checker, doc: dict) -> None:
     else:
         c.error("base", "base must be a name string or a table",
                 'e.g. base = "wb1.3" or base = { name = "wb1.3", boot = "cli" }')
+
+
+def _check_hdf(c: Checker, hdf: dict, doc: dict) -> None:
+    """The [hdf] table shapes the hdf output image: a total size
+    override and an optional unformatted scratch partition at the end
+    (a safe target for destructive block-device tests like devsoak).
+    Spec: docs/manifest.md."""
+    c.unknown_keys(hdf, HDF_KEYS, "hdf")
+    for key in sorted(HDF_KEYS):
+        value = c.typed(hdf, key, str, "hdf")
+        if value is not None and not _SIZE_RE.match(value):
+            c.error(f"hdf.{key}", f"bad size {value!r}",
+                    'use an integer with a K/M/G unit, e.g. "64M"')
+    output = doc.get("output")
+    if isinstance(output, list) and "hdf" not in output:
+        c.error("hdf", "[hdf] configures the hdf output, which this manifest's "
+                "explicit output list does not include",
+                'add "hdf" to output, or drop the [hdf] table')
 
 
 def _check_run_entry(c: Checker, entry, label: str) -> None:

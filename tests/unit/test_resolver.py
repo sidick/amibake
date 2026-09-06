@@ -449,6 +449,29 @@ class TestConflictsAndCycles:
         assert any("already resolved" in p.problem for p in result.problems)
 
 
+def test_hdf_table_reaches_the_plan(tmp_path):
+    library = _lib(tmp_path, {"os32-fixture": OS32_BASE})
+    path, manifest = _manifest(tmp_path, (
+        'base = "os32-fixture"\n'
+        '[hdf]\n'
+        'size = "64M"\n'
+        'scratch = "8M"\n'
+    ))
+    result = resolve(path, manifest, library)
+    assert result.ok, result.problems
+    assert result.plan.hdf.size == "64M"
+    assert result.plan.hdf.scratch == "8M"
+
+
+def test_hdf_defaults_to_empty(tmp_path):
+    library = _lib(tmp_path, {"os32-fixture": OS32_BASE})
+    path, manifest = _manifest(tmp_path, 'base = "os32-fixture"\n')
+    result = resolve(path, manifest, library)
+    assert result.ok, result.problems
+    assert result.plan.hdf.size is None
+    assert result.plan.hdf.scratch is None
+
+
 def test_exemplar_manifest_resolves_cleanly():
     """The shipped os32-p96-amissl.toml (base = "os3.2.2") now has every
     package it references — os3.2.2 (M8), picasso96-3/amissl/classact
