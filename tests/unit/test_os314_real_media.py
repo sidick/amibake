@@ -42,6 +42,10 @@ def test_os314_builds_and_verifies_from_real_media(tmp_path):
     assert tree.get("SYS:Tools/Commodities/Exchange").data
     # Storage disk content
     assert any(p.startswith("SYS:Storage/DOSDrivers/") for p in tree.paths())
+    # Locale disk content — SYS:Locale/ exists and is populated, matching
+    # the "Assign >NIL: LOCALE: SYS:Locale" already in the copied
+    # Startup-Sequence
+    assert tree.get("SYS:Locale/Countries/united_states.country").data
     # Install-disk-sourced files, not Workbench/Storage
     assert tree.get("SYS:Libs/workbench.library").data
     assert tree.get("SYS:L/FastFileSystem").data

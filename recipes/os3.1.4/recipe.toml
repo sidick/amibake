@@ -67,7 +67,16 @@
 #     the actual [install]-can't-express limit there, per docs/limits.md.
 #   - Non-English locale catalogs — matches the real default path
 #     exactly (askForLocale stays FALSE; English is built in, no
-#     catalog copy in that path at all).
+#     catalog copy in that path at all). Locale.adf's Countries/ *is*
+#     copied though (see [install] below): the real script's own
+#     `(copyfiles (source (tackon localePath "Countries")) (dest
+#     (tackon target "Locale/Countries")) (all))` runs unconditionally
+#     regardless of askForLocale, right after the Workbench copy. This
+#     also creates SYS:Locale/ itself, which the Workbench disk's own
+#     S:Startup-Sequence already assigns via `Assign >NIL: LOCALE:
+#     SYS:Locale` (confirmed by reading it directly) — so LOCALE:
+#     resolves to a real, populated directory instead of a dangling
+#     assign.
 #   - Storage3_1_4.adf's "glowicons/" (124 files, a cosmetic icon
 #     theme) — real content, but bulk not needed for a test-bed base,
 #     same reasoning as aros68k excluding Demos/Developer. Storage's
@@ -107,6 +116,7 @@ sha256 = { "3.1.4" = "7f2d118f27e2f0cef6f7990574aecc935687d0b288b2a1d859a8ea9305
 [install]
 copy = [
   { from = "Workbench3_1_4.adf/#?",           to = "SYS:" },
+  { from = "Locale.adf/Countries/#?",          to = "SYS:Locale/Countries/" },
   { from = "Extras3_1_4.adf/#?",               to = "SYS:" },
   { from = "Fonts.adf/#?",                     to = "SYS:Fonts/" },
   { from = "Storage3_1_4.adf/DOSDrivers/#?",   to = "SYS:Storage/DOSDrivers/" },
@@ -123,4 +133,5 @@ exists = [
   "SYS:Libs/workbench.library",
   "SYS:Libs/diskfont.library",
   "SYS:Tools/Commodities/Exchange",
+  "SYS:Locale/Countries/united_states.country",
 ]
