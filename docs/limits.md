@@ -240,6 +240,36 @@ a revision number with an existing one would collide on the same
 `assets/roms/kickstart-{version}.rom` path; see `recipes/os3.1.4`'s
 own comments.
 
+## Emulator config: no per-`[options]` conditioning, so RTG boards can't self-wire
+
+`recipes/picasso96-2`/`recipes/picasso96-3`'s `[options.card]` includes
+a `graffity` choice, installing the real `Graffity.card` driver — and
+Copperline can actually drive it: its `[rtg]` section models a real
+Graffity Z2/Z3 board (`card = "graffityz2"`/`"graffityz3"`, confirmed
+directly against `docs/guide/configuration.md` and the emulator's own
+WinUAE-config importer, which maps `gfxcard_type = "GraffityZ2"`/
+`"GraffityZ3"` the same way and flags everything else — including the
+UAE-family `uaegfx` board these recipes' `uaegfx` option installs —
+as unsupported). But no recipe can fit that board automatically:
+`[emulator-config.*]` (`docs/recipe-contract.md`) is a flat table with
+no `when` conditioning, so it can't be written "only when `card =
+graffity`" the way `[install].copy`/`.tooltypes` can. A manifest that
+picks `card = "graffity"` under `emit = ["copperline"]` needs its own
+`[emulator-config.copperline]` block —
+
+```toml
+[emulator-config.copperline]
+"rtg.card" = "graffityz2"   # or "graffityz3" on a 32-bit-CPU machine
+"rtg.vram" = "2M"
+```
+
+— added by hand; the recipe only gets you the guest-side driver and
+monitor icon. The same gap applies to `recipes/toccata`'s board fit
+(see its own comment) and is the reason that recipe's
+`[emulator-config.copperline]` directive is unconditional rather than
+keyed to an `[options]` choice — a per-option `[emulator-config]`
+axis is what would unlock both.
+
 ## `[[run]]` mode = "wbstartup" needs a shipped icon
 
 A `wbstartup` run entry copies the program *and its icon* into

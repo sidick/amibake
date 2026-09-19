@@ -17,9 +17,14 @@
 # per board with no CPU-tier variants at all (single 68020+ generic
 # build each). zz9000 doesn't exist yet in this 1999 release — that
 # board is picasso96-3-only. [options.card] here only models the three
-# boards actually reachable from a manifest today (uaegfx is what
-# Copperline/Amiberry emulate; picasso-iv/cybervision64-3d are the real
-# board names already established by picasso96-3) — the real archive
+# boards actually reachable from a manifest today (uaegfx is
+# UAE-family emulator-internal RTG — Amiberry/WinUAE implement it,
+# Copperline does not: its own WinUAE-config importer explicitly flags
+# "the built-in UAEGFX ZorroII/III boards" as unsupported, modeling
+# only real Picasso II/II+ and Graffity Z2/Z3 silicon instead (see
+# `[options.card.requires.uaegfx]` below); picasso-iv/cybervision64-3d
+# are the real board names already established by picasso96-3) — the
+# real archive
 # ships a dozen more (Altais, Domino, Merlin, oMniBus, PicassoII,
 # Piccolo, PiccoloSD64, Pixel64, RetinaBLT-Z3, Spectrum), left
 # unmodeled since no recipe or CI path can exercise real hardware.
