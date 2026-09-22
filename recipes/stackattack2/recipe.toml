@@ -1,0 +1,75 @@
+# StackAttack2 2.9 (util/boot/StackAttack2.lha) — Robin Cloutman's
+# rewrite of Georg Steger's StackAttack: patches CreateProc(),
+# CreateNewProc(), RunCommand() and SystemTagList() so every new
+# process gets at least a floor stack size. The failure it exists to
+# prevent is the classic "crashes with no real motivation" one — a
+# stack of programs patching system functions each adding a frame,
+# until some program's own modest stack request overflows. Useful
+# under a soak/verification build for the same reason muforce is:
+# it removes a whole class of spurious crash that would otherwise be
+# misread as a build problem.
+#
+# Derived by downloading the real archive from Aminet and listing/
+# reading it with this project's own lhafile-based extractor; the
+# internal paths and the readme text quoted below come from that read.
+# The archive is flat and ships two genuinely distinct binaries built
+# from the same source — `StackAttack` (generic 68000) and
+# `StackAttack_020` (the same PhxAss build with `M=68020`, per the
+# bundled `Make` script) — which is exactly the [install].copy
+# `variants` case: one destination, CPU-tier sibling picked from the
+# manifest's machine block. `StackAttack.ASM`, `Make` and the .readme
+# are source/build/doc chrome and are not installed.
+#
+# StackAttack2.readme's "Installation" section, verbatim:
+#
+#   1. Copy StackAttack or StackAttack_020 to C:
+#   2. In S:startup-sequence, directly after the SetPatch line, add
+#      "StackAttack" (minus quotes)
+#   3. In S:startup-sequence, directly before the LoadWb line, add
+#      "StackAttack AUTO" (minus quotes again)
+#
+# AmiBake packages contribute to S:User-Startup, not S:startup-sequence
+# (see docs/recipe-contract.md) — and User-Startup is executed between
+# those two anchor points in every 2.0+ startup-sequence, i.e. after
+# SetPatch and before LoadWb. One `C:StackAttack AUTO` line there does
+# both steps at once: the first invocation is what installs the patch
+# and its named port, and AUTO is simply the argument it's installed
+# with. The two-step dance in the readme exists only to get the patch
+# in place for the *rest* of startup-sequence before the memory-size
+# check happens; nothing between those lines is this recipe's to run.
+# Ordered 10 so the patch is in place before the later fragments
+# (segtracker at 20, muforce at 30) start their own processes.
+#
+# AUTOSTACK (2.9's headline change) picks the floor from installed RAM:
+# 8192 bytes default, 16K above 16MB, scaling to 128K above 128MB.
+
+[package]
+name        = "stackattack2"
+versions    = ["2.9"]
+depends     = []
+conflicts   = []
+provides    = []
+
+[requires]
+# StackAttack2.readme: "Architecture: m68k-amigaos >= 2.0.0" —
+# expressed as the equivalent Kickstart floor, matching segtracker's
+# and reqtools' precedent.
+kickstart   = ">= 37"
+
+[source.aminet]
+# Single version only, so {version} substitution isn't needed in the
+# URL (Aminet's rolling unversioned-filename case — see
+# docs/recipe-contract.md's [source.aminet] caveat).
+url         = "util/boot/StackAttack2.lha"
+sha256      = { "2.9" = "2574f8751d04adecd2cc9303781da8d2eb17467b0f7aac9fa08c02570cdf080a" }
+
+[install]
+copy = [
+  { from = "StackAttack", to = "SYS:C/StackAttack", variants = [
+      { path = "StackAttack_020", cpu = ">= 68020" },
+    ] },
+]
+user-startup = [{ order = 10, lines = ["C:StackAttack AUTO"] }]
+
+[verify]
+exists = ["SYS:C/StackAttack"]
