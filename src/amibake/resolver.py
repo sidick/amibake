@@ -214,6 +214,7 @@ def resolve(manifest_path: Path, manifest: dict, library: dict[str, LoadedRecipe
         runs=runs,
         hdf=HdfOptions(size=hdf_table.get("size"), scratch=hdf_table.get("scratch")),
         emulator_config=manifest.get("emulator-config") or {},
+        screenmode=manifest.get("screenmode"),
     )
     return ResolveResult(plan, problems)
 

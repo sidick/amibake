@@ -68,6 +68,19 @@ INVALID = [
      "hdf-controller"),  # unknown controller
     ('base = "os3.2.2"\n[emulator-config.amiberry]\nhdf-controller = "lide"\n',
      "hdf-controller"),  # copperline-only directive
+    # [screenmode]: exactly one of name/id; id needs dimensions; name
+    # carries its own; depth is required and bounded
+    ('base = "os3.2.2"\n[screenmode]\ndepth = 8\n', "screenmode"),
+    ('base = "os3.2.2"\n[screenmode]\nname = "Z3660:1024x384"\nid = 0x500D1000\n'
+     'depth = 8\n', "screenmode"),
+    ('base = "os3.2.2"\n[screenmode]\nid = 0x29000\ndepth = 4\n', "screenmode.width"),
+    ('base = "os3.2.2"\n[screenmode]\nname = "Z3660:1024x384"\nwidth = 1024\n'
+     'depth = 8\n', "screenmode.width"),
+    ('base = "os3.2.2"\n[screenmode]\nname = "Z3660:1024x384"\n', "screenmode.depth"),
+    ('base = "os3.2.2"\n[screenmode]\nname = "Z3660:1024x384"\ndepth = 64\n',
+     "screenmode.depth"),
+    ('base = "os3.2.2"\n[screenmode]\nname = "Z3660:1024x384"\ndepth = 8\n'
+     'bogus = 1\n', "screenmode.bogus"),
 ]
 
 
@@ -80,6 +93,17 @@ def test_invalid_manifests(write, text, field):
         f"no problem mentioning {field!r} in {[p.field for p in problems]}")
     for p in problems:
         assert p.remedy, "every error carries a remedy"
+
+
+def test_valid_screenmode_by_name(write):
+    assert validate_manifest(write(
+        'base = "os3.2.2"\n[screenmode]\nname = "Z3660:1024x384"\ndepth = 8\n')) == []
+
+
+def test_valid_screenmode_by_id(write):
+    assert validate_manifest(write(
+        'base = "os3.2.2"\n[screenmode]\nid = 0x29000\nwidth = 640\nheight = 256\n'
+        'depth = 4\nautoscroll = false\n')) == []
 
 
 def test_valid_hdf_table(write):

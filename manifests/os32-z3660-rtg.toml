@@ -33,3 +33,11 @@ packages = [
 ]
 output   = ["hdf"]
 emit     = ["copperline"]
+
+# Boot straight onto the board: Workbench opens on the Z3660's RTG
+# output rather than the native chipset. The name is resolved at build
+# time against the p96-z3660-hdmi settings file the z3660 package
+# installs (its 1024x384 entry carries DisplayID 0x500D1000).
+[screenmode]
+name  = "Z3660:1024x384"
+depth = 8

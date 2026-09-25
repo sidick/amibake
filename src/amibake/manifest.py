@@ -27,8 +27,9 @@ _RUN_SUGAR_TOOLTYPES = {"stack": "STACK", "startpri": "STARTPRI",
                         "donotwait": "DONOTWAIT"}
 
 TOP_KEYS = {"base", "machine", "packages", "output", "emit", "providers", "run", "hdf",
-            "emulator-config"}
+            "emulator-config", "screenmode"}
 MACHINE_KEYS = {"cpu", "fpu", "mmu", "ram", "rtg", "chipset"}
+SCREENMODE_KEYS = {"name", "id", "width", "height", "depth", "autoscroll"}
 HDF_KEYS = {"size", "scratch"}
 HDF_CONTROLLERS = {"copperhf", "lide"}
 
@@ -62,6 +63,10 @@ def validate_manifest(path: Path) -> list[Problem]:
     hdf = c.typed(doc, "hdf", dict, "", default=None)
     if hdf is not None:
         _check_hdf(c, hdf, doc)
+
+    screenmode = c.typed(doc, "screenmode", dict, "", default=None)
+    if screenmode is not None:
+        _check_screenmode(c, screenmode)
 
     emulator_config = c.typed(doc, "emulator-config", dict, "", default={})
     _check_emulator_config(c, emulator_config)
@@ -257,6 +262,44 @@ def _check_machine(c: Checker, machine: dict) -> None:
                     f"{format_bytes(chip)} of chip RAM",
                     'an Agnus below Alice tops out at 1M — use chipset = '
                     '"aga", or drop to chip:1M')
+
+
+def _check_screenmode(c: Checker, screenmode: dict) -> None:
+    """`screenmode` — the startup screen mode Workbench opens on, written
+    into the image as ENVARC:Sys/screenmode.prefs (see screenmode.py).
+    Either a P96 display name (resolved against the built tree's
+    Picasso96 settings files at build time — so only shape is checkable
+    here) or an explicit numeric mode id with stated dimensions."""
+    c.unknown_keys(screenmode, SCREENMODE_KEYS, "screenmode")
+    name = c.typed(screenmode, "name", str, "screenmode")
+    mode_id = c.typed(screenmode, "id", int, "screenmode")
+    if (name is None) == (mode_id is None):
+        c.error("screenmode", "state exactly one of name / id",
+                'name = "Z3660:1024x384" resolves a Picasso96 mode by its '
+                "display name; id (with width/height) states a mode id "
+                "directly, e.g. a native Amiga one")
+    for key in ("width", "height"):
+        value = c.typed(screenmode, key, int, "screenmode")
+        if mode_id is not None and value is None:
+            c.error(f"screenmode.{key}",
+                    f"an explicit id needs {key} stated too",
+                    "nothing can derive dimensions from a bare mode id — copy "
+                    "them from the mode being named")
+        if name is not None and value is not None:
+            c.error(f"screenmode.{key}",
+                    f"{key} contradicts name (the settings file already states it)",
+                    "drop it, or switch to an explicit id")
+        if value is not None and not 0 < value <= 0xFFFF:
+            c.error(f"screenmode.{key}", f"{key} must be 1-65535, got {value}",
+                    "screen dimensions are UWORDs")
+    depth = c.typed(screenmode, "depth", int, "screenmode", required=True)
+    if depth is not None and not 1 <= depth <= 32:
+        c.error("screenmode.depth", f"depth must be 1-32 bits, got {depth}",
+                "e.g. depth = 8 for a 256-colour screen")
+    if mode_id is not None and not 0 <= mode_id <= 0xFFFFFFFF:
+        c.error("screenmode.id", f"id must be a 32-bit mode id, got {mode_id}",
+                "e.g. id = 0x500D1000")
+    c.typed(screenmode, "autoscroll", bool, "screenmode")
 
 
 def _check_package_entry(c: Checker, entry, label: str) -> None:

@@ -73,6 +73,9 @@ class BuildPlan:
     emit: tuple[str, ...]
     runs: tuple[RunEntry, ...] = ()
     hdf: HdfOptions = HdfOptions()
+    # The manifest's `screenmode` table, verbatim (already validated) —
+    # applied to the built tree by screenmode.apply_screenmode.
+    screenmode: dict | None = None
     # The manifest's own [emulator-config.<emitter>] tables, verbatim —
     # merged by emit.collect_emulator_config after every recipe's
     # directives, so the manifest wins on key conflict.
@@ -105,6 +108,12 @@ def format_lockfile(plan: BuildPlan) -> str:
             lines.append(f"size = {toml_value(plan.hdf.size)}")
         if plan.hdf.scratch is not None:
             lines.append(f"scratch = {toml_value(plan.hdf.scratch)}")
+
+    if plan.screenmode:
+        lines.append("")
+        lines.append("[screenmode]")
+        for key in sorted(plan.screenmode):
+            lines.append(f"{key} = {toml_value(plan.screenmode[key])}")
 
     lines.append("")
     lines.append("[base]")

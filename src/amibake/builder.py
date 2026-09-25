@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from . import extract, fetch, layer, runs
+from . import extract, fetch, layer, runs, screenmode
 from ._validate import load_toml
 from .plan import BuildPlan, ResolvedPackage
 from .tree import Tree
@@ -30,10 +30,12 @@ def build_tree(plan: BuildPlan, cache_root: Path, assets_root: Path | None = Non
             tree, parent_key, pkg, plan.machine, cache_root, assets_root, http_get, use_cache,
             allow_hooks)
 
-    # The manifest's [[run]] entries go on last — they name programs the
-    # layers above installed. Never part of any layer cache entry: they
-    # are manifest configuration, not package content.
-    return runs.apply_runs(tree, plan.runs)
+    # The manifest's [[run]] entries and `screenmode` go on last — they
+    # name programs/modes the layers above installed. Never part of any
+    # layer cache entry: they are manifest configuration, not package
+    # content.
+    tree = runs.apply_runs(tree, plan.runs)
+    return screenmode.apply_screenmode(tree, plan.screenmode)
 
 
 def _apply_one(tree: Tree, parent_key: str | None, pkg: ResolvedPackage, machine: dict,

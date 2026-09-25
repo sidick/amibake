@@ -33,6 +33,7 @@ emit     = ["copperline", "amiberry"]
 | `hdf` | table | no | Shapes the `hdf` output image (size, scratch partition); see `[hdf]` below. An error if `output` is given explicitly and doesn't include `hdf`. |
 | `emulator-config` | table | no | Per-emitter literal config directives, merged over every recipe's own — see `[emulator-config.*]` below. |
 | `run` | array of tables | no | Programs the built image runs at boot; see `[[run]]` below. |
+| `screenmode` | table | no | The startup screen mode Workbench opens on; see `[screenmode]` below. |
 
 Unknown top-level keys are an error, not ignored — a typo must fail, not
 silently change the build.
@@ -82,6 +83,38 @@ partition-bounded target that is safe to destroy, while `DH0` keeps the
 system intact. The scratch partition's RDB entry records the same DOS
 type as `DH0` as its mount hint, but nothing formats it — the guest
 finds an uninitialized ("Not a DOS disk") device.
+
+## The `[screenmode]` table
+
+The startup screen mode Workbench opens on, written into the image as
+a stock `ENVARC:Sys/screenmode.prefs` (IFF PREF/SCRM — the same file
+ScreenMode Preferences' Save button writes; IPrefs applies it at boot).
+Two spellings:
+
+```toml
+# an RTG mode, by the display name the guest's own ScreenMode
+# Preferences lists — resolved at build time against the Picasso96
+# settings files the packages installed (their FORM P96S resolution
+# entries carry the mode id, dimensions, and this name):
+screenmode = { name = "Z3660:1024x384", depth = 8 }
+
+# anything else — an explicit 32-bit mode id with stated dimensions
+# (e.g. a native AGA mode):
+screenmode = { id = 0x29000, width = 640, height = 256, depth = 4 }
+```
+
+| Key | Type | Meaning |
+|---|---|---|
+| `name` | string | A P96 display name (`"Board:WxH"`, matched case-insensitively). Build fails with the list of available names if no installed settings file declares it. Mutually exclusive with `id`. |
+| `id` | integer | Explicit `smp_DisplayID`. Requires `width` and `height` (nothing can derive them from a bare id); mutually exclusive with `name` (which carries its own dimensions). |
+| `width`, `height` | integer | Screen dimensions, only with `id`. |
+| `depth` | integer | **Required.** Screen depth in bits (1–32), e.g. `8` for 256 colours. |
+| `autoscroll` | boolean | `smp_Control`'s AutoScroll flag. Default `true`. |
+
+The mode a `name` resolves to must actually be displayable on the
+fitted board at the asked depth — nothing validates depth against the
+mode's capabilities at build time; a bad combination falls back to the
+guest's default screen at boot, the same as any stale saved prefs.
 
 ## `[emulator-config.*]` — overriding emitted emulator config
 
