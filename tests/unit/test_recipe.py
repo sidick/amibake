@@ -131,6 +131,20 @@ def test_invalid_recipes(write, text, field):
         assert p.remedy, "every error carries a remedy"
 
 
+def test_install_tooltypes_take_booleans_like_every_other_tooltype_map(write):
+    """string sets NAME=value, true the bare valueless name, false removes
+    — false is how recipes/z3660 strips the disabled `%SettingsFile=...`
+    entry its shipped monitor icon carries."""
+    text = _minimal() + (
+        '\n[install]\n'
+        'copy = [{ from = "a", to = "SYS:Devs/Monitors/Z.info" }]\n'
+        'tooltypes = [{ path = "SYS:Devs/Monitors/Z.info", '
+        'set = { SettingsFile = "SYS:Devs/settings", "%SettingsFile" = false, '
+        'DONOTWAIT = true } }]\n'
+    )
+    assert validate_recipe(write(text, name="recipe.toml", subdir="pkg")) == []
+
+
 def test_valid_copy_variants(write):
     text = _minimal() + (
         '\n[install]\ncopy = [{ from = "a", to = "SYS:C/A", variants = ['

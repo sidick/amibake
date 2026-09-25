@@ -115,6 +115,21 @@ def resolve(manifest_path: Path, manifest: dict, library: dict[str, LoadedRecipe
 
     def resolve_one(name: str, constraints: list[Constraint], options: dict,
                     label: str) -> None:
+        # Map a capability name to its providing recipe *before* the
+        # already-resolved/cycle checks: those key on recipe names, and a
+        # capability is never one — without this, a recipe depending on
+        # "picasso96" would re-resolve an already-resolved provider with
+        # empty options (failing its required options a second time) and
+        # append a duplicate layer to the build order.
+        recipe = library.get(name)
+        if recipe is None:
+            recipe = _resolve_capability(problems, manifest_file, label, name,
+                                         providers, library,
+                                         chosen=resolved.keys() | visiting)
+            if recipe is None:
+                return
+            name = recipe.name
+
         if name in resolved:
             if not satisfies(resolved[name].version, constraints):
                 problems.append(Problem(
@@ -130,13 +145,6 @@ def resolve(manifest_path: Path, manifest: dict, library: dict[str, LoadedRecipe
                 manifest_file, label, f"circular dependency involving {name!r}",
                 "break the cycle in the recipes' [package].depends"))
             return
-
-        recipe = library.get(name)
-        if recipe is None:
-            recipe = _resolve_capability(problems, manifest_file, label, name,
-                                         providers, library)
-            if recipe is None:
-                return
 
         versions = (recipe.doc.get("package") or {}).get("versions") or []
         version = max_satisfying(versions, constraints)
@@ -318,7 +326,8 @@ def _parse_manifest_entry(entry) -> tuple[str, list[Constraint], dict]:
 
 def _resolve_capability(problems: list[Problem], manifest_file: str, label: str,
                         capability: str, providers: dict,
-                        library: dict[str, LoadedRecipe]) -> LoadedRecipe | None:
+                        library: dict[str, LoadedRecipe],
+                        chosen: set[str] = frozenset()) -> LoadedRecipe | None:
     override = providers.get(capability)
     if override is not None:
         candidate = library.get(override)
@@ -349,6 +358,16 @@ def _resolve_capability(problems: list[Problem], manifest_file: str, label: str,
             f"check spelling or add a recipe"))
         return None
     if len(candidates) > 1:
+        # The manifest may already have picked a provider simply by
+        # listing it as a package (or by depending on something that
+        # did) — honor that choice before calling the capability
+        # ambiguous, so `providers` is only needed when nothing else
+        # has decided. `chosen` holds the recipes resolved so far plus
+        # those mid-resolution, so this is manifest-order dependent:
+        # a provider listed *after* its dependent doesn't disambiguate.
+        already = [r for r in candidates if r.name in chosen]
+        if len(already) == 1:
+            return already[0]
         names = ", ".join(sorted(r.name for r in candidates))
         problems.append(Problem(
             manifest_file, label,

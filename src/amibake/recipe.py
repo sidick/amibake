@@ -456,16 +456,15 @@ def _check_install(c: Checker, install: dict) -> None:
             c.error(f"{label}.path", f"{path!r} is not an icon",
                     "tool types live in an Amiga .info file — name that, not "
                     "the file it belongs to")
+        # Same value vocabulary as every other tool-type map ([install].
+        # commands, manifest [[run]]): string sets NAME=value, true sets
+        # the bare valueless name, false removes it — removal is what
+        # lets a recipe strip an unwanted entry a shipped icon carries
+        # (a `%`-/`(`-disabled one included: the prefix is part of the
+        # name FindToolType sees, so the removal keys on that literal
+        # spelling).
         values = c.typed(entry, "set", dict, label, required=True)
-        for name, value in (values or {}).items():
-            if not isinstance(value, str):
-                c.error(f"{label}.set.{name}", "tool type values must be strings",
-                        'quote it — e.g. BoardType = "Graffity" (a tool type is '
-                        "text on the Amiga side whatever it looks like)")
-            elif "=" in name:
-                c.error(f"{label}.set.{name}", "tool type names can't contain '='",
-                        "the name is the part before the '=' — write "
-                        '{ BoardType = "Graffity" }, not { "BoardType=Graffity" = "" }')
+        check_tooltype_values(c, values or {}, f"{label}.set")
         _check_when(c, entry, label)
 
     for i, entry in enumerate(

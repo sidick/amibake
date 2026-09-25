@@ -268,6 +268,69 @@ depends  = ["bsdsocket"]
         assert result.ok, result.problems
         assert {p.name for p in result.plan.packages} == {"app-fixture", "roadshow-fixture"}
 
+    def test_listed_provider_disambiguates_capability(self, tmp_path):
+        """A manifest that already lists one of an ambiguous capability's
+        providers as a package has picked its provider — no [providers]
+        table needed, and the dependency neither re-resolves the provider
+        (losing its manifest-answered options) nor duplicates its layer.
+        The picasso96/z3660 pairing: picasso96-2 and picasso96-3 both
+        provide "picasso96" with a required card option, and z3660
+        depends on the capability."""
+        provider = '''
+[package]
+name     = "roadshow-fixture"
+versions = ["1.0"]
+provides = ["bsdsocket"]
+
+[source.assets]
+path = "Roadshow-{version}.lha"
+
+[install]
+copy = [{ from = "Roadshow/#?", to = "SYS:" }]
+
+[options.flavor]
+type     = "enum"
+values   = ["full", "demo"]
+required = true
+'''
+        depender = '[package]\nname = "app-fixture"\nversions = ["1.0"]\ndepends = ["bsdsocket"]\n'
+        library = _lib(tmp_path, {
+            "os32-fixture": OS32_BASE,
+            "app-fixture": depender,
+            "roadshow-fixture": provider,
+            "uae-only-emulation-fixture": self.UAE_ONLY_EMULATION,
+        })
+        path, manifest = _manifest(tmp_path, (
+            'base = "os32-fixture"\n'
+            'packages = [{ name = "roadshow-fixture", flavor = "demo" }, "app-fixture"]\n'
+        ))
+        result = resolve(path, manifest, library)
+        assert result.ok, result.problems
+        names = [p.name for p in result.plan.packages]
+        assert names == ["roadshow-fixture", "app-fixture"]  # no duplicate layer
+        roadshow = next(p for p in result.plan.packages if p.name == "roadshow-fixture")
+        assert roadshow.options == {"flavor": "demo"}  # not clobbered by the dep pass
+
+    def test_provider_listed_after_dependent_is_still_ambiguous(self, tmp_path):
+        """Order matters: the dependent resolves before the manifest's
+        provider entry, so nothing has picked a provider yet and the
+        capability is ambiguous — the error's remedy ([providers]) still
+        applies. Documents the limitation rather than blessing it."""
+        depender = '[package]\nname = "app-fixture"\nversions = ["1.0"]\ndepends = ["bsdsocket"]\n'
+        library = _lib(tmp_path, {
+            "os32-fixture": OS32_BASE,
+            "app-fixture": depender,
+            "roadshow-fixture": self.ROADSHOW,
+            "uae-only-emulation-fixture": self.UAE_ONLY_EMULATION,
+        })
+        path, manifest = _manifest(tmp_path, (
+            'base = "os32-fixture"\n'
+            'packages = ["app-fixture", "roadshow-fixture"]\n'
+        ))
+        result = resolve(path, manifest, library)
+        assert not result.ok
+        assert any("ambiguous" in p.problem for p in result.problems)
+
     def test_noop_provider_requires_matching_emulator(self, tmp_path):
         """Generic resolver mechanics: a no-op capability provider whose
         [requires].emulator the manifest's emit list doesn't cover fails

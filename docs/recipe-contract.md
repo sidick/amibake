@@ -287,6 +287,19 @@ expresses exactly that.
   ]
   ```
 
+  `set` values follow the same vocabulary as every other tool-type map
+  here: a string sets `NAME=value`, `true` sets the bare valueless name
+  (`DONOTWAIT`), and `false` removes the tool type if present. Removal
+  is how a recipe strips an entry a shipped icon carries that shouldn't
+  survive the install — including a *disabled* one: a `(`- or
+  `%`-prefixed tool type is inert precisely because the prefix is part
+  of the name `FindToolType` sees, so removing it keys on that literal
+  spelling. A replaced name keeps its position in the array; only the
+  first occurrence is replaced when a shipped icon carries duplicates —
+  which is also the occurrence `FindToolType` returns (recipes/z3660's
+  monitor icon ships `DISPLAYCHAIN=NO` twice; setting it once flips the
+  one that counts).
+
   `path` names the icon by its *destination* path — an earlier `copy` or
   `files` entry must already have put it in the tree, or the build fails
   naming the recipe. Applied after all copies, the real installer's own
