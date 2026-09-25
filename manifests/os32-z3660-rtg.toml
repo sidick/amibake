@@ -1,0 +1,35 @@
+# RTG on a Z3660: AmigaOS 3.2.2 on the accelerator's 68060, with the
+# board's own Picasso96 driver (recipes/z3660) over the P96 3.x
+# libraries. The exemplar for the board-driver-outside-P96 pattern:
+# picasso96-3 with `card = "none"` installs the RTG stack alone, and
+# z3660 brings the Z3660.card, its DEVS:Monitors entry (icon tool types
+# preconfigured on the shipped disk), and the p96-z3660-hdmi settings
+# file — plus, via its [emulator-config.copperline], the emulated board
+# itself (`[rtg] card = "z3660"`).
+#
+# picasso96-3 must be listed before z3660: z3660 depends on the
+# "picasso96" capability, and the resolver honors the provider the
+# manifest already picked only if it was resolved first (else it asks
+# for a [providers] table, both picasso96 recipes providing it).
+#
+# `mmulibs` for the same reason every 68030+ manifest here carries it:
+# the base's `CPU CHECKINSTALL` stops the boot with a "Press RETURN"
+# nag without a CPU support library.
+#
+# cpu is 68040, not the 68060 the real Z3660 carries: under Copperline
+# 0.19.0 this same image on a 68060 never reaches Workbench — the CPU
+# winds up in a tight interrupts-masked loop in early Kickstart ROM
+# (~$F80162, seen via CCP pc_history; FPU on or off makes no
+# difference), while 68030 and 68040 boot the identical hdf to
+# Workbench. That is a Copperline 68060 issue to chase upstream, not a
+# driver one; any 32-bit-address-bus CPU satisfies the Z3660 RTG board.
+
+base     = "os3.2.2"
+machine  = { cpu = "68040", fpu = true, mmu = true, ram = "chip:2M,fast:8M", rtg = true }
+packages = [
+  { name = "picasso96-3", card = "none" },
+  "z3660",
+  "mmulibs",
+]
+output   = ["hdf"]
+emit     = ["copperline"]

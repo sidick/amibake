@@ -1,0 +1,112 @@
+# Z3660 RTG drivers — the Picasso96 board driver for shanshe's Z3660, a
+# Zynq-based 68060/emulator accelerator for the A3660 CPU slot whose
+# FPGA side also provides an RTG framebuffer with HDMI output
+# (github.com/shanshe/Z3660). Copperline emulates the board's RTG half
+# (`[rtg] card = "z3660"`, fittable on any 32-bit-address-bus CPU), which
+# is what makes this recipe boot-testable at all; no UAE-family emulator
+# models it, hence `[requires].emulator` below.
+#
+# Derived by downloading the real drivers disk (see [source.url]) and
+# reading it with this project's own ADF extractor — paths and version
+# strings below are from the actual files, not the README. Three pieces
+# make the RTG path work, mirroring what recipes/picasso96-2/-3 do per
+# card, transcribed from the board's own install instructions:
+#
+#   - `Libs/Picasso96/Z3660.card` — the P96 board driver ($VER reads
+#     "Z3660.card 1.4 (17.07.2025)"; its own string warns it "needs at
+#     least firmware (BOOT.bin) v1.03", the board firmware this drivers
+#     disk ships alongside).
+#   - `Devs/Monitors/Z3660` + its icon — the stock P96 monitor program
+#     ($VER "Picasso96 40.80 (20.12.2020)") under the board's name. The
+#     shipped icon already carries the full tool-type set, hard-coded to
+#     the settings file below (`BoardType=Z3660`,
+#     `%SettingsFile=SYS:Devs/p96-z3660-hdmi`), so unlike the picasso96
+#     recipes there is nothing for [install].tooltypes to set — the
+#     icon is copied verbatim and the modes are available at boot.
+#   - `Devs/p96-z3660-hdmi` — the P96 settings file holding the board's
+#     HDMI mode list, referenced by that icon.
+#
+# The rest of the disk (68060 libs are NOT on it; it carries axmp3,
+# ZTop, z3660_scsi/floppy/usb devices, Z3660Net, AHI and MHI drivers,
+# Wazp3D) is board-hardware tooling Copperline does not emulate, so
+# only the RTG half is installed. The .card is useless without the P96
+# libraries (rtg.library loads it), hence the capability dependency:
+# pair this with picasso96-2 or picasso96-3 using `card = "none"` (they
+# install the libraries; this recipe brings the board's own driver and
+# monitor).
+#
+# Versioning: the drivers disk lives in the repo tree, updated in place
+# on main ("1.03 beta N" per the repo's own commit messages; ZTop's
+# $VER reads "Z3660 ZTop 1.03") — the beta suffix isn't expressible in
+# recipe version grammar, so the version is "1.03" and the [source.url]
+# pins the exact disk by commit SHA + checksum. GitHub *releases* exist
+# but lag the drivers disk badly (v1.02, 2024), so they are deliberately
+# not used as the source here.
+
+[package]
+name     = "z3660"
+versions = ["1.03"]
+depends  = ["picasso96"]
+
+[requires]
+os  = ">= 3.0"       # Picasso96's own floor (see recipes/picasso96-2)
+cpu = ">= 68020"     # the RTG board needs a 32-bit address bus
+# Only Copperline emulates the Z3660's RTG; on a UAE-family emulator the
+# monitor would find no board and the drivers would be dead weight.
+emulator = ["copperline"]
+
+[source.url]
+# The drivers disk in the repo tree, pinned by commit (the file is
+# updated in place on main, so a branch URL would not be deterministic).
+url    = "https://raw.githubusercontent.com/shanshe/Z3660/1dddf7978fe4ec0203ab2b88f035525083e10ac3/z3660-drivers/0_Z3660.adf"
+sha256 = { "1.03" = "82dd9316db928fa1c17082c4b3206249e45c34022cacb4f0a00bc2f524297047" }
+
+[install]
+copy = [
+  { from = "Libs/Picasso96/Z3660.card", to = "SYS:Libs/Picasso96/" },
+  { from = "Devs/Monitors/Z3660", to = "SYS:Devs/Monitors/" },
+  { from = "Devs/Monitors/Z3660.info", to = "SYS:Devs/Monitors/" },
+  { from = "Devs/p96-z3660-hdmi", to = "SYS:Devs/" },
+]
+
+# The one tool type the shipped icon gets wrong for emulator use — the
+# rest (`BoardType=Z3660`, an already-active
+# `SettingsFile=SYS:Devs/p96-z3660-hdmi`, the display tuning) is
+# preconfigured correctly and copied verbatim. (Verify claims about
+# that icon with icon.read_tool_types, not `strings` — the length
+# fields between entries land in the raw dump as junk prefix bytes and
+# once made SettingsFile look `%`-disabled here.) DISPLAYCHAIN=NO
+# models the real board's separate physical RTG monitor, so once the
+# driver initializes, the display never hands back to the native
+# screen — under a single-window emulator that is a permanently black
+# window (seen for real booting this recipe under Copperline before
+# this was set; Copperline's own [rtg] documentation prescribes
+# DISPLAYCHAIN=YES for exactly this). The shipped icon carries the
+# entry twice; the set replaces the first, which is the one
+# FindToolType returns.
+tooltypes = [
+  { path = "SYS:Devs/Monitors/Z3660.info", set = { DISPLAYCHAIN = "Yes" }, when = "display-chain = true" },
+]
+
+# The stock separate-RTG-monitor behavior, should a build be destined
+# for real hardware (or a future multi-display emulator) rather than a
+# single-window session.
+[options.display-chain]
+type    = "bool"
+default = true
+
+# Fit the emulated board itself, the same both-halves pattern as
+# recipes/toccata: the copies above give the guest a driver, this gives
+# it hardware to find. Copperline fits a Z3660 by default on 32-bit-bus
+# CPUs, but stating it keeps the config meaning what the manifest asked
+# for rather than leaning on a CPU-conditional emulator default.
+[emulator-config.copperline]
+"rtg.card" = "z3660"
+
+[verify]
+exists = [
+  "SYS:Libs/Picasso96/Z3660.card",
+  "SYS:Devs/Monitors/Z3660",
+  "SYS:Devs/Monitors/Z3660.info",
+  "SYS:Devs/p96-z3660-hdmi",
+]

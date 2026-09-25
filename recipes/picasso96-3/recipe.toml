@@ -50,6 +50,10 @@
 [package]
 name     = "picasso96-3"
 versions = ["3.6.2"]
+# The shared RTG-stack capability (with recipes/picasso96-2): what a
+# board-driver recipe whose .card ships outside the P96 archive (e.g.
+# recipes/z3660) depends on to get rtg.library and friends installed.
+provides = ["picasso96"]
 
 [requires]
 os  = ">= 3.0"       # Kickstart/Workbench 3.0 (V39)+
@@ -249,9 +253,14 @@ tooltypes = [
   { path = "SYS:Devs/Monitors/#?.info", set = { Interrupt = "No" },        when = "interrupt = false" },
 ]
 
+# "none" installs the libraries alone — no .card, no .chip, no
+# DEVS:Monitors entry. For boards whose driver ships with the board's
+# own firmware/driver package rather than with P96 (MNT ZZ9000, Z3660):
+# the board recipe (e.g. recipes/z3660) brings its own .card and
+# monitor and depends on the "picasso96" capability for the rest.
 [options.card]
 type     = "enum"
-values   = ["uaegfx", "native", "altais", "a2410", "cvision-ppc", "cybervision64", "cybervision64-3d", "domino", "gba-pii", "graffity", "gvp110", "merlin", "omnibus", "picasso-ii", "picasso-iv", "piccolo", "piccolo-sd64", "pixel64", "retina-z2", "retina-blt-z3", "s3virge", "spectrum", "visiona"]
+values   = ["uaegfx", "native", "altais", "a2410", "cvision-ppc", "cybervision64", "cybervision64-3d", "domino", "gba-pii", "graffity", "gvp110", "merlin", "omnibus", "picasso-ii", "picasso-iv", "piccolo", "piccolo-sd64", "pixel64", "retina-z2", "retina-blt-z3", "s3virge", "spectrum", "visiona", "none"]
 required = true
 
 # uaegfx is UAE-family emulator-internal RTG, not a real board driver —
