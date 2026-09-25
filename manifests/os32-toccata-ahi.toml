@@ -21,7 +21,9 @@
 #
 # `chipset = "aga"` because 2M of chip RAM needs an AGA Alice — an ECS
 # Agnus only reaches 1M, which Copperline rejects outright rather than
-# quietly truncating.
+# quietly truncating. Stating it is redundant now (AmiBake infers AGA
+# from >1M of chip) but kept explicit: the machine block reads as a
+# whole machine.
 
 base     = "os3.2.2"
 machine  = { cpu = "68030", fpu = true, ram = "chip:2M,fast:8M", chipset = "aga" }

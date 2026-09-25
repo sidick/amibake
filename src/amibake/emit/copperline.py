@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ..machine import format_bytes, parse_ram_spec
+from ..machine import effective_chipset, format_bytes, parse_ram_spec
 from ..plan import BuildPlan, toml_value
 
 _RAM_KINDS = ("chip", "fast", "slow", "z3")
@@ -114,8 +114,9 @@ def write_copperline_config(plan: BuildPlan, path: Path, rom_path: Path,
         table("memory", [f"{kind} = {toml_value(format_bytes(ram[kind]))}"
                          for kind in _RAM_KINDS if kind in ram])
 
-    if machine.get("chipset"):
-        table("chipset", [f"revision = {toml_value(machine['chipset'].upper())}"])
+    chipset = effective_chipset(machine)
+    if chipset:
+        table("chipset", [f"revision = {toml_value(chipset.upper())}"])
 
     if hdf_output_path is not None:
         # First slot only, no board/rom keys: both controllers' minimal

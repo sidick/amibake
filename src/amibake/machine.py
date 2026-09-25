@@ -63,6 +63,29 @@ def parse_ram_spec(spec: str) -> dict[str, int]:
     return out
 
 
+# The largest chip RAM an Agnus below Alice can address. Both target
+# emulators treat it as a hard ceiling -- Copperline rejects an ECS
+# machine asking for 2M outright rather than quietly truncating (seen
+# while verifying manifests/os32-toccata-ahi.toml), so a manifest that
+# asks for 2M of chip has, in practice, asked for AGA.
+MAX_PRE_AGA_CHIP = 1024 * 1024
+
+
+def effective_chipset(machine: dict) -> str | None:
+    """The chipset a config emitter should write: `machine.chipset` when
+    the manifest states one, else `"aga"` inferred from more than
+    `MAX_PRE_AGA_CHIP` of chip RAM, else None (emit nothing and let the
+    emulator default apply). Manifests stating both an explicit non-AGA
+    chipset and >1M of chip are rejected by manifest.py, so this never
+    has to reconcile a contradiction."""
+    if machine.get("chipset"):
+        return machine["chipset"]
+    ram = parse_ram_spec(machine["ram"]) if machine.get("ram") else {}
+    if ram.get("chip", 0) > MAX_PRE_AGA_CHIP:
+        return "aga"
+    return None
+
+
 def format_bytes(n: int) -> str:
     """The inverse of parse_ram_spec's per-kind value: `2097152` ->
     `"2M"`. Picks the largest of G/M/K that divides evenly — every value

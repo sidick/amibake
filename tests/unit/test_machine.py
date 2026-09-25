@@ -1,4 +1,9 @@
-from amibake.machine import format_bytes, parse_ram_spec, parse_size
+from amibake.machine import (
+    effective_chipset,
+    format_bytes,
+    parse_ram_spec,
+    parse_size,
+)
 
 
 def test_single_spec():
@@ -39,3 +44,16 @@ def test_parse_size():
     assert parse_size("512K") == 512 * 1024
     assert parse_size("64M") == 64 * 1024 * 1024
     assert parse_size("1G") == 1024 * 1024 * 1024
+
+
+def test_effective_chipset_prefers_the_explicit_one():
+    assert effective_chipset({"chipset": "ecs", "ram": "chip:1M"}) == "ecs"
+
+
+def test_effective_chipset_infers_aga_from_2m_chip():
+    assert effective_chipset({"ram": "chip:2M,fast:8M"}) == "aga"
+
+
+def test_effective_chipset_unset_below_the_alice_threshold():
+    assert effective_chipset({"ram": "chip:1M,fast:8M"}) is None
+    assert effective_chipset({}) is None

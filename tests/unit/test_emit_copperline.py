@@ -50,6 +50,29 @@ def test_defaults_when_machine_block_is_empty(tmp_path):
     assert "chipset" not in doc
 
 
+def test_2m_chip_implies_aga_without_an_explicit_chipset(tmp_path):
+    plan = _plan({"cpu": "68030", "ram": "chip:2M,fast:8M"})
+    target = tmp_path / "out.copperline.toml"
+    dir_out = tmp_path / "build" / "mysetup"
+    dir_out.mkdir(parents=True)
+
+    write_copperline_config(plan, target, tmp_path / "kick.rom", dir_out, {})
+
+    doc = tomllib.loads(target.read_text())
+    assert doc["chipset"]["revision"] == "AGA"
+
+
+def test_1m_chip_leaves_the_chipset_to_the_emulator(tmp_path):
+    plan = _plan({"ram": "chip:1M"})
+    target = tmp_path / "out.copperline.toml"
+    dir_out = tmp_path / "build" / "mysetup"
+    dir_out.mkdir(parents=True)
+
+    write_copperline_config(plan, target, tmp_path / "kick.rom", dir_out, {})
+
+    assert "chipset" not in tomllib.loads(target.read_text())
+
+
 def test_no_bootable_output_raises_named_error(tmp_path):
     plan = _plan({}, output=())
     with pytest.raises(EmitError, match="'hdf' or 'dir' build output"):

@@ -7,6 +7,7 @@ from pathlib import Path
 
 from ._validate import Checker, check_tooltype_values, load_toml
 from .errors import Problem
+from .machine import MAX_PRE_AGA_CHIP, format_bytes, parse_ram_spec
 from .versionspec import is_name, parse_constraint, parse_package_spec
 
 CPU_FAMILIES = {"68000", "68010", "68020", "68030", "68040", "68060"}
@@ -240,6 +241,22 @@ def _check_machine(c: Checker, machine: dict) -> None:
     if chipset is not None and chipset not in CHIPSETS:
         c.error("machine.chipset", f"unknown chipset {chipset!r}",
                 f"use one of: {', '.join(sorted(CHIPSETS))}")
+    elif chipset in ("ocs", "ecs") and ram is not None:
+        # Only Alice addresses more than 1M of chip; Copperline rejects
+        # an ECS machine asking for 2M outright rather than truncating.
+        # With no chipset stated, machine.effective_chipset infers AGA
+        # from the same fact -- so this fires only on a contradiction
+        # the manifest spelled out itself.
+        try:
+            chip = parse_ram_spec(ram).get("chip", 0)
+        except (KeyError, ValueError):
+            chip = 0  # a bad spec already has its own error above
+        if chip > MAX_PRE_AGA_CHIP:
+            c.error("machine.chipset",
+                    f"chipset {chipset!r} can't address "
+                    f"{format_bytes(chip)} of chip RAM",
+                    'an Agnus below Alice tops out at 1M — use chipset = '
+                    '"aga", or drop to chip:1M')
 
 
 def _check_package_entry(c: Checker, entry, label: str) -> None:

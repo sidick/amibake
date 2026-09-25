@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ..machine import parse_ram_spec
+from ..machine import effective_chipset, parse_ram_spec
 from ..plan import BuildPlan
 
 # The confirmed-real, working key set from amibake-aros68k.uae (a much
@@ -75,9 +75,10 @@ def write_uae_config(plan: BuildPlan, path: Path, rom_path: Path,
     if "fpu" in machine:
         settings["fpu_model"] = _fpu_model(machine) if machine["fpu"] else "0"
 
-    if machine.get("chipset"):
-        settings["chipset"] = machine["chipset"]
-        settings["chipset_compatible"] = _chipset_compatible(machine["chipset"])
+    chipset = effective_chipset(machine)
+    if chipset:
+        settings["chipset"] = chipset
+        settings["chipset_compatible"] = _chipset_compatible(chipset)
 
     ram = parse_ram_spec(machine["ram"]) if machine.get("ram") else {}
     for kind, key, unit in (("chip", "chipmem_size", _CHIPMEM_UNIT),

@@ -46,7 +46,14 @@ silently change the build.
 | `mmu` | bool | independent axis — required by Enforcer/MuForce-style setups |
 | `ram` | string | `<kind>:<size>`, kind ∈ `chip`/`fast`/`slow`/`z3`, size like `512K`, `8M`, `1G`. Multiple specs comma-separated: `"chip:2M,fast:8M"`. |
 | `rtg` | bool | RTG board present (drives P96-style recipe validation). |
-| `chipset` | string | `ocs`, `ecs`, `aga` |
+| `chipset` | string | `ocs`, `ecs`, `aga`. Optional: more than 1M of chip RAM implies `aga` (see below). |
+
+Only an AGA Alice addresses more than 1M of chip RAM, so `ram` with
+`chip:2M` or more and no `chipset` emits `aga` in the emulator configs
+rather than leaving the chipset to the emulator's own default (which
+Copperline rejects outright against 2M of chip). Stating `chipset =
+"ocs"`/`"ecs"` alongside more than 1M of chip is a lint error, not a
+silent override — the manifest contradicted itself.
 
 `cpu` is structured (family + explicit `fpu`/`mmu` flags), never a packed
 string like `68030/68882`: the flags are real independent hardware axes

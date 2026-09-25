@@ -44,6 +44,20 @@ def test_writes_cpu_chipset_memory_rom_and_mount(tmp_path):
     assert cfg["filesystem2"] == f"rw,DH0:mysetup:{dir_out},-1"
 
 
+def test_2m_chip_implies_aga_without_an_explicit_chipset(tmp_path):
+    plan = _plan({"cpu": "68030", "ram": "chip:2M,fast:8M"})
+    target = tmp_path / "out.uae"
+    dir_out = tmp_path / "build" / "mysetup"
+    dir_out.mkdir(parents=True)
+
+    write_uae_config(plan, target, tmp_path / "kick.rom", dir_out, {})
+
+    cfg = _parse(target.read_text())
+    assert cfg["chipset"] == "aga"
+    assert cfg["chipset_compatible"] == "A1200"
+    assert cfg["chipmem_size"] == "4"  # 2M / 512K
+
+
 def test_defaults_for_68000(tmp_path):
     plan = _plan({})
     target = tmp_path / "out.uae"

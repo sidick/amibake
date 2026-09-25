@@ -41,6 +41,9 @@ INVALID = [
     ('base = "os3.2.2"\nmachine = { cpu = "68030", fpu = 1 }\n', "machine.fpu"),
     ('base = "os3.2.2"\nmachine = { ram = "fast:8MB" }\n', "machine.ram"),
     ('base = "os3.2.2"\nmachine = { chipset = "aaa" }\n', "machine.chipset"),
+    # 2M of chip needs an Alice: stating ECS as well is a contradiction
+    ('base = "os3.2.2"\nmachine = { chipset = "ecs", ram = "chip:2M" }\n',
+     "machine.chipset"),
     ('base = "os3.2.2"\nmachine = { turbo = true }\n', "machine.turbo"),
     ('base = "os3.2.2"\npackages = ["amissl == 5.20"]\n', "packages[0]"),
     ('base = "os3.2.2"\npackages = [5.20]\n', "packages[0]"),
