@@ -18,6 +18,17 @@ assets/
 # beside its manifest, so these land in manifests/ during ordinary use.
 *.lock.toml
 
+# The rest of what `amibake build` drops beside a manifest when given no
+# --out: emitted emulator configs (host-absolute ROM and volume paths,
+# meaningless on anyone else's machine) and the `dir` output tree. A dir
+# tree from a proprietary base is that base's media re-committed by
+# another route — manifests/os314/ was 784 files of real AmigaOS 3.1.4 —
+# which is the same licensing line assets/ exists to hold.
+*-amiberry.uae
+*-winuae.uae
+*.copperline.toml
+manifests/*/
+
 # amibake build's default layer/archive cache root.
 .amibake-cache/
 
