@@ -367,3 +367,30 @@ def test_build_emit_without_rom_or_kickstart_fails_named_error(tmp_path, capsys)
     assert rc == 1
     assert "[base].kickstart-version" in captured.err
     assert "[base].rom-file" in captured.err
+
+
+def test_lint_skips_generated_lockfiles_in_a_directory(tmp_path, capsys):
+    """`amibake resolve` writes <manifest>.lock.toml beside its
+    manifest, so a manifests/ directory routinely holds one. Linting it
+    as a manifest reports a generated file as broken."""
+    manifests = tmp_path / "manifests"
+    manifests.mkdir()
+    (manifests / "m.toml").write_text('base = "os32-fixture"\noutput = ["dir"]\n')
+    (manifests / "m.lock.toml").write_text(
+        '[base]\nname = "os32-fixture"\nversion = "3.2.2"\n'
+        '[[package]]\nname = "amissl"\n')
+
+    assert main(["lint", str(manifests)]) == 0
+    out = capsys.readouterr().out
+    assert "1 file(s) checked" in out
+    assert "lock.toml" not in out
+
+
+def test_lint_still_lints_a_lockfile_named_explicitly(tmp_path, capsys):
+    """Naming a file is asking about that file — doing nothing quietly
+    would be worse than the report it gets."""
+    lockfile = tmp_path / "m.lock.toml"
+    lockfile.write_text('[base]\nname = "os32-fixture"\n[[package]]\nname = "x"\n')
+
+    assert main(["lint", str(lockfile)]) == 1
+    assert "m.lock.toml" in capsys.readouterr().err

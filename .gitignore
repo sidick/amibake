@@ -14,6 +14,10 @@ assets/
 *.hdf
 *.adf
 
+# Generated lockfiles: `amibake resolve` writes <manifest>.lock.toml
+# beside its manifest, so these land in manifests/ during ordinary use.
+*.lock.toml
+
 # amibake build's default layer/archive cache root.
 .amibake-cache/
 

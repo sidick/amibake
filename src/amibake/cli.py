@@ -296,9 +296,21 @@ def _resolve_rom_paths(plan: BuildPlan, assets_root: Path | None):
     return rom_path.resolve(), None, None
 
 
+# `amibake resolve` writes `<manifest>.lock.toml` beside its manifest by
+# default, so a directory of manifests routinely holds build output that
+# is not itself a manifest. Linting one reports it as a broken manifest
+# (a lockfile's [package] tables are not a manifest's keys), which is
+# noise about a generated file, not a problem anyone can fix in it.
+_GENERATED_SUFFIX = ".lock.toml"
+
+
 def _collect(paths: list[Path], problems: list[Problem]) -> list[Path]:
     """Expand CLI arguments to concrete files: a directory means the recipes
-    beneath it; a file is taken as-is (recipe.toml → recipe, else manifest)."""
+    beneath it; a file is taken as-is (recipe.toml → recipe, else manifest).
+
+    Directory expansion skips generated lockfiles. A file named
+    explicitly is still linted, whatever it is: naming one is asking
+    about that file, and silently doing nothing would be worse."""
     files: list[Path] = []
     for path in paths:
         if path.is_dir():
@@ -306,7 +318,8 @@ def _collect(paths: list[Path], problems: list[Problem]) -> list[Path]:
             if found:
                 files.extend(found)
             else:
-                manifests = sorted(p for p in path.rglob("*.toml"))
+                manifests = sorted(p for p in path.rglob("*.toml")
+                                   if not p.name.endswith(_GENERATED_SUFFIX))
                 if manifests:
                     files.extend(manifests)
                 else:

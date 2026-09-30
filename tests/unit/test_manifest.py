@@ -26,7 +26,10 @@ def test_valid_manifest(write):
 
 
 def test_shipped_exemplar_manifests_lint_clean():
-    manifests = sorted((REPO_ROOT / "manifests").glob("*.toml"))
+    # Not *.lock.toml: `amibake resolve` drops generated lockfiles here,
+    # and they are build output, not exemplar manifests.
+    manifests = sorted(m for m in (REPO_ROOT / "manifests").glob("*.toml")
+                       if not m.name.endswith(".lock.toml"))
     assert manifests, "no exemplar manifests found"
     for m in manifests:
         assert validate_manifest(m) == [], f"{m} should lint clean"
