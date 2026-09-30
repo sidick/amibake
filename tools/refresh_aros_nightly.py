@@ -23,14 +23,25 @@ nightly, printed either way), 1 = discovery/download failed.
 from __future__ import annotations
 
 import hashlib
+import io
 import re
+import shutil
 import sys
+import tempfile
 import urllib.error
 import urllib.request
+import zipfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RECIPE = REPO_ROOT / "recipes" / "aros68k" / "recipe.toml"
+ROM_DIR = RECIPE.parent / "rom"
+# ISO path -> vendored filename. `LICENSE` rides along because the APL
+# requires the licence travel with the binaries we redistribute.
+ROM_FILES = {
+    "/boot/amiga/aros-rom.bin": "aros-rom.bin",
+    "/boot/amiga/aros-ext.bin": "aros-ext.bin",
+}
 
 LISTING_URL = "https://sourceforge.net/projects/aros/files/nightly2/"
 ARTIFACT_URL = ("https://sourceforge.net/projects/aros/files/nightly2/{date}"
@@ -105,6 +116,64 @@ def rewrite_recipe(date: str, sha256: str) -> bool:
     return True
 
 
+def extract_roms(archive: bytes) -> dict[str, bytes]:
+    """The ROM images (and the licence) out of the nightly's zip-wrapped
+    ISO. Both go through real files: pycdlib needs a seekable source,
+    and the ISO is ~400 MB — far too big to hold in memory beside the
+    archive it came from."""
+    import pycdlib  # runtime dep of amibake proper; not needed to import this tool
+
+    with tempfile.TemporaryDirectory() as tmp:
+        iso_path = Path(tmp) / "aros.iso"
+        with zipfile.ZipFile(io.BytesIO(archive)) as zf:
+            names = [n for n in zf.namelist() if n.lower().endswith(".iso")]
+            if len(names) != 1:
+                sys.exit(f"expected exactly one .iso in the nightly zip, found {names} "
+                         f"— the artifact's shape changed; update this tool to match")
+            licence = next((n for n in zf.namelist()
+                            if n.rsplit("/", 1)[-1] == "LICENSE"), None)
+            out: dict[str, bytes] = {}
+            if licence is not None:
+                out["LICENSE"] = zf.read(licence)
+            with zf.open(names[0]) as src, open(iso_path, "wb") as dst:
+                shutil.copyfileobj(src, dst, 1 << 20)
+
+        iso = pycdlib.PyCdlib()
+        iso.open(str(iso_path))
+        try:
+            for rr_path, filename in ROM_FILES.items():
+                buf = io.BytesIO()
+                iso.get_file_from_iso_fp(buf, rr_path=rr_path)
+                out[filename] = buf.getvalue()
+        finally:
+            iso.close()
+    return out
+
+
+def write_roms(date: str, files: dict[str, bytes]) -> list[str]:
+    """Replace the vendored ROM images, and keep rom/README.md's date
+    and checksum table honest. Returns the files actually changed."""
+    changed = []
+    for name, data in sorted(files.items()):
+        target = ROM_DIR / name
+        if target.is_file() and target.read_bytes() == data:
+            continue
+        target.write_bytes(data)
+        changed.append(name)
+
+    readme = ROM_DIR / "README.md"
+    text = readme.read_text()
+    text = re.sub(r"\*\*AROS \d{8}\*\*", f"**AROS {date}**", text)
+    for name in ROM_FILES.values():
+        digest = hashlib.sha256(files[name]).hexdigest()
+        text = re.sub(rf"^    [0-9a-f]{{64}}  {re.escape(name)}$",
+                      f"    {digest}  {name}", text, flags=re.M)
+    if text != readme.read_text():
+        readme.write_text(text)
+        changed.append(readme.name)
+    return changed
+
+
 def main() -> int:
     print(f"discovering nightlies at {LISTING_URL}")
     dates = discover_dates()
@@ -123,11 +192,20 @@ def main() -> int:
     sha256 = hashlib.sha256(data).hexdigest()
     print(f"newest usable nightly: {date} ({len(data)} bytes, sha256 {sha256})")
 
-    if rewrite_recipe(date, sha256):
+    repinned = rewrite_recipe(date, sha256)
+    if repinned:
         print(f"re-pinned {RECIPE.relative_to(REPO_ROOT)} to {date}")
+    else:
+        print(f"already pinned to {date}")
+
+    changed = write_roms(date, extract_roms(data))
+    for name in changed:
+        print(f"updated {(ROM_DIR / name).relative_to(REPO_ROOT)}")
+
+    if repinned or changed:
         print("now run the smoke build to validate: python tools/ci_recipe_smoke.py")
     else:
-        print(f"already pinned to {date} — nothing to do")
+        print("vendored ROM already matches — nothing to do")
     return 0
 
 

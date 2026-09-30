@@ -128,3 +128,18 @@ def test_winuae_flavor_still_writes(tmp_path):
     write_uae_config(plan, target, tmp_path / "kick.rom", dir_out, {}, flavor="winuae")
 
     assert target.exists()
+
+
+def test_extended_rom_emitted_only_when_the_base_vendors_one(tmp_path):
+    plan = _plan({"cpu": "68020"})
+    dir_out = tmp_path / "build" / "mysetup"
+    dir_out.mkdir(parents=True)
+    rom, ext = tmp_path / "aros-rom.bin", tmp_path / "aros-ext.bin"
+
+    with_ext = tmp_path / "with-ext.uae"
+    write_uae_config(plan, with_ext, rom, dir_out, {}, ext_rom_path=ext)
+    assert f"kickstart_ext_rom_file={ext}" in with_ext.read_text()
+
+    without = tmp_path / "without.uae"
+    write_uae_config(plan, without, rom, dir_out, {})
+    assert "kickstart_ext_rom_file" not in without.read_text()

@@ -18,6 +18,13 @@ class BaseInfo:
     os_version: str | None = None
     kickstart_version: str | None = None
     dos_type: str | None = None
+    # Recipe-relative paths to a ROM the base vendors itself (AROS is
+    # its own Kickstart). Kept relative, never resolved here: the
+    # lockfile has to stay byte-identical across machines, and an
+    # absolute path would leak the checkout location into it. The CLI
+    # resolves them against `base_package.recipe_path` at emit time.
+    rom_file: str | None = None
+    rom_ext_file: str | None = None
 
 
 @dataclass(frozen=True)
@@ -124,6 +131,10 @@ def format_lockfile(plan: BuildPlan) -> str:
         lines.append(f"kickstart-version = {toml_value(plan.base.kickstart_version)}")
     if plan.base.dos_type is not None:
         lines.append(f"dos-type = {toml_value(plan.base.dos_type)}")
+    if plan.base.rom_file is not None:
+        lines.append(f"rom-file = {toml_value(plan.base.rom_file)}")
+    if plan.base.rom_ext_file is not None:
+        lines.append(f"rom-ext-file = {toml_value(plan.base.rom_ext_file)}")
     lines.append(f"version = {toml_value(plan.base_package.version)}")
     lines.append(f"recipe-sha256 = {toml_value(plan.base_package.recipe_sha256)}")
     if plan.base_package.options:

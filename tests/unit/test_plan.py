@@ -96,3 +96,19 @@ def test_lockfile_omits_absent_kickstart_version():
     text = format_lockfile(plan)
     parsed = tomllib.loads(text)
     assert "kickstart-version" not in parsed["base"]
+
+
+def test_lockfile_records_a_vendored_rom_as_recipe_relative_paths():
+    """Relative, never resolved: an absolute path would make the
+    lockfile differ between checkouts."""
+    plan = dataclasses.replace(
+        _plan(),
+        base=BaseInfo(name="aros68k-fixture", os_version="3.1",
+                      rom_file="rom/aros-rom.bin", rom_ext_file="rom/aros-ext.bin"))
+    parsed = tomllib.loads(format_lockfile(plan))
+    assert parsed["base"]["rom-file"] == "rom/aros-rom.bin"
+    assert parsed["base"]["rom-ext-file"] == "rom/aros-ext.bin"
+
+
+def test_lockfile_omits_rom_keys_for_a_base_without_one():
+    assert "rom-file" not in format_lockfile(_plan())

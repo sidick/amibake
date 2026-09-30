@@ -27,7 +27,8 @@ class EmitError(Exception):
 
 def write_copperline_config(plan: BuildPlan, path: Path, rom_path: Path,
                             dir_output_path: Path | None, emulator_config: dict,
-                            hdf_output_path: Path | None = None) -> None:
+                            hdf_output_path: Path | None = None,
+                            ext_rom_path: Path | None = None) -> None:
     """Write a `copperline.toml` that boots the build.
 
     Two routes to a bootable volume, in this order of preference:
@@ -89,7 +90,14 @@ def write_copperline_config(plan: BuildPlan, path: Path, rom_path: Path,
             f"{', '.join(sorted(_HDF_CONTROLLERS))}")
     root_overrides, table_overrides = _split_dotted_overrides(emulator_config)
 
-    lines = [f"rom = {toml_value(str(rom_path))}", *root_overrides, ""]
+    lines = [f"rom = {toml_value(str(rom_path))}"]
+    # `extended_rom` is Copperline's own key name for the second ROM
+    # image (checked against 0.19.0's config parser, which rejects
+    # unknown keys and names the ones it accepts). Emitted only when the
+    # base vendors one -- AROS's aros-ext.bin.
+    if ext_rom_path is not None:
+        lines.append(f"extended_rom = {toml_value(str(ext_rom_path))}")
+    lines += [*root_overrides, ""]
 
     def table(name: str, keys: list[str]) -> None:
         """Emit one `[name]` table, folding in any `name.key` manifest

@@ -116,9 +116,10 @@ wrote manifests/aros68k-amiberry.uae
 
 `emit` needs a `dir` output (no hardfile/RDB mount support in the
 config emitters yet — see [Emulator Configs](Emulator-Configs.md)) and
-a Kickstart ROM at `assets/roms/kickstart-{version}.rom` under the
-`--assets` root; AROS ships its own ROM as part of its base build, so
-this works with no user-supplied ROM at all.
+a ROM. AROS's is vendored in the repo (`recipes/aros68k/rom/`), so this
+works with no user-supplied ROM and no `--assets` at all; every other
+base looks for a Kickstart at `assets/roms/kickstart-{version}.rom`
+under the `--assets` root.
 
 ## Where to go next
 

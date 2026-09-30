@@ -373,6 +373,8 @@ os-version        = "3.2.2"
 kickstart-version = "47.102"        # optional — only needed if some recipe's
                                      # [requires].kickstart differs from os
 dos-type          = "ffs-intl"      # optional — default "ffs-intl"
+rom-file          = "rom/aros-rom.bin"   # optional — a ROM image the base
+rom-ext-file      = "rom/aros-ext.bin"   # vendors itself, beside the recipe
 ```
 
 Without `[base].os-version`, any recipe declaring `[requires].os` cannot
@@ -390,6 +392,25 @@ needs plain `ofs` or `ffs`, never an `-intl` variant. `-longname`
 variants (DOS6/DOS7) allow filenames past the classic 30-character
 limit; pick one when the base's own content needs it (AROS's bundled
 fonts are the first real example found).
+
+`rom-file` (and its optional companion `rom-ext-file`, for a second ROM
+image) names a ROM the base ships *beside its own recipe*, as a path
+relative to the recipe directory, pointing inside it — no absolute
+paths, no `..`. It answers the case where the OS *is* the ROM and there
+is no Kickstart version to look a file up by: AROS, whose
+`recipes/aros68k/rom/` holds the `aros-rom.bin`/`aros-ext.bin` pair from
+the same nightly the recipe pins for its SYS: content.
+
+When a base declares one, emitted emulator configs use it and need no
+`--assets` at all; otherwise they fall back to
+`assets/roms/kickstart-<kickstart-version>.rom` as before. A base
+declaring both is taken at its word — its own ROM wins, because a
+Commodore Kickstart would not boot it. The path is validated at lint
+time, so a typo fails immediately rather than at the end of a build.
+
+Vendor a ROM only where redistribution is clearly permitted (AROS's APL
+allows it; a Commodore Kickstart does not) and the image is small enough
+to belong in git — and commit the upstream licence alongside it.
 
 ## `[emulator-config.*]` — contributing emulator config directives
 

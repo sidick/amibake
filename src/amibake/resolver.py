@@ -386,6 +386,8 @@ def _base_info(base: LoadedRecipe) -> BaseInfo:
         os_version=table.get("os-version"),
         kickstart_version=table.get("kickstart-version"),
         dos_type=table.get("dos-type"),
+        rom_file=table.get("rom-file"),
+        rom_ext_file=table.get("rom-ext-file"),
     )
 
 

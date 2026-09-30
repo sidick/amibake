@@ -4,3 +4,7 @@
 base     = "aros68k"
 machine  = { cpu = "68020" }
 output   = ["hdf", "dir"]
+# Emitted with no --assets and no user ROM: the base vendors its own
+# (recipes/aros68k/rom/), which is the whole point of the zero-
+# encumbrance target.
+emit     = ["copperline", "amiberry"]

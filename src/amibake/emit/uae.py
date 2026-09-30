@@ -55,7 +55,8 @@ class EmitError(Exception):
 
 def write_uae_config(plan: BuildPlan, path: Path, rom_path: Path,
                      dir_output_path: Path | None, emulator_config: dict,
-                     flavor: str = "amiberry") -> None:
+                     flavor: str = "amiberry",
+                     ext_rom_path: Path | None = None) -> None:
     """Write a `.uae` config. Mounts `dir_output_path` as `DH0:` via
     `filesystem2=rw,DH0:<stem>:<path>,-1` (confirmed real syntax, e.g.
     `amirfb_p96_free.uae`'s own working config). Raises if no `dir`
@@ -95,6 +96,11 @@ def write_uae_config(plan: BuildPlan, path: Path, rom_path: Path,
         settings[key] = str(ram[kind] // unit)
 
     settings["kickstart_rom_file"] = str(rom_path)
+    # Only written when a base actually has a second ROM image (AROS's
+    # aros-ext.bin, the upper half of its 1M ROM). Real Kickstarts that
+    # need one -- CD32, CDTV -- would set it the same way.
+    if ext_rom_path is not None:
+        settings["kickstart_ext_rom_file"] = str(ext_rom_path)
     settings["filesystem2"] = f"rw,DH0:{dir_output_path.name}:{dir_output_path},-1"
 
     settings.update({k: _uae_scalar(v) for k, v in emulator_config.items()})

@@ -381,3 +381,47 @@ def test_emulator_config_directive_value_must_be_scalar(write):
     )
     problems = errors_of(validate_recipe(write(text, name="recipe.toml", subdir="pkg")))
     assert any("emulator-config.amiberry].foo" in p.field for p in problems)
+
+
+def test_valid_base_vendored_rom(write):
+    path = write(
+        '[package]\nname = "pkg"\nversions = ["1.0"]\nstrategy = "extract"\n\n'
+        '[base]\nos-version = "3.1"\n'
+        'rom-file = "rom/os.rom"\nrom-ext-file = "rom/os-ext.rom"\n',
+        name="recipe.toml", subdir="pkg")
+    (path.parent / "rom").mkdir()
+    (path.parent / "rom" / "os.rom").write_bytes(b"rom")
+    (path.parent / "rom" / "os-ext.rom").write_bytes(b"ext")
+    assert validate_recipe(path) == []
+
+
+def test_base_rom_file_must_exist(write):
+    path = write(
+        '[package]\nname = "pkg"\nversions = ["1.0"]\nstrategy = "extract"\n\n'
+        '[base]\nos-version = "3.1"\nrom-file = "rom/typo.rom"\n',
+        name="recipe.toml", subdir="pkg")
+    problems = errors_of(validate_recipe(path))
+    assert any(p.field == "[base].rom-file" and "no such file" in p.problem
+               for p in problems)
+
+
+@pytest.mark.parametrize("value", ["/etc/passwd", "../elsewhere/os.rom"])
+def test_base_rom_file_must_stay_inside_the_recipe(write, value):
+    path = write(
+        '[package]\nname = "pkg"\nversions = ["1.0"]\nstrategy = "extract"\n\n'
+        f'[base]\nos-version = "3.1"\nrom-file = "{value}"\n',
+        name="recipe.toml", subdir="pkg")
+    problems = errors_of(validate_recipe(path))
+    assert any(p.field == "[base].rom-file" and "inside the recipe" in p.problem
+               for p in problems)
+
+
+def test_base_rom_ext_file_without_rom_file_is_an_error(write):
+    path = write(
+        '[package]\nname = "pkg"\nversions = ["1.0"]\nstrategy = "extract"\n\n'
+        '[base]\nos-version = "3.1"\nrom-ext-file = "rom/os-ext.rom"\n',
+        name="recipe.toml", subdir="pkg")
+    (path.parent / "rom").mkdir()
+    (path.parent / "rom" / "os-ext.rom").write_bytes(b"ext")
+    problems = errors_of(validate_recipe(path))
+    assert any(p.field == "[base].rom-ext-file" for p in problems)

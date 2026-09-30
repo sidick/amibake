@@ -102,7 +102,8 @@ passes. Default: none.
 emit = ["copperline", "amiberry"]   # also: "winuae"
 ```
 
-Needs a `dir` entry in `output` and a Kickstart ROM at
+Needs a `dir` entry in `output` and a ROM: the one the base vendors
+itself if it has one (AROS), else a Kickstart at
 `assets/roms/kickstart-{the base's kickstart-version}.rom` — see
 [Emulator Configs](Emulator-Configs.md) for the full picture, including
 what a recipe can itself contribute to an emitted config (the

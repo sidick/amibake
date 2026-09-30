@@ -29,13 +29,16 @@ wrote manifests/aros68k-amiberry.uae
   hardfile/RDB mount modeling yet. If `emit` is set without a `dir`
   output, the build fails with a named error rather than silently
   skipping the config.
-- **A Kickstart ROM.** Looked up at
-  `assets/roms/kickstart-{the base recipe's kickstart-version}.rom`,
-  under the same `--assets` root recipes use for their own proprietary
-  media. AROS ships its own ROM as part of the base build, so
-  `manifests/aros68k.toml` needs nothing extra here; a real OS base
-  (`wb1.3`, `os3.1.4`, `os3.2.2`) needs the matching real Kickstart ROM
-  supplied at that path.
+- **A ROM.** Either one the base vendors itself — AROS does, as
+  `recipes/aros68k/rom/aros-rom.bin` + `aros-ext.bin` committed to the
+  repo, so `manifests/aros68k.toml` emits a bootable config with no
+  `--assets` and no ROM of your own — or, for a base without one, a
+  Kickstart at `assets/roms/kickstart-{the base recipe's
+  kickstart-version}.rom`, under the same `--assets` root recipes use
+  for their own proprietary media. A real OS base (`wb1.3`, `os3.1.4`,
+  `os3.2.2`) needs the matching real Kickstart ROM supplied at that
+  path; those cannot be redistributed, which is exactly why they are
+  not vendored the way AROS's is.
 
 ## What's actually in an emitted config
 

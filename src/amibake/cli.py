@@ -227,7 +227,7 @@ def _cmd_build(manifest_path: Path, recipes_root: Path, out_dir: Path | None,
         written.append(str(target))
 
     if plan.emit:
-        rom_path, rom_error = _resolve_rom_path(assets_root, plan.base.kickstart_version)
+        rom_path, ext_rom_path, rom_error = _resolve_rom_paths(plan, assets_root)
         if rom_error:
             print(rom_error, file=sys.stderr)
             return 1
@@ -237,11 +237,13 @@ def _cmd_build(manifest_path: Path, recipes_root: Path, out_dir: Path | None,
                 if emitter == "copperline":
                     target = out_dir / f"{stem}.copperline.toml"
                     write_copperline_config(plan, target, rom_path, dir_output_path,
-                                            emulator_config, hdf_output_path)
+                                            emulator_config, hdf_output_path,
+                                            ext_rom_path=ext_rom_path)
                 else:
                     target = out_dir / f"{stem}-{emitter}.uae"
                     write_uae_config(plan, target, rom_path, dir_output_path,
-                                     emulator_config, flavor=emitter)
+                                     emulator_config, flavor=emitter,
+                                     ext_rom_path=ext_rom_path)
             except (CopperlineEmitError, UaeEmitError) as e:
                 print(f"{emitter}: {e}", file=sys.stderr)
                 return 1
@@ -254,21 +256,44 @@ def _cmd_build(manifest_path: Path, recipes_root: Path, out_dir: Path | None,
     return 0
 
 
-def _resolve_rom_path(assets_root: Path | None, kickstart_version: str | None):
-    """`assets/roms/kickstart-{version}.rom`, under the same --assets root
-    recipes already use. Returns (path, None) or (None, error message)."""
-    if kickstart_version is None:
-        return None, ("no ROM to emit a config with: the base recipe declares no "
-                      "[base].kickstart-version")
+def _resolve_rom_paths(plan: BuildPlan, assets_root: Path | None):
+    """The ROM (and extended ROM, if any) an emulator config boots.
+
+    Two sources, in this order:
+
+    - a ROM the base recipe vendors itself, via `[base].rom-file` /
+      `rom-ext-file` — AROS's case, where the OS *is* the ROM and no
+      Kickstart version exists to look a file up by. Wins outright when
+      declared: substituting a Commodore Kickstart for it would not boot
+      the base that was just built.
+    - else `assets/roms/kickstart-{version}.rom`, under the same
+      --assets root recipes already use.
+
+    Returns (rom, ext_rom, None) or (None, None, error message)."""
+    base = plan.base
+    if base.rom_file is not None:
+        recipe_dir = Path(plan.base_package.recipe_path).parent
+        rom_path = recipe_dir / base.rom_file
+        ext_rom_path = (recipe_dir / base.rom_ext_file
+                        if base.rom_ext_file is not None else None)
+        for path in (rom_path, ext_rom_path):
+            if path is not None and not path.is_file():
+                return None, None, (f"no ROM to emit a config with: base "
+                                    f"{base.name!r} declares {path}, which is missing")
+        return (rom_path.resolve(),
+                ext_rom_path.resolve() if ext_rom_path is not None else None, None)
+    if base.kickstart_version is None:
+        return None, None, ("no ROM to emit a config with: the base recipe declares "
+                            "neither [base].kickstart-version nor [base].rom-file")
     if assets_root is None:
-        return None, (f"no ROM to emit a config with: need "
-                      f"assets/roms/kickstart-{kickstart_version}.rom, but no assets "
-                      f"directory was given (pass --assets)")
-    rom_path = assets_root / "roms" / f"kickstart-{kickstart_version}.rom"
+        return None, None, (f"no ROM to emit a config with: need "
+                            f"assets/roms/kickstart-{base.kickstart_version}.rom, but "
+                            f"no assets directory was given (pass --assets)")
+    rom_path = assets_root / "roms" / f"kickstart-{base.kickstart_version}.rom"
     if not rom_path.is_file():
-        return None, (f"no ROM to emit a config with: {rom_path} not found — supply "
-                      f"it there, or drop 'emit' from the manifest")
-    return rom_path.resolve(), None
+        return None, None, (f"no ROM to emit a config with: {rom_path} not found — "
+                            f"supply it there, or drop 'emit' from the manifest")
+    return rom_path.resolve(), None, None
 
 
 def _collect(paths: list[Path], problems: list[Problem]) -> list[Path]:

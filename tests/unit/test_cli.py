@@ -284,3 +284,86 @@ def test_resolve_aborts_on_dirty_manifest(tmp_path, capsys):
     assert rc == 1
     assert "output[0]" in captured.err
     assert "aborted" in captured.err
+
+
+def _vendored_rom_recipe(recipes, *, ext=True):
+    """A base recipe that ships its own ROM, the way aros68k does."""
+    base_dir = recipes / "aros-fixture"
+    (base_dir / "rom").mkdir(parents=True)
+    (base_dir / "rom" / "aros-rom.bin").write_bytes(b"rom")
+    (base_dir / "rom" / "aros-ext.bin").write_bytes(b"ext")
+    (base_dir / "recipe.toml").write_text(
+        '[package]\nname = "aros-fixture"\nversions = ["20260930"]\n'
+        'strategy = "extract"\n\n[base]\nos-version = "3.1"\n'
+        'rom-file = "rom/aros-rom.bin"\n'
+        + ('rom-ext-file = "rom/aros-ext.bin"\n' if ext else "")
+    )
+    return base_dir
+
+
+def test_build_emits_configs_from_a_vendored_rom_without_assets(tmp_path, capsys):
+    """The point of vendoring: a base that ships its own ROM emits
+    emulator configs with no --assets and no Kickstart at all."""
+    recipes = tmp_path / "recipes"
+    base_dir = _vendored_rom_recipe(recipes)
+    manifest = tmp_path / "m.toml"
+    manifest.write_text(
+        'base = "aros-fixture"\noutput = ["dir"]\n'
+        'emit = ["copperline", "amiberry"]\n'
+    )
+
+    rc = main(["build", str(manifest), "--recipes", str(recipes),
+              "--cache", str(tmp_path / "cache")])
+    captured = capsys.readouterr()
+    assert rc == 0, captured.err
+
+    rom = (base_dir / "rom" / "aros-rom.bin").resolve()
+    ext = (base_dir / "rom" / "aros-ext.bin").resolve()
+    copperline = (tmp_path / "m.copperline.toml").read_text()
+    assert f'rom = "{rom}"' in copperline
+    assert f'extended_rom = "{ext}"' in copperline
+    uae = (tmp_path / "m-amiberry.uae").read_text()
+    assert f"kickstart_rom_file={rom}" in uae
+    assert f"kickstart_ext_rom_file={ext}" in uae
+
+
+def test_vendored_rom_wins_over_an_assets_kickstart(tmp_path, capsys):
+    """A base declaring both is declaring that its own ROM is the one
+    that boots it — an assets Kickstart must not silently replace it."""
+    recipes = tmp_path / "recipes"
+    base_dir = _vendored_rom_recipe(recipes, ext=False)
+    (base_dir / "recipe.toml").write_text(
+        (base_dir / "recipe.toml").read_text() + 'kickstart-version = "34.5"\n')
+    assets = tmp_path / "assets"
+    (assets / "roms").mkdir(parents=True)
+    (assets / "roms" / "kickstart-34.5.rom").write_bytes(b"kick")
+    manifest = tmp_path / "m.toml"
+    manifest.write_text('base = "aros-fixture"\noutput = ["dir"]\nemit = ["amiberry"]\n')
+
+    rc = main(["build", str(manifest), "--recipes", str(recipes),
+              "--cache", str(tmp_path / "cache"), "--assets", str(assets)])
+    captured = capsys.readouterr()
+    assert rc == 0, captured.err
+    uae = (tmp_path / "m-amiberry.uae").read_text()
+    assert str((base_dir / "rom" / "aros-rom.bin").resolve()) in uae
+    assert "kickstart-34.5.rom" not in uae
+    assert "kickstart_ext_rom_file" not in uae
+
+
+def test_build_emit_without_rom_or_kickstart_fails_named_error(tmp_path, capsys):
+    recipes = tmp_path / "recipes"
+    base_dir = recipes / "os32-fixture"
+    base_dir.mkdir(parents=True)
+    (base_dir / "recipe.toml").write_text(
+        '[package]\nname = "os32-fixture"\nversions = ["3.2.2"]\n'
+        'strategy = "extract"\n\n[base]\nos-version = "3.2.2"\n'
+    )
+    manifest = tmp_path / "m.toml"
+    manifest.write_text('base = "os32-fixture"\noutput = ["dir"]\nemit = ["amiberry"]\n')
+
+    rc = main(["build", str(manifest), "--recipes", str(recipes),
+              "--cache", str(tmp_path / "cache")])
+    captured = capsys.readouterr()
+    assert rc == 1
+    assert "[base].kickstart-version" in captured.err
+    assert "[base].rom-file" in captured.err

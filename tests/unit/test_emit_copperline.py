@@ -199,3 +199,18 @@ def test_bare_emulator_config_key_at_document_root(tmp_path):
 
     doc = tomllib.loads(target.read_text())
     assert doc["identify"] is False
+
+
+def test_extended_rom_emitted_only_when_the_base_vendors_one(tmp_path):
+    plan = _plan({"cpu": "68020"}, output=("dir",))
+    dir_out = tmp_path / "build" / "mysetup"
+    dir_out.mkdir(parents=True)
+    rom, ext = tmp_path / "aros-rom.bin", tmp_path / "aros-ext.bin"
+
+    with_ext = tmp_path / "with-ext.toml"
+    write_copperline_config(plan, with_ext, rom, dir_out, {}, ext_rom_path=ext)
+    assert tomllib.loads(with_ext.read_text())["extended_rom"] == str(ext)
+
+    without = tmp_path / "without.toml"
+    write_copperline_config(plan, without, rom, dir_out, {})
+    assert "extended_rom" not in tomllib.loads(without.read_text())

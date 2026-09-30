@@ -7,7 +7,7 @@
 # Source: the m68k-amiga nightly's "boot-iso" artifact from AROS's
 # SourceForge project — a zip wrapping one ISO9660+RockRidge image (the
 # "AROS Live CD" filesystem tree), which extract.py's zip-wrapping-iso
-# expansion handles transparently. Pinned to the 2026-09-06 nightly;
+# expansion handles transparently. Pinned to the 2026-09-30 nightly;
 # every AROS nightly is a new, differently-checksummed build, and
 # SourceForge prunes old dated directories (a pin goes 404 within
 # weeks), so this pin is a moving target by nature: run
@@ -18,18 +18,21 @@
 # rather than appending, since a pruned nightly is unfetchable anyway.
 #
 # AROS boots via "softkick": a small AmigaOS-compatible bootstrap loads
-# AROS's own relocatable ROM image into RAM. Under emulation the natural
-# equivalent is loading that ROM image directly as Kickstart — but wiring
-# that into emitted emulator configs is M6 (emulator config emission)
-# work, not yet built. This recipe only populates the SYS: partition
-# content (the "boot/" ROM files, the Emergency-Boot real-hardware
-# rescue floppy, and the AROS.boot marker are real-hardware/softkick
-# artifacts, deliberately excluded here). Demos/ and Developer/ are also
-# excluded — bulk not needed for a test-bed base.
+# AROS's own relocatable ROM image into RAM. Under emulation the direct
+# equivalent is loading that image as the Kickstart ROM, which is what
+# [base].rom-file/rom-ext-file below do — the ISO's own boot/amiga/
+# aros-rom.bin + aros-ext.bin, vendored into rom/ rather than cut from
+# the fetched archive, so an emulator config can still be emitted long
+# after this nightly is pruned upstream (see rom/README.md). The
+# softkick path proper (AROSBootstrap from a SYS: that holds its own
+# ROM) is not reproduced: the Emergency-Boot real-hardware rescue floppy
+# and the AROS.boot marker stay excluded as real-hardware artifacts, and
+# so does the rest of boot/. Demos/ and Developer/ are excluded too —
+# bulk not needed for a test-bed base (Developer/ alone is 276 MB).
 
 [package]
 name     = "aros68k"
-versions = ["20260906"]
+versions = ["20260930"]
 strategy = "extract"
 
 [base]
@@ -46,11 +49,16 @@ os-version = "3.1"
 # filenames; confirmed by a real build failure against the default
 # ffs-intl (DOS3) before this was added.
 dos-type   = "ffs-intl-longname"
+# AROS has no Kickstart version to look an assets/roms/ ROM up by — it
+# *is* the ROM — so it ships its own, and emitted emulator configs need
+# nothing from the user. Paths are relative to this recipe's directory.
+rom-file     = "rom/aros-rom.bin"
+rom-ext-file = "rom/aros-ext.bin"
 
 [source.url]
 url      = "https://sourceforge.net/projects/aros/files/nightly2/{version}/Binaries/AROS-{version}-amiga-m68k-boot-iso.zip/download"
 filename = "AROS-{version}-amiga-m68k-boot-iso.zip"
-sha256   = { "20260906" = "b02a0977ea420803cda30e3b8fd9ff6f14d92cb26a9c266694e20c08197cacd2" }
+sha256   = { "20260930" = "f4ba4be83670b293091f08debec4a8e34ee90ad83092e1c34a598143718d6104" }
 
 [install]
 copy = [
@@ -73,4 +81,9 @@ copy = [
 ]
 
 [verify]
-exists = ["SYS:Libs/dos.library", "SYS:C/Assign", "SYS:S/Startup-Sequence"]
+# Not dos.library: AROS keeps the core libraries in its ROM, and the
+# 20260930 nightly ships no SYS:Libs/dos.library at all (an earlier pin
+# did — it moved upstream, and the re-pin caught it). asl.library is a
+# disk-loaded library in the same directory, so the check still proves
+# Libs/ was populated.
+exists = ["SYS:Libs/asl.library", "SYS:C/Assign", "SYS:S/Startup-Sequence"]

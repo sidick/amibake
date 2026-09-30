@@ -12,7 +12,8 @@ from .versionspec import is_name, is_version, parse_constraint, parse_package_sp
 
 TOP_KEYS = {"package", "requires", "source", "install", "verify", "options", "hook", "base",
             "emulator-config"}
-BASE_KEYS = {"os-version", "kickstart-version", "dos-type"}
+BASE_KEYS = {"os-version", "kickstart-version", "dos-type",
+             "rom-file", "rom-ext-file"}
 # Names, not amitools' own DosType constants — recipe.py has no amitools
 # dependency (schema validation only); emit/hdf.py maps these strings to
 # amitools.fs.DosType values at build time.
@@ -67,7 +68,7 @@ def validate_recipe(path: Path) -> list[Problem]:
 
     base = c.typed(doc, "base", dict, "", default=None)
     if base is not None:
-        _check_base(c, base, package)
+        _check_base(c, base, package, path)
 
     options = c.typed(doc, "options", dict, "", default={})
     for opt_name, opt in options.items():
@@ -318,7 +319,7 @@ def _check_assets_digest(c: Checker, digest, where: str, expected_count: int | N
                 "use `shasum -a 256 <file>` on the file")
 
 
-def _check_base(c: Checker, base: dict, package: dict | None) -> None:
+def _check_base(c: Checker, base: dict, package: dict | None, path: Path) -> None:
     c.unknown_keys(base, BASE_KEYS, "[base]")
     os_version = c.typed(base, "os-version", str, "[base]", required=True)
     if os_version is not None and not is_version(os_version):
@@ -332,9 +333,31 @@ def _check_base(c: Checker, base: dict, package: dict | None) -> None:
     if dos_type is not None and dos_type not in DOS_TYPES:
         c.error("[base].dos-type", f"unknown dos-type {dos_type!r}",
                 f"use one of: {', '.join(sorted(DOS_TYPES))}")
+    _check_base_rom(c, base, path)
     if package is not None and not package.get("strategy"):
         c.warning("[base]", "recipe declares [base] but [package].strategy is not set",
                   'base recipes should set strategy = "extract" or "installer"')
+
+
+def _check_base_rom(c: Checker, base: dict, path: Path) -> None:
+    """`rom-file`/`rom-ext-file` name a ROM image vendored beside the
+    recipe (AROS ships its own; a Kickstart-based base leaves them unset
+    and gets its ROM from assets/roms/ instead). Checked for existence
+    here, not just for type: a typo'd path would otherwise only surface
+    at the end of a full build, when the emitter goes looking."""
+    for key in ("rom-file", "rom-ext-file"):
+        value = c.typed(base, key, str, "[base]")
+        if value is None:
+            continue
+        if Path(value).is_absolute() or ".." in Path(value).parts:
+            c.error(f"[base].{key}", f"{value!r} must stay inside the recipe directory",
+                    "use a path relative to the recipe, e.g. \"rom/aros-rom.bin\"")
+        elif not (path.parent / value).is_file():
+            c.error(f"[base].{key}", f"no such file: {path.parent / value}",
+                    "vendor the ROM image beside the recipe, or drop the key")
+    if "rom-ext-file" in base and "rom-file" not in base:
+        c.error("[base].rom-ext-file", "an extended ROM needs a primary ROM",
+                "add [base].rom-file, or drop rom-ext-file")
 
 
 def _check_sha256_map(c: Checker, table: dict, where: str, versions: list[str],
