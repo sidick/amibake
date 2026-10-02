@@ -1,0 +1,94 @@
+# lwip-amiga — a modern BSD-3-Clause TCP/IP stack for AmigaOS 3.2
+# (github.com/rondoval/lwip-amiga): lwIP core + bsdsocket.library + the
+# Roadshow-style networking commands, tested against the bsdsocktest
+# conformance suite (141/142). Built for an accelerated machine with
+# fast real or emulated network hardware; drives either the zero-copy
+# `netdev` ABI (today only `genet.device`, the Raspberry Pi/PiStorm
+# Emu68 onboard Ethernet driver) or any classic Ethernet-type SANA-II
+# card/adapter, so it is not tied to Pi/Emu68 hardware itself.
+#
+# *** Sourcing note: lwip-amiga has no standalone release. *** Its own
+# README says so directly: "this component is developed and built as
+# part of emu68-driver-stack. That repository publishes the
+# downloadable .lha ... this one is source-only and versioned via git
+# tags." emu68-driver-stack's releases bundle it together with three
+# unrelated Raspberry Pi/Emu68 hardware drivers (genet.device Ethernet,
+# xhci.device USB, nvme.device NVMe) plus their supporting libraries
+# (gic400.library, bcmpcie.library, openpci.library) behind one real
+# Installer script — none of which this recipe installs; they belong to
+# their own future hardware-driver recipes. [source.github] therefore
+# points at `rondoval/emu68-driver-stack`, pinned to the release whose
+# bundled lwip-amiga component is the version this recipe declares (the
+# bundle's `Documentation/lwip-amiga/RELEASE-NOTES.md` and `Licenses`
+# files name the exact version and map every shipped binary to its
+# component, confirmed by downloading and extracting the real v2.1.1
+# `emu68-drivers-2.1.1.lha` with this project's own lhafile-based
+# extractor). Only the plain (non-`-rangeops`, non-`-serial`) asset is
+# used — the other three asset variants carry identical lwip-amiga
+# files, differing only in the bundled Emu68-cache-extension build of
+# genet.device and optional serial-port diagnostics, neither of which
+# this recipe touches.
+#
+# Versioning: the recipe-contract requires a `{version}`-templated tag,
+# which only emu68-driver-stack's own release tag can supply (lwip-amiga
+# has no tag of its own to fetch by). So `versions` below names the
+# emu68-driver-stack release, not lwip-amiga's internal version number —
+# v2.1.1 bundles lwip-amiga 1.5, confirmed from the extracted archive's
+# own `Documentation/lwip-amiga/RELEASE-NOTES.md` and `Licenses` files.
+#
+# File selection, per the archive's own `Licenses` component map:
+# bsdsocket.library plus every one of netinfo/netdev-stats/mdns/ping/
+# traceroute/arp/AddNetInterface/RemoveNetInterface/NetShutdown/
+# GetNetStatus/ShowNetStatus/NetLogViewer is attributed to lwip-amiga;
+# everything else in the archive (genet/xhci/nvme device drivers, their
+# Storage/ copies, lspci, nvmeadm/nvmeinfo, emu68check, the Developer/
+# headers) belongs to a different component and is left out. The
+# `Storage/NetInterfaces/genet` sample interface file is also left out
+# even though lwip-amiga's own README mentions a shipped sample,
+# because that specific sample hardcodes `DEVICE=networks/genet.device`
+# — a driver this recipe doesn't install; `ENVARC:netstack.prefs.default`
+# (stack-wide settings, no driver reference) is the one sample file that
+# is genuinely driver-independent.
+
+[package]
+name     = "lwip-amiga"
+versions = ["2.1.1"]
+provides = ["bsdsocket"]
+
+[requires]
+os = ">= 3.2"
+
+[source.github]
+repo   = "rondoval/emu68-driver-stack"
+asset  = "emu68-drivers-{version}.lha"
+tag    = "v{version}"
+sha256 = { "2.1.1" = "d8fe44aca2f396fcbb5971a165d334f5b91092fd59d0e02217f1634623ca2cd0" }
+
+[install]
+copy = [
+  { from = "LIBS/bsdsocket.library", to = "SYS:Libs/" },
+  { from = "C/AddNetInterface",      to = "SYS:C/" },
+  { from = "C/RemoveNetInterface",   to = "SYS:C/" },
+  { from = "C/NetShutdown",          to = "SYS:C/" },
+  { from = "C/GetNetStatus",         to = "SYS:C/" },
+  { from = "C/ShowNetStatus",        to = "SYS:C/" },
+  { from = "C/NetLogViewer",         to = "SYS:C/" },
+  { from = "C/NetLogViewer.info",    to = "SYS:C/" },
+  { from = "C/arp",                  to = "SYS:C/" },
+  { from = "C/mdns",                 to = "SYS:C/" },
+  { from = "C/netdev-stats",         to = "SYS:C/" },
+  { from = "C/netinfo",              to = "SYS:C/" },
+  { from = "C/ping",                 to = "SYS:C/" },
+  { from = "C/traceroute",           to = "SYS:C/" },
+  { from = "ENVARC/netstack.prefs.default", to = "ENVARC:" },
+  { from = "Documentation/lwip-amiga/README.md", to = "SYS:Help/lwip-amiga.md" },
+]
+# Real interfaces are only brought up when something adds them; the
+# install readme's own documented boot line (adds every non-disabled
+# file in DEVS:NetInterfaces/, which a manifest/other recipe populates).
+user-startup = [
+  { order = 50, lines = ["AddNetInterface DEVS:NetInterfaces/~(#?.info) QUIET"] },
+]
+
+[verify]
+exists = ["SYS:Libs/bsdsocket.library", "SYS:C/AddNetInterface"]
