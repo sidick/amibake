@@ -331,6 +331,65 @@ required = true
         assert not result.ok
         assert any("ambiguous" in p.problem for p in result.problems)
 
+    @staticmethod
+    def _ssl_lib(tmp_path, *, old_default=False):
+        """Two side-by-side major lines providing one capability, the
+        amissl5/amissl6 shape; the newer one is the declared default."""
+        def provider(name, version, default):
+            text = (f'[package]\nname = "{name}"\nversions = ["{version}"]\n'
+                    f'provides = ["ssl"]\n')
+            return text + ('default-for = ["ssl"]\n' if default else "")
+        return _lib(tmp_path, {
+            "os32-fixture": OS32_BASE,
+            "ssl5-fixture": provider("ssl5-fixture", "5.27", old_default),
+            "ssl6-fixture": provider("ssl6-fixture", "6.1", True),
+            "app-fixture": ('[package]\nname = "app-fixture"\nversions = ["1.0"]\n'
+                            'depends = ["ssl"]\n'),
+        })
+
+    def test_default_provider_breaks_ambiguity(self, tmp_path):
+        library = self._ssl_lib(tmp_path)
+        path, manifest = _manifest(tmp_path, 'base = "os32-fixture"\npackages = ["ssl"]\n')
+        result = resolve(path, manifest, library)
+        assert result.ok, result.problems
+        assert [p.name for p in result.plan.packages] == ["ssl6-fixture"]
+
+    def test_listed_provider_beats_default(self, tmp_path):
+        library = self._ssl_lib(tmp_path)
+        path, manifest = _manifest(tmp_path, (
+            'base = "os32-fixture"\npackages = ["ssl5-fixture", "app-fixture"]\n'))
+        result = resolve(path, manifest, library)
+        assert result.ok, result.problems
+        assert [p.name for p in result.plan.packages] == ["ssl5-fixture", "app-fixture"]
+
+    def test_providers_table_beats_default(self, tmp_path):
+        library = self._ssl_lib(tmp_path)
+        path, manifest = _manifest(tmp_path, (
+            'base = "os32-fixture"\npackages = ["app-fixture"]\n'
+            '[providers]\nssl = "ssl5-fixture"\n'))
+        result = resolve(path, manifest, library)
+        assert result.ok, result.problems
+        assert [p.name for p in result.plan.packages] == ["ssl5-fixture", "app-fixture"]
+
+    def test_default_picks_among_several_listed_providers(self, tmp_path):
+        """Both lines installed side by side: a dependent on the
+        capability binds to the default rather than calling it ambiguous."""
+        library = self._ssl_lib(tmp_path)
+        path, manifest = _manifest(tmp_path, (
+            'base = "os32-fixture"\n'
+            'packages = ["ssl5-fixture", "ssl6-fixture", "app-fixture"]\n'))
+        result = resolve(path, manifest, library)
+        assert result.ok, result.problems
+        assert [p.name for p in result.plan.packages] == [
+            "ssl5-fixture", "ssl6-fixture", "app-fixture"]
+
+    def test_two_defaults_are_still_ambiguous(self, tmp_path):
+        library = self._ssl_lib(tmp_path, old_default=True)
+        path, manifest = _manifest(tmp_path, 'base = "os32-fixture"\npackages = ["ssl"]\n')
+        result = resolve(path, manifest, library)
+        assert not result.ok
+        assert any("ambiguous" in p.problem for p in result.problems)
+
     def test_noop_provider_requires_matching_emulator(self, tmp_path):
         """Generic resolver mechanics: a no-op capability provider whose
         [requires].emulator the manifest's emit list doesn't cover fails
@@ -549,7 +608,7 @@ def test_hdf_defaults_to_empty(tmp_path):
 
 def test_exemplar_manifest_resolves_cleanly():
     """The shipped os32-p96-amissl.toml (base = "os3.2.2") now has every
-    package it references — os3.2.2 (M8), picasso96-3/amissl/classact
+    package it references — os3.2.2 (M8), picasso96-3/amissl5/classact
     (M4), mmulibs (its 68030 machine block needs a CPU support library
     or the base's own Startup-Sequence nags every boot, see
     recipes/mmulibs) — so resolve should succeed end-to-end. picasso96-3
@@ -569,5 +628,5 @@ def test_exemplar_manifest_resolves_cleanly():
     assert result.ok, [p.problem for p in result.problems]
     assert result.plan.base_package.name == "os3.2.2"
     assert {pkg.name for pkg in result.plan.packages} == {
-        "picasso96-3", "amissl", "classact", "mmulibs",
+        "picasso96-3", "amissl5", "classact", "mmulibs",
     }

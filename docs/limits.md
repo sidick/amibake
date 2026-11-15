@@ -157,6 +157,16 @@ already-owned point-release media exists past this
 cleanly without per-version `[install]` — a genuine capability gap,
 not attempted here.
 
+## No layering-order constraint between packages
+
+Packages layer in manifest order (dependencies first), and a later
+layer silently overwrites an earlier one's same-path file. There's no
+way for a recipe to say "apply me after X if X is present" without
+depending on X. recipes/amissl5 + recipes/amissl6 side by side is the
+case that needs it: both install `amisslmaster.library`, and only v6's
+serves both lines, so the manifest must list `amissl5` before
+`amissl6` — documented in the recipes, not enforced.
+
 ## Multi-partition `hdf` output
 
 `emit/hdf.py` writes one system partition, plus at most one

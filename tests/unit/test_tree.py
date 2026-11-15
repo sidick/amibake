@@ -74,6 +74,14 @@ def test_render_user_startup_deterministic_order_and_assigns_folded_in():
     assert assign_pos < a_pos < z_pos
 
 
+def test_render_user_startup_emits_an_assign_shared_by_two_layers_once():
+    tree = Tree()
+    tree.add_assign("amissl5", "AmiSSL", "SYS:Devs/AmiSSL")
+    tree.add_assign("amissl6", "AmiSSL", "SYS:Devs/AmiSSL")
+    text = tree.render_user_startup().decode("latin-1")
+    assert text.count("Assign AmiSSL: SYS:Devs/AmiSSL") == 1
+
+
 def test_render_user_startup_is_deterministic_across_calls():
     tree = Tree()
     tree.add_user_startup(50, "pkg", ["Run Foo"])

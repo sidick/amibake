@@ -23,7 +23,8 @@ DOS_TYPES = {
     "ofs-intl-dircache", "ffs-intl-dircache",
     "ofs-intl-longname", "ffs-intl-longname",
 }
-PACKAGE_KEYS = {"name", "versions", "depends", "conflicts", "provides", "strategy"}
+PACKAGE_KEYS = {"name", "versions", "depends", "conflicts", "provides", "default-for",
+                "strategy"}
 REQUIRES_KEYS = {"os", "kickstart", "cpu", "fpu", "mmu", "emulator", "per-version"}
 SOURCE_KINDS = {"aminet", "github", "url", "assets"}
 INSTALL_KEYS = {"copy", "envarc", "user-startup", "assigns", "files", "tooltypes",
@@ -124,10 +125,18 @@ def _check_package(c: Checker, package: dict, path: Path) -> list[str]:
                 c.error(f"[package].{key}[{i}]", str(e),
                         'e.g. "mui >= 3.8" or a bare capability name "bsdsocket"')
 
-    for i, cap in enumerate(c.string_list(package, "provides", "[package]")):
+    provides = c.string_list(package, "provides", "[package]")
+    for i, cap in enumerate(provides):
         if not is_name(cap):
             c.error(f"[package].provides[{i}]", f"bad capability name {cap!r}",
                     "capability names are lower-case slugs")
+
+    for i, cap in enumerate(c.string_list(package, "default-for", "[package]")):
+        if cap not in provides:
+            c.error(f"[package].default-for[{i}]",
+                    f"{cap!r} is not in [package].provides",
+                    "a recipe can only be the default provider of a capability "
+                    f"it provides — add {cap!r} to provides, or drop it here")
 
     strategy = c.typed(package, "strategy", str, "[package]")
     if strategy is not None and strategy not in STRATEGIES:

@@ -369,6 +369,16 @@ def _resolve_capability(problems: list[Problem], manifest_file: str, label: str,
         already = [r for r in candidates if r.name in chosen]
         if len(already) == 1:
             return already[0]
+        # Failing that, a recipe declaring itself the capability's
+        # default (`default-for`) wins — among the already-chosen
+        # providers if several are in the build (amissl5 + amissl6
+        # side by side), otherwise among all of them. Two defaults is
+        # still ambiguous, as no default is.
+        pool = already or candidates
+        defaults = [r for r in pool
+                    if capability in ((r.doc.get("package") or {}).get("default-for") or [])]
+        if len(defaults) == 1:
+            return defaults[0]
         names = ", ".join(sorted(r.name for r in candidates))
         problems.append(Problem(
             manifest_file, label,

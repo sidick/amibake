@@ -5,6 +5,6 @@
 # plain 68020.
 base     = "os3.2.2"
 machine  = { cpu = "68020", ram = "chip:1M,fast:8M" }
-packages = ["amissl = 5.27"]
+packages = ["amissl5 = 5.27"]
 output   = ["dir"]
 emit     = ["copperline"]

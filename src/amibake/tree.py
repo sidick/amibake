@@ -109,10 +109,12 @@ class Tree:
         (order, source) so layering order never affects the result."""
         fragments = list(self.user_startup)
         if self.assigns:
-            assign_lines = [
+            # Two layers declaring the same assign (amissl5 + amissl6 side
+            # by side) would otherwise emit the identical line twice.
+            assign_lines = list(dict.fromkeys(
                 f"Assign {a.name}: {a.path}"
                 for a in sorted(self.assigns, key=lambda a: (a.name, a.source))
-            ]
+            ))
             fragments.append(UserStartupFragment(0, "", tuple(assign_lines)))
         fragments.sort(key=lambda f: (f.order, f.source))
         blocks = [

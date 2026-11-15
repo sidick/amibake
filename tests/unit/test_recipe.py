@@ -167,6 +167,15 @@ def test_no_op_provider_needs_no_source(write):
     assert validate_recipe(write(text, name="recipe.toml", subdir="pkg")) == []
 
 
+def test_default_for_must_be_a_provided_capability(write):
+    base = '[package]\nname = "pkg"\nversions = ["1.0"]\nprovides = ["ssl"]\n'
+    assert validate_recipe(write(base + 'default-for = ["ssl"]\n',
+                                 name="recipe.toml", subdir="pkg")) == []
+    problems = errors_of(validate_recipe(write(base + 'default-for = ["tls"]\n',
+                                               name="recipe.toml", subdir="pkg")))
+    assert any("not in [package].provides" in p.problem for p in problems)
+
+
 def test_directory_name_must_match_package_name(write):
     path = write(_minimal(), name="recipe.toml", subdir="wrongname")
     problems = errors_of(validate_recipe(path))

@@ -1,0 +1,57 @@
+# AmiSSL v5 — OpenSSL 3.x as an Amiga shared library.
+#
+# Sourced from upstream's GitHub Releases (github.com/jens-maus/amissl)
+# rather than Aminet: Aminet hosts only the current release under a
+# rolling, unversioned filename (AmiSSL-v5-OS3.lha, replaced in place on
+# every upload), which cannot express multiple installable versions.
+# GitHub Releases are tagged per version, so each listed version gets a
+# real, permanent, checksum-pinned URL.
+#
+# One recipe per AmiSSL major line (amissl5 / amissl6), not one recipe
+# listing every version: the major lines have different APIs and are
+# meant to be installed side by side. An application built against the
+# v5 SDK opens v5's per-release library (amissl_v362 in 5.27) and never
+# the v6 one, so a setup running both old and new software needs both
+# lines. Both recipes provide the "amissl" capability; amissl6 is its
+# default-for, so a bare `"amissl"` in a manifest gets the newest line.
+#
+# Side by side, list amissl5 *before* amissl6: both install
+# amisslmaster.library and Certs/, the later layer's copy wins, and only
+# v6's amisslmaster serves both v5 and v6 applications (upstream: "AmiSSL
+# v6 can be installed on top of any previous AmiSSL versions").
+
+[package]
+name     = "amissl5"
+versions = ["5.27", "5.20"]
+provides = ["amissl"]
+
+[requires]
+os  = ">= 3.0"      # per upstream: AmigaOS 3.0+
+cpu = ">= 68020"
+
+[source.github]
+repo   = "jens-maus/amissl"
+asset  = "AmiSSL-{version}-OS3.lha"
+sha256 = { "5.27" = "722476cfbf21c0caf6ff4a77e32ee8baf67d3045db0e9ff2ccce6c782bed5847", "5.20" = "d051c09383da3e02f3293b136234460dd9f6a0d20f0439398a9db5efcc52960e" }
+
+# Install-AmiSSL (the real installer script) copies amisslmaster.library
+# flat into SYS:Libs/, and the CPU-specific amissl_v#?.library (its
+# version-numbered filename changes per release, hence the wildcard)
+# into SYS:Libs/AmiSSL/ — regardless of which of the two CPU-tier source
+# subdirectories it came from. 68020-40 is the fallback (correct for any
+# machine.cpu >= the [requires] floor); a manifest targeting an actual
+# 68060 machine gets the 68060/ sibling instead (confirmed against the
+# real 5.27 archive: both directories hold one identically-versioned
+# amissl_v#?.library, differing only by which CPU tier it's built for).
+[install]
+copy = [
+  { from = "AmiSSL/Libs/AmigaOS3/amisslmaster.library", to = "SYS:Libs/" },
+  { from = "AmiSSL/Libs/AmigaOS3/AmiSSL/68020-40/amissl_v#?.library", to = "SYS:Libs/AmiSSL/", variants = [ { path = "AmiSSL/Libs/AmigaOS3/AmiSSL/68060/amissl_v#?.library", cpu = ">= 68060" } ] },
+  { from = "AmiSSL/Certs/#?", to = "SYS:Devs/AmiSSL/Certs/" },
+]
+assigns = [
+  { name = "AmiSSL", path = "SYS:Devs/AmiSSL" },
+]
+
+[verify]
+exists = ["SYS:Libs/amisslmaster.library"]

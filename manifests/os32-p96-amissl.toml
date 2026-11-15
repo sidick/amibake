@@ -7,7 +7,7 @@ base     = "os3.2.2"
 machine  = { cpu = "68030", fpu = true, mmu = true, ram = "chip:2M,fast:8M", rtg = true }
 packages = [
   { name = "picasso96-3", version = ">= 3.2", card = "uaegfx" },
-  "amissl = 5.27",
+  "amissl5 = 5.27",
   "classact = 3.3",
   # 68030 machine block — without this, the base's own Startup-Sequence
   # (`CPU CHECKINSTALL`) nags every boot for a missing CPU support

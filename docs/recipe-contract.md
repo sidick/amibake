@@ -22,6 +22,7 @@ versions    = ["5.20", "5.18"]        # newest first
 depends     = []                      # e.g. ["mui >= 3.8"] or ["bsdsocket"]
 conflicts   = []
 provides    = []                      # capabilities, e.g. ["bsdsocket"]
+default-for = []                      # subset of provides; see below
 
 [requires]                            # per-recipe OS floor/ceiling — they vary
 os          = ">= 3.0"                # Workbench/OS version range
@@ -51,7 +52,8 @@ exists      = ["SYS:Libs/amisslmaster.library"]
 | `versions` | array of version strings | yes, non-empty | Dotted decimal strings, newest first, optionally with one trailing lower-case letter (`"2.9a"`, common on Aminet — sorts after the letterless form and in letter order: `2.9` < `2.9a` < `2.9b`). Always quoted — `5.20` unquoted would be a float. |
 | `depends` | array of package specs | no | `"name"` or `"name >= 3.8"`. Capabilities may be depended on by name (`"bsdsocket"`). |
 | `conflicts` | array of package specs | no | Resolver refuses manifests containing both. |
-| `provides` | array of slugs | no | Capabilities this recipe satisfies. One provider per capability per manifest; ambiguity is a resolve-time error and the manifest picks via its `providers` table. |
+| `provides` | array of slugs | no | Capabilities this recipe satisfies. When several recipes provide a capability a manifest or dependency names, the resolver picks, in order: the manifest's `providers` table entry; the one provider the manifest already lists as a package; the one `default-for` recipe (among the listed providers if several are listed, else among all). Anything left is an ambiguity error. |
+| `default-for` | array of slugs | no | Capabilities (each must be in `provides`) this recipe is the default provider of, so a bare capability name resolves without a `providers` entry — e.g. `amissl6` is `default-for = ["amissl"]`, so `"amissl"` gets the newest AmiSSL line while `"amissl5"` still pins the old one. At most one recipe per capability should claim it; two is reported as ambiguous at resolve time. |
 | `strategy` | string | base recipes only | `extract` (declarative, preferred) or `installer` (drives the real Installer; not yet implemented). |
 
 ## `[requires]` — what the package needs from base, machine, emulator
