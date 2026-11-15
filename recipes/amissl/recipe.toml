@@ -6,10 +6,20 @@
 # every upload), which cannot express multiple installable versions.
 # GitHub Releases are tagged per version, so each listed version gets a
 # real, permanent, checksum-pinned URL.
+#
+# 6.1 (OpenSSL 4.1) is a new major line with a reset API: applications
+# built against the v5 SDK keep opening the v5 per-release libraries
+# (amissl_v362 in 5.27), and only apps rebuilt with the v6 SDK use
+# amissl_v41x.library. The 5.x
+# versions therefore stay listed — pin "amissl = 5.27" for a setup whose
+# software predates v6. The archive layout and Install-AmiSSL copy
+# targets are unchanged from 5.27 (checked against the real 6.1 OS3
+# archive), so one [install] covers both lines; only the library's
+# filename differs, which the amissl_v#? wildcard already absorbs.
 
 [package]
 name     = "amissl"
-versions = ["5.27", "5.20"]
+versions = ["6.1", "5.27", "5.20"]
 
 [requires]
 os  = ">= 3.0"      # per upstream: AmigaOS 3.0+
@@ -18,7 +28,7 @@ cpu = ">= 68020"
 [source.github]
 repo   = "jens-maus/amissl"
 asset  = "AmiSSL-{version}-OS3.lha"
-sha256 = { "5.27" = "722476cfbf21c0caf6ff4a77e32ee8baf67d3045db0e9ff2ccce6c782bed5847", "5.20" = "d051c09383da3e02f3293b136234460dd9f6a0d20f0439398a9db5efcc52960e" }
+sha256 = { "6.1" = "fe1113de6ee31a88ca1f46e44a3ec429a2f9e076623cf743fccb081f7f192f6f", "5.27" = "722476cfbf21c0caf6ff4a77e32ee8baf67d3045db0e9ff2ccce6c782bed5847", "5.20" = "d051c09383da3e02f3293b136234460dd9f6a0d20f0439398a9db5efcc52960e" }
 
 # Install-AmiSSL (the real installer script) copies amisslmaster.library
 # flat into SYS:Libs/, and the CPU-specific amissl_v#?.library (its
